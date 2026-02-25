@@ -1,13 +1,217 @@
-body {
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global Reset & Base ── */
+* {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #F8F9FB;
+  color: #111111;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Theme transition for landing page */
+html {
+  transition: color-scheme 200ms ease;
 }
+
+* {
+  transition-property: background-color, border-color;
+  transition-duration: 0ms;
+}
+
+.theme-transition,
+.theme-transition * {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* ── Glassmorphism Utility Classes ── */
+@layer components {
+  .glass {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl;
+  }
+
+  .glass-strong {
+    @apply bg-white/15 backdrop-blur-2xl border border-white/25 shadow-2xl;
+  }
+
+  .glass-subtle {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl;
+  }
+
+  .glass-card {
+    @apply glass rounded-[24px] p-6;
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300 hover:bg-white/15 hover:shadow-glow hover:scale-[1.02];
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-light text-white font-semibold py-3 px-8 rounded-full 
+           transition-all duration-300 hover:shadow-glow active:scale-95;
+  }
+
+  .btn-accent {
+    @apply bg-accent hover:bg-accent-light text-surface-dark font-semibold py-3 px-8 rounded-full 
+           transition-all duration-300 hover:shadow-glow-accent active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent border border-white/30 text-white font-semibold py-3 px-8 rounded-full 
+           transition-all duration-300 hover:bg-white/10 hover:border-white/50 active:scale-95;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-light via-accent to-primary;
+  }
+
+  .input-glass {
+    @apply w-full bg-white/5 border border-white/20 rounded-2xl px-5 py-3.5 text-white 
+           placeholder-gray-500 focus:outline-none focus:border-primary/60 focus:bg-white/10 
+           focus:ring-2 focus:ring-primary/20 transition-all duration-300;
+  }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ── Background Animated Gradient ── */
+.bg-animated-gradient {
+  background: linear-gradient(
+    -45deg,
+    #0F172A,
+    #1E293B,
+    #0B1120,
+    #1a1a3e,
+    #0F172A
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── Glow Effects ── */
+.glow-ring {
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.1),
+              0 0 15px rgba(99, 102, 241, 0.15),
+              0 0 30px rgba(99, 102, 241, 0.05);
+}
+
+/* ── Loading Skeleton ── */
+.skeleton {
+  @apply bg-white/10 rounded-2xl animate-pulse;
+}
+
+/* ═══════════════════════════════════════════════ */
+/* ── Landing Page — Light Theme Utilities ──────── */
+/* ═══════════════════════════════════════════════ */
+
+.land-card {
+  @apply bg-white border border-land-border rounded-2xl shadow-card-soft;
+}
+
+:is(.dark) .land-card {
+  @apply bg-land-dark-card border-land-dark-border shadow-none;
+}
+
+.land-card-hover {
+  @apply land-card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-0.5;
+}
+
+.land-glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+:is(.dark) .land-glass {
+  background: rgba(28, 31, 35, 0.7);
+  border-color: rgba(42, 47, 54, 0.8);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.land-glass-strong {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+}
+
+:is(.dark) .land-glass-strong {
+  background: rgba(20, 23, 28, 0.85);
+  border-color: rgba(42, 47, 54, 0.6);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Dashboard professional card */
+.dash-card {
+  @apply bg-dash-card border border-dash-border rounded-2xl shadow-dash-card;
+}
+
+.dash-input {
+  @apply w-full bg-white border border-dash-border rounded-xl px-4 py-3 text-dash-text
+         placeholder-gray-400 focus:outline-none focus:border-gray-300
+         focus:ring-1 focus:ring-gray-300 transition-colors duration-200;
+}
+
+.window-frame {
+  @apply rounded-2xl overflow-hidden shadow-window border border-black/[0.06];
+  background: #1A1D23;
+}
+
+.window-dots {
+  @apply flex items-center gap-1.5 px-4 py-3;
+}
+
+.window-dots::before,
+.window-dots span::before,
+.window-dots span::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.window-dot-red { @apply w-2.5 h-2.5 rounded-full bg-[#FF5F57]; }
+.window-dot-yellow { @apply w-2.5 h-2.5 rounded-full bg-[#FEBC2E]; }
+.window-dot-green { @apply w-2.5 h-2.5 rounded-full bg-[#28C840]; }
