@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
 import PageTransition from '../components/PageTransition';
+import { useAuth } from '../context/AuthContext';
 import {
   HiOutlineGlobeAlt,
   HiOutlineBell,
@@ -14,6 +15,8 @@ import {
 } from 'react-icons/hi2';
 
 const SettingsPage = () => {
+  const { user } = useAuth();
+
   const [blockedSites, setBlockedSites] = useState([
     'twitter.com',
     'instagram.com',
@@ -30,8 +33,25 @@ const SettingsPage = () => {
     weeklyReport: true,
     coinEarned: false,
   });
-  const [theme, setTheme] = useState('glass');
+  const [theme, setTheme] = useState(() => localStorage.getItem('df_theme') || 'light');
+  const [displayName, setDisplayName] = useState('');
+  const [displayEmail, setDisplayEmail] = useState('');
   const [saved, setSaved] = useState(false);
+
+  // Populate user data when available
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.name || '');
+      setDisplayEmail(user.email || '');
+    }
+  }, [user]);
+
+  // Apply theme to document
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    localStorage.setItem('df_theme', theme);
+  }, [theme]);
 
   const addSite = () => {
     setSiteError('');
@@ -64,6 +84,27 @@ const SettingsPage = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+
+  const themes = [
+    {
+      value: 'light',
+      label: 'Light Mode',
+      desc: 'Clean light surfaces',
+      colors: ['#ffffff', '#f0f2f5', '#3FAE6A', '#1a1a2e'],
+    },
+    {
+      value: 'minimal',
+      label: 'Minimal',
+      desc: 'Subtle neutral tones',
+      colors: ['#fafaf9', '#e7e5e4', '#78716c', '#292524'],
+    },
+    {
+      value: 'dark',
+      label: 'Dark Mode',
+      desc: 'Easy on the eyes',
+      colors: ['#1a1a2e', '#16213e', '#3FAE6A', '#e2e8f0'],
+    },
+  ];
 
   return (
     <PageTransition>
@@ -169,7 +210,7 @@ const SettingsPage = () => {
             <div className="space-y-3">
               {[
                 { key: 'focusReminder', label: 'Focus Reminders', desc: 'Gentle nudges to start a session' },
-                { key: 'streakAlert', label: 'Streak Alerts', desc: 'Don\'t lose your streak!' },
+                { key: 'streakAlert', label: 'Streak Alerts', desc: "Don't lose your streak!" },
                 { key: 'weeklyReport', label: 'Weekly Report', desc: 'Summary of your productivity' },
                 { key: 'coinEarned', label: 'Coin Notifications', desc: 'Alert when coins are earned' },
               ].map((item) => (
@@ -212,24 +253,46 @@ const SettingsPage = () => {
             </h2>
             <p className="text-dash-muted text-sm mb-4">Choose your visual style</p>
 
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { value: 'glass', label: 'Light Mode', desc: 'Clean light surfaces', preview: 'bg-dash-hover border-dash-border' },
-                { value: 'dark', label: 'Minimal', desc: 'Subtle neutral tones', preview: 'bg-white border-dash-border' },
-              ].map((t) => (
+            <div className="grid grid-cols-3 gap-3">
+              {themes.map((t) => (
                 <motion.button
                   key={t.value}
                   className={`p-4 rounded-xl border text-left transition-colors duration-150 ${
                     theme === t.value
-                      ? 'border-sage bg-sage-50'
+                      ? 'border-sage ring-2 ring-sage/20 bg-sage-50'
                       : 'border-dash-border bg-white hover:bg-dash-hover'
                   }`}
                   onClick={() => setTheme(t.value)}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className={`w-full h-16 rounded-lg ${t.preview} border mb-3`} />
+                  {/* Theme preview with actual color swatches */}
+                  <div className="w-full h-16 rounded-lg border border-gray-200 overflow-hidden mb-3 relative"
+                    style={{ backgroundColor: t.colors[0] }}
+                  >
+                    {/* Mini dashboard mockup */}
+                    <div className="absolute inset-1 flex flex-col gap-1">
+                      {/* Header bar */}
+                      <div className="h-2 rounded-full w-full" style={{ backgroundColor: t.colors[1] }} />
+                      {/* Content rows */}
+                      <div className="flex gap-1 flex-1">
+                        <div className="w-1/3 rounded" style={{ backgroundColor: t.colors[1] }} />
+                        <div className="flex-1 flex flex-col gap-0.5">
+                          <div className="h-2 rounded-full w-3/4" style={{ backgroundColor: t.colors[2], opacity: 0.6 }} />
+                          <div className="h-1.5 rounded-full w-1/2" style={{ backgroundColor: t.colors[1] }} />
+                          <div className="flex gap-0.5 mt-auto">
+                            <div className="w-3 h-4 rounded-sm" style={{ backgroundColor: t.colors[2], opacity: 0.4 }} />
+                            <div className="w-3 h-5 rounded-sm" style={{ backgroundColor: t.colors[2], opacity: 0.6 }} />
+                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: t.colors[2], opacity: 0.3 }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <p className="text-dash-text font-medium text-sm">{t.label}</p>
                   <p className="text-dash-muted text-xs">{t.desc}</p>
+                  {theme === t.value && (
+                    <span className="inline-block mt-1.5 text-sage text-xs font-medium">✓ Active</span>
+                  )}
                 </motion.button>
               ))}
             </div>
@@ -254,7 +317,8 @@ const SettingsPage = () => {
                 <label className="block text-dash-muted text-sm mb-2">Display Name</label>
                 <input
                   type="text"
-                  defaultValue="Alex Rivera"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
                   className="dash-input"
                 />
               </div>
@@ -262,8 +326,10 @@ const SettingsPage = () => {
                 <label className="block text-dash-muted text-sm mb-2">Email</label>
                 <input
                   type="email"
-                  defaultValue="alex@distractfree.app"
+                  value={displayEmail}
+                  onChange={(e) => setDisplayEmail(e.target.value)}
                   className="dash-input"
+                  disabled
                 />
               </div>
             </div>

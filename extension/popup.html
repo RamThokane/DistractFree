@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DistractFree</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- ── Header ──────────────────────────── -->
+    <header class="popup-header">
+      <div class="logo-row">
+        <div class="logo-icon">🎯</div>
+        <h1>DistractFree</h1>
+      </div>
+      <p class="tagline" id="tagline">Stay focused. Earn coins.</p>
+    </header>
+
+    <!-- ── Auth Section ────────────────────── -->
+    <section id="auth-section" class="section hidden">
+      <div class="auth-form">
+        <input type="email" id="login-email" placeholder="Email" autocomplete="email">
+        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+        <button id="login-btn" class="btn btn-primary">Login</button>
+        <div class="divider"><span>or</span></div>
+        <button id="login-link" class="btn btn-link">Open Dashboard to Sign Up</button>
+      </div>
+      <p id="auth-error" class="error-text hidden"></p>
+    </section>
+
+    <!-- ── Dashboard Section ───────────────── -->
+    <section id="dashboard-section" class="section hidden">
+      <!-- Status -->
+      <div class="status-card" id="status-card">
+        <div class="status-row">
+          <span class="status-label">Status</span>
+          <span class="status-badge" id="session-status">Idle</span>
+        </div>
+        <div class="stats-row">
+          <div class="stat">
+            <span class="stat-value" id="coin-balance">0</span>
+            <span class="stat-label">🪙 Coins</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="streak-count">0</span>
+            <span class="stat-label">🔥 Streak</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="blocked-count">0</span>
+            <span class="stat-label">🚫 Blocked</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timer -->
+      <div id="timer-section" class="timer-section hidden">
+        <div class="timer-display" id="timer-display">25:00</div>
+        <p class="timer-label">Focus Time Remaining</p>
+        <div class="timer-actions">
+          <button id="end-session-btn" class="btn btn-danger">End Session</button>
+          <button id="cancel-session-btn" class="btn btn-ghost">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Start Session -->
+      <div id="start-section" class="start-section">
+        <label for="duration-select" class="input-label">Focus Duration</label>
+        <select id="duration-select" class="select">
+          <option value="15">15 minutes</option>
+          <option value="25" selected>25 minutes (Pomodoro)</option>
+          <option value="50">50 minutes (Deep Work)</option>
+          <option value="90">90 minutes (Marathon)</option>
+          <option value="120">120 minutes (Ultra)</option>
+        </select>
+        <button id="start-session-btn" class="btn btn-primary btn-full">🎯 Start Focus Session</button>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button id="sync-btn" class="btn btn-ghost btn-sm">↻ Sync</button>
+        <button id="dashboard-btn" class="btn btn-ghost btn-sm">📊 Dashboard</button>
+        <button id="logout-btn" class="btn btn-ghost btn-sm btn-logout">Logout</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -215,3 +215,98 @@ html {
 .window-dot-red { @apply w-2.5 h-2.5 rounded-full bg-[#FF5F57]; }
 .window-dot-yellow { @apply w-2.5 h-2.5 rounded-full bg-[#FEBC2E]; }
 .window-dot-green { @apply w-2.5 h-2.5 rounded-full bg-[#28C840]; }
+
+/* ═══════════════════════════════════════════════ */
+/* ── Theme System ──────────────────────────────── */
+/* ═══════════════════════════════════════════════ */
+
+/* Minimal theme — warm, earthy tones */
+[data-theme="minimal"] body {
+  background: #fafaf9;
+}
+
+[data-theme="minimal"] .dash-card,
+[data-theme="minimal"] .bg-dash-card,
+[data-theme="minimal"] .bg-white {
+  --tw-bg-opacity: 1;
+}
+
+[data-theme="minimal"] .bg-dash-hover {
+  background-color: #f5f5f4;
+}
+
+[data-theme="minimal"] .border-dash-border {
+  border-color: #e7e5e4;
+}
+
+[data-theme="minimal"] .text-dash-text {
+  color: #292524;
+}
+
+[data-theme="minimal"] .text-dash-muted {
+  color: #78716c;
+}
+
+[data-theme="minimal"] .bg-sage {
+  background-color: #78716c;
+}
+
+[data-theme="minimal"] .text-sage {
+  color: #78716c;
+}
+
+/* Dark theme — deep navy */
+[data-theme="dark"] body {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .dash-card,
+[data-theme="dark"] .bg-dash-card {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .bg-dash-hover {
+  background-color: #1e293b;
+}
+
+[data-theme="dark"] .border-dash-border {
+  border-color: #334155;
+}
+
+[data-theme="dark"] .text-dash-text,
+[data-theme="dark"] .text-gray-900 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .text-dash-muted,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400 {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .dash-input {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-[#F8F9FB] {
+  background-color: #0f172a !important;
+}
+
+[data-theme="dark"] .hover\:bg-dash-hover:hover {
+  background-color: #253049 !important;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+

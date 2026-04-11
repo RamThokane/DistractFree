@@ -31,9 +31,10 @@ const LoginPage = () => {
 
   const handleGoogleSuccess = async (tokenResponse) => {
     try {
+      // googleLogin is called by GoogleAuthButton itself via AuthContext
       navigate('/dashboard');
-    } catch {
-      setError('Google sign-in failed');
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed');
     }
   };
 

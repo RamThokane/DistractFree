@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { mockUser } from '../utils/mockData';
+import api from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -14,42 +14,66 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('df_token'));
   const [loading, setLoading] = useState(true);
 
+  // Fetch current user from backend when token exists
   useEffect(() => {
-    // Simulate checking token validity
-    if (token) {
-      // In production, validate token with backend
-      setTimeout(() => {
-        setUser(mockUser);
+    const fetchUser = async () => {
+      if (!token) {
         setLoading(false);
-      }, 500);
-    } else {
-      setLoading(false);
-    }
+        return;
+      }
+
+      try {
+        const res = await api.get('/auth/me');
+        if (res.data.success) {
+          setUser(res.data.user);
+        } else {
+          // Token invalid — clean up
+          localStorage.removeItem('df_token');
+          setToken(null);
+        }
+      } catch (err) {
+        console.error('[Auth] Failed to fetch user:', err.message);
+        localStorage.removeItem('df_token');
+        setToken(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
   }, [token]);
 
   const login = useCallback(async (email, password) => {
-    // Mock login — replace with real API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const fakeToken = 'mock_jwt_' + Date.now();
-        localStorage.setItem('df_token', fakeToken);
-        setToken(fakeToken);
-        setUser(mockUser);
-        resolve({ success: true });
-      }, 800);
-    });
+    const res = await api.post('/auth/login', { email, password });
+    if (res.data.success) {
+      localStorage.setItem('df_token', res.data.token);
+      setToken(res.data.token);
+      setUser(res.data.user);
+      return { success: true };
+    }
+    throw new Error(res.data.message || 'Login failed');
   }, []);
 
   const register = useCallback(async (name, email, password) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const fakeToken = 'mock_jwt_' + Date.now();
-        localStorage.setItem('df_token', fakeToken);
-        setToken(fakeToken);
-        setUser({ ...mockUser, name, email });
-        resolve({ success: true });
-      }, 800);
-    });
+    const res = await api.post('/auth/register', { name, email, password });
+    if (res.data.success) {
+      localStorage.setItem('df_token', res.data.token);
+      setToken(res.data.token);
+      setUser(res.data.user);
+      return { success: true };
+    }
+    throw new Error(res.data.message || 'Registration failed');
+  }, []);
+
+  const googleLogin = useCallback(async (credential) => {
+    const res = await api.post('/auth/google', { credential });
+    if (res.data.success) {
+      localStorage.setItem('df_token', res.data.token);
+      setToken(res.data.token);
+      setUser(res.data.user);
+      return { success: true };
+    }
+    throw new Error(res.data.message || 'Google login failed');
   }, []);
 
   const logout = useCallback(() => {
@@ -59,7 +83,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{
+      user,
+      token,
+      loading,
+      login,
+      register,
+      googleLogin,
+      logout,
+      isAuthenticated: !!user,
+    }}>
       {children}
     </AuthContext.Provider>
   );
