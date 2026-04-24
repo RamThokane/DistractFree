@@ -9,7 +9,8 @@
     "activeTab",
     "webNavigation",
     "alarms",
-    "notifications"
+    "notifications",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -34,7 +35,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["block.html", "block.css", "icons/*"],
+      "resources": ["block.html", "block.css", "block.js", "icons/*"],
       "matches": ["<all_urls>"]
     }
   ],
@@ -42,5 +43,8 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "externally_connectable": {
+    "matches": ["http://localhost:3000/*"]
   }
 }

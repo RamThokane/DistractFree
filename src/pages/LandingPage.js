@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import ThemeToggle from '../components/ThemeToggle';
+import GlassNavbar from '../components/GlassNavbar';
 
 /* ═══════════════════════════════════════════════════════════════
    DistractFree — Landing Page
@@ -64,36 +65,49 @@ const MiniStat = ({ label, value, sub }) => (
 /* ══════════════════════════════════════════════════════════════ */
 
 const LandingPage = () => {
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="min-h-screen bg-land-bg dark:bg-land-dark-bg text-land-text dark:text-land-dark-text antialiased selection:bg-sage-100 selection:text-sage-dark theme-transition">
 
       {/* ────────────── NAV ────────────── */}
-      <nav className="sticky top-0 z-50 land-glass-strong">
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled ? 'bg-white/70 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50 shadow-sm' : 'bg-transparent border-b border-transparent'
+      }`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-sage flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+            <div className="w-8 h-8 rounded-xl bg-gradient-primary flex items-center justify-center transition-transform duration-200 group-hover:scale-105 shadow-sm">
               <span className="text-white font-bold text-sm">D</span>
             </div>
             <span className="font-semibold text-land-text dark:text-land-dark-text tracking-tight">DistractFree</span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-8 text-sm text-land-muted dark:text-land-dark-muted">
-            <a href="#how-it-works" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">How it works</a>
-            <a href="#product" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">Product</a>
-            <a href="#research" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">Research</a>
-          </div>
+          <GlassNavbar
+            items={[
+              { label: 'How It Works', path: '#how-it-works' },
+              { label: 'Product', path: '#product' },
+              { label: 'Research', path: '#research' },
+            ]}
+            activePath=""
+          />
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Link
               to="/login"
-              className="text-sm font-medium text-land-muted dark:text-land-dark-muted hover:text-land-text dark:hover:text-land-dark-text transition-colors"
+              className="text-sm font-medium text-land-muted dark:text-land-dark-muted hover:text-primary dark:hover:text-primary transition-colors"
             >
               Log in
             </Link>
             <Link
               to="/register"
-              className="text-sm font-medium text-white bg-sage hover:bg-sage-light px-5 py-2 rounded-full transition-all duration-200 hover:shadow-md active:scale-[0.97]"
+              className="text-sm font-medium text-white bg-gradient-primary hover:shadow-glow px-6 py-2.5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95"
             >
               Start Free
             </Link>
@@ -149,7 +163,7 @@ const LandingPage = () => {
             >
               <Link
                 to="/register"
-                className="inline-flex items-center gap-2 bg-sage hover:bg-sage-light text-white font-medium px-7 py-3 rounded-full transition-all duration-200 hover:shadow-lg active:scale-[0.97]"
+                className="inline-flex items-center gap-2 bg-gradient-primary hover:shadow-glow text-white font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 shadow-md"
               >
                 Start Free
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -158,7 +172,7 @@ const LandingPage = () => {
               </Link>
               <a
                 href="#how-it-works"
-                className="inline-flex items-center gap-2 border border-land-border dark:border-land-dark-border text-land-muted dark:text-land-dark-muted hover:text-land-text dark:hover:text-land-dark-text hover:border-gray-300 dark:hover:border-gray-600 font-medium px-7 py-3 rounded-full transition-all duration-200"
+                className="inline-flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95"
               >
                 See How It Works
               </a>

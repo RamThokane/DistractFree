@@ -19,8 +19,16 @@ const RegisterPage = () => {
       setError('Please fill in all fields');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/\d/.test(password)) {
+      setError('Password must contain at least one number');
+      return;
+    }
+    if (!/[a-zA-Z]/.test(password)) {
+      setError('Password must contain at least one letter');
       return;
     }
     if (password !== confirmPassword) {
@@ -32,8 +40,14 @@ const RegisterPage = () => {
     try {
       await register(name, email, password);
       navigate('/dashboard');
-    } catch {
-      setError('Registration failed');
+    } catch (err) {
+      // Show actual backend validation error
+      const msg =
+        err?.response?.data?.errors?.[0]?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Registration failed. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -22,8 +22,13 @@ const LoginPage = () => {
     try {
       await login(email, password);
       navigate('/dashboard');
-    } catch {
-      setError('Invalid credentials');
+    } catch (err) {
+      const msg =
+        err?.response?.data?.errors?.[0]?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Invalid credentials';
+      setError(msg);
     } finally {
       setLoading(false);
     }

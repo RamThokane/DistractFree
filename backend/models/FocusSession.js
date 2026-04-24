@@ -43,6 +43,20 @@ const focusSessionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    mlStatus: {
+      type: String,
+      default: 'Focused',
+    },
+    tabSwitches: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    interruptions: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     /**
      * Number of times the user attempted to visit a blocked site.
      */

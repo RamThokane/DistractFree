@@ -13,13 +13,13 @@ const Button = ({
 }) => {
   const variants = {
     primary:
-      'bg-gray-900 hover:bg-gray-800 text-white',
+      'bg-gradient-primary hover:shadow-glow text-white shadow-md',
     accent:
-      'bg-dash-accent hover:bg-dash-accent/90 text-white',
+      'bg-white text-primary border border-gray-200 hover:shadow-card-hover hover:border-primary/30',
     ghost:
-      'bg-transparent border border-dash-border text-dash-text hover:bg-dash-hover hover:border-dash-border-light',
+      'bg-transparent border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300',
     danger:
-      'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100',
+      'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:shadow-sm',
   };
 
   const sizes = {
@@ -31,7 +31,7 @@ const Button = ({
   return (
     <motion.button
       className={`
-        font-medium rounded-xl transition-colors duration-150 active:scale-95
+        font-medium rounded-full transition-all duration-300 active:scale-95
         flex items-center justify-center gap-2
         disabled:opacity-40 disabled:cursor-not-allowed
         ${variants[variant]} ${sizes[size]} ${className}

@@ -118,6 +118,59 @@ exports.endSession = async (req, res) => {
 };
 
 // ────────────────────────────────────────────────────
+// POST /api/session/live-update
+// ────────────────────────────────────────────────────
+exports.updateLiveSession = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { sessionId, duration, tabSwitches, interruptions, blockAttempts } = req.body;
+
+    const session = await FocusSession.findOne({ _id: sessionId, userId, status: 'active' });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'No active session found' });
+    }
+
+    // Update session metrics
+    if (tabSwitches !== undefined) session.tabSwitches = tabSwitches;
+    if (interruptions !== undefined) session.interruptions = interruptions;
+    if (blockAttempts !== undefined) session.distractionAttempts = blockAttempts;
+
+    // Call Python Flask ML API
+    let mlPrediction = 'Focused';
+    try {
+      // dynamic import for fetch since we are in node 18+
+      const response = await fetch('http://127.0.0.1:5001/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          duration: duration || 0,
+          tab_switches: tabSwitches || 0,
+          interruptions: interruptions || 0,
+          block_attempts: blockAttempts || 0,
+        }),
+      });
+      const data = await response.json();
+      if (data.prediction) {
+        mlPrediction = data.prediction;
+      }
+    } catch (mlError) {
+      console.error('[ML API Error]:', mlError.message);
+    }
+
+    session.mlStatus = mlPrediction;
+    await session.save();
+
+    res.json({
+      success: true,
+      mlStatus: session.mlStatus,
+    });
+  } catch (error) {
+    console.error('[Session] Live Update error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ────────────────────────────────────────────────────
 // GET /api/session/active
 // ────────────────────────────────────────────────────
 exports.getActiveSession = async (req, res) => {

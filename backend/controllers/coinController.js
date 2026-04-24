@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const CoinTransaction = require('../models/CoinTransaction');
+const FocusSession = require('../models/FocusSession');
 
 // ────────────────────────────────────────────────────
 // GET /api/coins/balance

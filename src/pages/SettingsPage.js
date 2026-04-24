@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
 import PageTransition from '../components/PageTransition';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import {
   HiOutlineGlobeAlt,
   HiOutlineBell,
@@ -15,17 +16,13 @@ import {
 } from 'react-icons/hi2';
 
 const SettingsPage = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
-  const [blockedSites, setBlockedSites] = useState([
-    'twitter.com',
-    'instagram.com',
-    'reddit.com',
-    'youtube.com',
-    'tiktok.com',
-  ]);
+  const [blockedSites, setBlockedSites] = useState([]);
+  const [loadingSites, setLoadingSites] = useState(true);
   const [newSite, setNewSite] = useState('');
   const [siteError, setSiteError] = useState('');
+  const [addingState, setAddingState] = useState(''); // '' | 'adding' | 'removing-ID'
   const [strictMode, setStrictMode] = useState(false);
   const [notifications, setNotifications] = useState({
     focusReminder: true,
@@ -43,6 +40,18 @@ const SettingsPage = () => {
     if (user) {
       setDisplayName(user.name || '');
       setDisplayEmail(user.email || '');
+      if (user.settings) {
+        if (user.settings.theme) setTheme(user.settings.theme);
+        if (user.settings.strictMode !== undefined) setStrictMode(user.settings.strictMode);
+        if (user.settings.notifications) {
+          setNotifications({
+            focusReminder: user.settings.notifications.focusReminder ?? true,
+            streakAlert: user.settings.notifications.streakAlert ?? true,
+            weeklyReport: user.settings.notifications.weeklyReport ?? true,
+            coinEarned: user.settings.notifications.coinEarned ?? false,
+          });
+        }
+      }
     }
   }, [user]);
 
@@ -50,39 +59,137 @@ const SettingsPage = () => {
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
     localStorage.setItem('df_theme', theme);
   }, [theme]);
 
-  const addSite = () => {
+  // ── Fetch blocked sites from backend ──
+  const fetchBlockedSites = useCallback(async () => {
+    try {
+      setLoadingSites(true);
+      const res = await api.get('/websites/list');
+      if (res.data.success) {
+        setBlockedSites(
+          res.data.websites.map((w) => ({
+            id: w._id,
+            url: w.websiteUrl,
+            displayName: w.displayName,
+            isActive: w.isActive,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('[Settings] Failed to fetch blocked sites:', err);
+    } finally {
+      setLoadingSites(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBlockedSites();
+  }, [fetchBlockedSites]);
+
+  // ── Add site to backend ──
+  const addSite = async () => {
     setSiteError('');
-    const site = newSite.trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/.*$/, '');
+    const site = newSite
+      .trim()
+      .toLowerCase()
+      .replace(/^(https?:\/\/)?(www\.)?/, '')
+      .replace(/\/.*$/, '');
     if (!site) return;
+
     // Validate domain format
     const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$/;
     if (!domainRegex.test(site)) {
       setSiteError('Enter a valid domain (e.g. twitter.com)');
       return;
     }
-    // Check duplicates
-    if (blockedSites.includes(site)) {
+
+    // Check duplicates locally
+    if (blockedSites.some((s) => s.url === site)) {
       setSiteError('This site is already in your block list');
       return;
     }
-    setBlockedSites([...blockedSites, site]);
-    setNewSite('');
+
+    try {
+      setAddingState('adding');
+      const res = await api.post('/websites/add', {
+        websiteUrl: site,
+        displayName: site,
+        category: 'other',
+      });
+
+      if (res.data.success) {
+        const newW = res.data.website;
+        setBlockedSites((prev) => [
+          ...prev,
+          { id: newW._id, url: newW.websiteUrl, displayName: newW.displayName, isActive: true },
+        ]);
+        setNewSite('');
+      }
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err.message || 'Failed to add website';
+      setSiteError(msg);
+    } finally {
+      setAddingState('');
+    }
   };
 
-  const removeSite = (site) => {
-    setBlockedSites(blockedSites.filter((s) => s !== site));
+  // ── Remove site from backend ──
+  const removeSite = async (siteId) => {
+    try {
+      setAddingState(`removing-${siteId}`);
+      await api.delete('/websites/remove', { data: { websiteId: siteId } });
+      setBlockedSites((prev) => prev.filter((s) => s.id !== siteId));
+    } catch (err) {
+      console.error('[Settings] Failed to remove site:', err);
+      setSiteError('Failed to remove website');
+    } finally {
+      setAddingState('');
+    }
   };
 
   const toggleNotification = (key) => {
     setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    try {
+      const res = await api.put('/auth/profile', {
+        name: displayName,
+        theme,
+        strictMode,
+        notifications
+      });
+      if (res.data.success) {
+        updateUser(res.data.user);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    try {
+      const res = await api.get('/insights/weekly-report', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Weekly_Productivity_Report.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('Failed to download report', err);
+    }
   };
 
   const themes = [
@@ -128,7 +235,7 @@ const SettingsPage = () => {
               <HiOutlineGlobeAlt className="w-5 h-5 text-sage" />
               Blocked Sites
             </h2>
-            <p className="text-dash-muted text-sm mb-4">These websites are blocked only during active focus sessions.</p>
+            <p className="text-dash-muted text-sm mb-4">These websites are always blocked while the extension is active.</p>
 
             <div className="flex gap-2 mb-1">
               <input
@@ -138,9 +245,16 @@ const SettingsPage = () => {
                 onKeyDown={(e) => e.key === 'Enter' && addSite()}
                 placeholder="e.g. facebook.com"
                 className={`dash-input flex-1 ${siteError ? '!border-red-500/50 focus:!ring-red-500/30' : ''}`}
+                disabled={addingState === 'adding'}
               />
-              <Button variant="primary" size="sm" onClick={addSite} icon={<HiOutlinePlus className="w-4 h-4" />}>
-                Add
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={addSite}
+                icon={<HiOutlinePlus className="w-4 h-4" />}
+                disabled={addingState === 'adding'}
+              >
+                {addingState === 'adding' ? 'Adding…' : 'Add'}
               </Button>
             </div>
             {siteError && (
@@ -148,26 +262,38 @@ const SettingsPage = () => {
             )}
             {!siteError && <div className="mb-3" />}
 
-            <div className="flex flex-wrap gap-2 mb-5">
-              {blockedSites.map((site) => (
-                <motion.span
-                  key={site}
-                  className="inline-flex items-center gap-1.5 bg-dash-hover border border-dash-border rounded-xl px-3 py-1.5 text-sm text-dash-text"
-                  layout
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                >
-                  {site}
-                  <button
-                    onClick={() => removeSite(site)}
-                    className="text-dash-muted hover:text-red-400 transition-colors ml-0.5"
+            {loadingSites ? (
+              <div className="flex items-center gap-2 py-4 justify-center text-dash-muted text-sm">
+                <div className="w-4 h-4 border-2 border-sage border-t-transparent rounded-full animate-spin" />
+                Loading blocked sites…
+              </div>
+            ) : blockedSites.length === 0 ? (
+              <p className="text-dash-muted text-sm text-center py-4">
+                No blocked sites yet. Add websites above to start blocking.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mb-5">
+                {blockedSites.map((site) => (
+                  <motion.span
+                    key={site.id}
+                    className="inline-flex items-center gap-1.5 bg-dash-hover border border-dash-border rounded-xl px-3 py-1.5 text-sm text-dash-text"
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
                   >
-                    <HiOutlineXMark className="w-3.5 h-3.5" />
-                  </button>
-                </motion.span>
-              ))}
-            </div>
+                    {site.url}
+                    <button
+                      onClick={() => removeSite(site.id)}
+                      disabled={addingState === `removing-${site.id}`}
+                      className="text-dash-muted hover:text-red-400 transition-colors ml-0.5 disabled:opacity-50"
+                    >
+                      <HiOutlineXMark className="w-3.5 h-3.5" />
+                    </button>
+                  </motion.span>
+                ))}
+              </div>
+            )}
 
             {/* Strict Mode Toggle */}
             <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dash-hover border border-dash-border">
@@ -211,16 +337,23 @@ const SettingsPage = () => {
               {[
                 { key: 'focusReminder', label: 'Focus Reminders', desc: 'Gentle nudges to start a session' },
                 { key: 'streakAlert', label: 'Streak Alerts', desc: "Don't lose your streak!" },
-                { key: 'weeklyReport', label: 'Weekly Report', desc: 'Summary of your productivity' },
+                { key: 'weeklyReport', label: 'Weekly Report', desc: 'Summary of your productivity', action: (
+                  <button onClick={handleDownloadReport} className="ml-4 text-xs text-sage hover:underline whitespace-nowrap bg-sage/10 px-2 py-1 rounded-md">
+                    Download Info
+                  </button>
+                ) },
                 { key: 'coinEarned', label: 'Coin Notifications', desc: 'Alert when coins are earned' },
               ].map((item) => (
                 <div
                   key={item.key}
                   className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-dash-hover transition-colors"
                 >
-                  <div>
-                    <p className="text-dash-text text-sm font-medium">{item.label}</p>
-                    <p className="text-dash-muted text-xs">{item.desc}</p>
+                  <div className="flex-1 flex items-center">
+                    <div>
+                      <p className="text-dash-text text-sm font-medium">{item.label}</p>
+                      <p className="text-dash-muted text-xs">{item.desc}</p>
+                    </div>
+                    {item.action && item.action}
                   </div>
                   <button
                     onClick={() => toggleNotification(item.key)}

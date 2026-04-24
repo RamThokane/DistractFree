@@ -5,14 +5,13 @@ const GlassCard = ({
   children,
   className = '',
   hover = false,
-  glow = false,
   padding = 'p-6',
   onClick,
   ...props
 }) => {
-  const baseClasses = `bg-white border border-dash-border rounded-2xl shadow-dash-card ${padding}`;
+  const baseClasses = `bg-white/70 backdrop-blur-md border border-white/80 rounded-2xl shadow-card-soft ${padding}`;
   const hoverClasses = hover
-    ? 'transition-all duration-150 hover:shadow-card-hover hover:border-dash-border-light cursor-pointer'
+    ? 'transition-all duration-300 hover:shadow-card-hover hover:-translate-y-1 hover:border-primary/20 cursor-pointer'
     : '';
 
   return (

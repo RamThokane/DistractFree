@@ -184,3 +184,48 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// ────────────────────────────────────────────────────
+// PUT /api/auth/profile
+// ────────────────────────────────────────────────────
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, theme, strictMode, notifications } = req.body;
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (name) user.name = name;
+    
+    if (theme) user.settings.theme = theme;
+    if (strictMode !== undefined) user.settings.strictMode = strictMode;
+    if (notifications) {
+      user.settings.notifications = {
+        ...user.settings.notifications,
+        ...notifications
+      };
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        focusCoins: user.focusCoins,
+        currentStreak: user.currentStreak,
+        longestStreak: user.longestStreak,
+        settings: user.settings,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('[Auth] UpdateProfile error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

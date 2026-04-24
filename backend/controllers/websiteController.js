@@ -143,6 +143,15 @@ exports.unlockWebsite = async (req, res) => {
 
     const user = await User.findById(userId);
 
+    // Check strict mode
+    const activeSession = await FocusSession.findOne({ userId, status: 'active' });
+    if (activeSession && user.settings?.strictMode) {
+      return res.status(403).json({
+        success: false,
+        message: 'Strict Mode is enabled. You cannot unlock sites during an active session.',
+      });
+    }
+
     if (user.focusCoins < UNLOCK_COST) {
       return res.status(403).json({
         success: false,
@@ -169,7 +178,6 @@ exports.unlockWebsite = async (req, res) => {
     });
 
     // Record spending on active session
-    const activeSession = await FocusSession.findOne({ userId, status: 'active' });
     if (activeSession) {
       activeSession.coinsSpent += UNLOCK_COST;
       await activeSession.save();

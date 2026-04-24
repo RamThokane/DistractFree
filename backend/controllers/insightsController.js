@@ -185,6 +185,44 @@ exports.logBrowsing = async (req, res) => {
   }
 };
 
+// ────────────────────────────────────────────────────
+// GET /api/insights/weekly-report
+// ────────────────────────────────────────────────────
+exports.downloadWeeklyReport = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+
+    const sessions = await FocusSession.find({
+      userId,
+      startTime: { $gte: since },
+      status: 'completed'
+    }).sort({ startTime: -1 });
+
+    let csv = 'Date,Duration (minutes),Coins Earned,Distraction Attempts,Tab Switches,Interruptions,ML Status\n';
+    
+    sessions.forEach(session => {
+      const date = session.startTime.toISOString().split('T')[0];
+      const duration = session.duration || 0;
+      const coins = session.coinsEarned || 0;
+      const attempts = session.distractionAttempts || 0;
+      const tabSwitches = session.tabSwitches || 0;
+      const interruptions = session.interruptions || 0;
+      const mlStatus = session.mlStatus || 'Focused';
+      
+      csv += `${date},${duration},${coins},${attempts},${tabSwitches},${interruptions},${mlStatus}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="Weekly_Productivity_Report.csv"');
+    res.status(200).send(csv);
+  } catch (error) {
+    console.error('[Insights] Weekly Report error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // ── Internal helpers ───────────────────────────────
 
 function _dominantCategory(logs) {

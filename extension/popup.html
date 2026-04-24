@@ -11,76 +11,126 @@
     <!-- ── Header ──────────────────────────── -->
     <header class="popup-header">
       <div class="logo-row">
-        <div class="logo-icon">🎯</div>
+        <div class="logo-badge">D</div>
         <h1>DistractFree</h1>
       </div>
-      <p class="tagline" id="tagline">Stay focused. Earn coins.</p>
     </header>
 
     <!-- ── Auth Section ────────────────────── -->
-    <section id="auth-section" class="section hidden">
+    <section id="auth-section" class="section">
       <div class="auth-form">
-        <input type="email" id="login-email" placeholder="Email" autocomplete="email">
-        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
-        <button id="login-btn" class="btn btn-primary">Login</button>
-        <div class="divider"><span>or</span></div>
-        <button id="login-link" class="btn btn-link">Open Dashboard to Sign Up</button>
+        <div class="input-group">
+          <label for="login-email" class="input-label-text">Email</label>
+          <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="input-group">
+          <label for="login-password" class="input-label-text">Password</label>
+          <input type="password" id="login-password" placeholder="Enter password" autocomplete="current-password">
+        </div>
+        <button id="login-btn" class="btn btn-primary btn-full">
+          <span class="btn-text">Sign In</span>
+          <span class="btn-loader hidden">
+            <svg class="spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+
+        <div class="auth-divider"><span>or</span></div>
+
+        <!-- Sync from dashboard (for Google users) -->
+        <button id="sync-dashboard-btn" class="btn btn-accent btn-full">
+          ⚡ Sync from Dashboard
+        </button>
+        <p class="auth-hint">Signed in with Google on the dashboard? Click above to sync your session.</p>
+
+        <button id="login-link" class="btn btn-outline btn-full">Open Dashboard to Sign Up</button>
       </div>
-      <p id="auth-error" class="error-text hidden"></p>
+      <p id="auth-error" class="error-toast hidden"></p>
     </section>
 
     <!-- ── Dashboard Section ───────────────── -->
     <section id="dashboard-section" class="section hidden">
-      <!-- Status -->
-      <div class="status-card" id="status-card">
-        <div class="status-row">
-          <span class="status-label">Status</span>
-          <span class="status-badge" id="session-status">Idle</span>
-        </div>
-        <div class="stats-row">
-          <div class="stat">
+      <!-- User Greeting -->
+      <div class="user-greeting">
+        <p class="greeting-text" id="greeting-text">Good evening</p>
+        <p class="user-name" id="user-name">User</p>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon coins-icon">🪙</div>
+          <div class="stat-info">
             <span class="stat-value" id="coin-balance">0</span>
-            <span class="stat-label">🪙 Coins</span>
+            <span class="stat-label">Coins</span>
           </div>
-          <div class="stat">
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon streak-icon">🔥</div>
+          <div class="stat-info">
             <span class="stat-value" id="streak-count">0</span>
-            <span class="stat-label">🔥 Streak</span>
+            <span class="stat-label">Streak</span>
           </div>
-          <div class="stat">
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blocked-icon">🛡️</div>
+          <div class="stat-info">
             <span class="stat-value" id="blocked-count">0</span>
-            <span class="stat-label">🚫 Blocked</span>
+            <span class="stat-label">Blocked</span>
           </div>
         </div>
       </div>
 
-      <!-- Timer -->
+      <!-- Status Indicator -->
+      <div class="status-card" id="status-card">
+        <div class="status-row">
+          <span class="status-label-text">Session Status</span>
+          <span class="status-badge" id="session-status">Idle</span>
+        </div>
+      </div>
+
+      <!-- Timer (during active session) -->
       <div id="timer-section" class="timer-section hidden">
-        <div class="timer-display" id="timer-display">25:00</div>
-        <p class="timer-label">Focus Time Remaining</p>
+        <div class="timer-ring">
+          <svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" class="timer-track"/>
+            <circle cx="60" cy="60" r="52" class="timer-progress" id="timer-progress"/>
+          </svg>
+          <div class="timer-text">
+            <div class="timer-display" id="timer-display">25:00</div>
+            <div class="timer-sublabel">remaining</div>
+          </div>
+        </div>
         <div class="timer-actions">
-          <button id="end-session-btn" class="btn btn-danger">End Session</button>
-          <button id="cancel-session-btn" class="btn btn-ghost">Cancel</button>
+          <button id="end-session-btn" class="btn btn-success btn-sm">✓ Complete</button>
+          <button id="cancel-session-btn" class="btn btn-ghost-danger btn-sm">Cancel</button>
         </div>
       </div>
 
       <!-- Start Session -->
       <div id="start-section" class="start-section">
-        <label for="duration-select" class="input-label">Focus Duration</label>
-        <select id="duration-select" class="select">
+        <label for="duration-select" class="input-label-text">Focus Duration</label>
+        <select id="duration-select" class="select-input">
           <option value="15">15 minutes</option>
           <option value="25" selected>25 minutes (Pomodoro)</option>
           <option value="50">50 minutes (Deep Work)</option>
           <option value="90">90 minutes (Marathon)</option>
           <option value="120">120 minutes (Ultra)</option>
         </select>
-        <button id="start-session-btn" class="btn btn-primary btn-full">🎯 Start Focus Session</button>
+        
+        <label class="input-label-text mt-3">Select Sites to Block</label>
+        <div id="site-selection-list" class="site-selection-list">
+          <div class="text-xs text-gray-500">Loading sites...</div>
+        </div>
+        <button id="start-session-btn" class="btn btn-primary btn-full">
+          🎯 Start Focus Session
+        </button>
       </div>
 
       <!-- Quick Actions -->
       <div class="quick-actions">
         <button id="sync-btn" class="btn btn-ghost btn-sm">↻ Sync</button>
         <button id="dashboard-btn" class="btn btn-ghost btn-sm">📊 Dashboard</button>
-        <button id="logout-btn" class="btn btn-ghost btn-sm btn-logout">Logout</button>
+        <button id="logout-btn" class="btn btn-ghost-danger btn-sm">Logout</button>
       </div>
     </section>
   </div>

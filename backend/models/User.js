@@ -58,8 +58,14 @@ const userSchema = new mongoose.Schema(
     ],
     settings: {
       dailyGoalMinutes: { type: Number, default: 120 },
-      notificationsEnabled: { type: Boolean, default: true },
-      theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
+      theme: { type: String, enum: ['light', 'dark', 'minimal', 'system'], default: 'light' },
+      strictMode: { type: Boolean, default: false },
+      notifications: {
+        focusReminder: { type: Boolean, default: true },
+        streakAlert: { type: Boolean, default: true },
+        weeklyReport: { type: Boolean, default: true },
+        coinEarned: { type: Boolean, default: false },
+      }
     },
   },
   {

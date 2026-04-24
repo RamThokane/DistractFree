@@ -55,14 +55,19 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const register = useCallback(async (name, email, password) => {
-    const res = await api.post('/auth/register', { name, email, password });
-    if (res.data.success) {
-      localStorage.setItem('df_token', res.data.token);
-      setToken(res.data.token);
-      setUser(res.data.user);
-      return { success: true };
+    try {
+      const res = await api.post('/auth/register', { name, email, password });
+      if (res.data.success) {
+        localStorage.setItem('df_token', res.data.token);
+        setToken(res.data.token);
+        setUser(res.data.user);
+        return { success: true };
+      }
+      throw new Error(res.data.message || 'Registration failed');
+    } catch (err) {
+      // Re-throw so the calling component can read err.response.data
+      throw err;
     }
-    throw new Error(res.data.message || 'Registration failed');
   }, []);
 
   const googleLogin = useCallback(async (credential) => {
@@ -82,6 +87,10 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((updatedUser) => {
+    setUser(updatedUser);
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -91,6 +100,7 @@ export const AuthProvider = ({ children }) => {
       register,
       googleLogin,
       logout,
+      updateUser,
       isAuthenticated: !!user,
     }}>
       {children}

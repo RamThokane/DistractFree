@@ -79,6 +79,6 @@ const calculateCoins = (durationMinutes, currentStreak = 0, distractionAttempts 
 /**
  * Cost to unlock a blocked website during a focus session.
  */
-const UNLOCK_COST = 10;
+const UNLOCK_COST = 5;
 
 module.exports = { calculateCoins, UNLOCK_COST };

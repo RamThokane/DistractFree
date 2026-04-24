@@ -1,22 +1,23 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import Navbar from './Navbar';
+import TopNavbar from './TopNavbar';
 import RewardPopup from '../components/RewardPopup';
 
 const DashboardLayout = () => {
   return (
-    <div className="min-h-screen bg-dash-bg text-dash-text antialiased">
-      <Sidebar />
+    <div className="min-h-screen bg-dash-bg dark:bg-land-dark-bg text-dash-text dark:text-land-dark-text antialiased theme-transition">
+      <TopNavbar />
       <RewardPopup />
 
-      {/* Main content area offset for sidebar */}
-      <div className="lg:ml-60 min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 px-4 pb-8">
+      {/* Main content area — offset for fixed navbar */}
+      <main
+        className="pt-[80px] pb-12"
+        style={{ minHeight: 'calc(100vh - 64px)' }}
+      >
+        <div className="max-w-[1280px] mx-auto px-6">
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };

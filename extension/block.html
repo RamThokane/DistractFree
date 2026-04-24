@@ -5,127 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DistractFree — Site Blocked</title>
   <link rel="stylesheet" href="block.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="block-container">
-    <div class="block-card">
-      <div class="block-icon">🛑</div>
-      <h1 class="block-title">This site is blocked</h1>
-      <p class="block-subtitle">during your focus session</p>
-
-      <div class="block-details">
-        <div class="detail-row">
-          <span class="detail-label">Website</span>
-          <span class="detail-value" id="blocked-site">—</span>
+  <div class="simple-container">
+    <div class="simple-card">
+      <div class="icon-circle">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      
+      <h1 class="title">This site is paused</h1>
+      
+      <div class="info-section">
+        <div class="info-row">
+          <span class="label">Website</span>
+          <span class="value" id="blocked-site">...</span>
         </div>
-        <div class="detail-row">
-          <span class="detail-label">Time Remaining</span>
-          <span class="detail-value timer" id="remaining-time">--:--</span>
+        <div class="info-row" id="timer-row">
+          <span class="label">Time Remaining</span>
+          <span class="value font-mono" id="remaining-time">--:--</span>
         </div>
       </div>
 
-      <div class="block-actions">
-        <button id="unlock-btn" class="btn btn-unlock">
-          🪙 Use 10 Coins to Unlock
+      <div class="actions">
+        <button id="go-back-btn" class="btn btn-primary">
+          Return to Google
         </button>
-        <button id="go-back-btn" class="btn btn-back">
-          ← Go Back to Work
+        <button id="unlock-btn" class="btn btn-secondary">
+          Unlock for 5 Coins
         </button>
       </div>
-
-      <div class="motivation">
-        <p id="motivation-text">Stay strong! Your focus session earns you coins.</p>
-      </div>
-    </div>
-
-    <div class="bg-particles">
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
-      <div class="particle"></div>
+      
+      <p id="motivation-text" class="motivation">
+        Stay focused. You can do this.
+      </p>
     </div>
   </div>
 
-  <script>
-    const params = new URLSearchParams(window.location.search);
-    const siteName = params.get('site') || 'Unknown';
-    const siteId = params.get('siteId') || '';
-    const siteUrl = params.get('url') || '';
-    const remainingTime = params.get('remaining') || '--:--';
-
-    document.getElementById('blocked-site').textContent = siteName;
-    document.getElementById('remaining-time').textContent = remainingTime;
-
-    // Update timer every second
-    setInterval(async () => {
-      try {
-        const response = await new Promise((resolve) => {
-          chrome.runtime.sendMessage({ type: 'GET_STATUS' }, resolve);
-        });
-        if (response && response.activeSession) {
-          document.getElementById('remaining-time').textContent =
-            response.activeSession.remainingTime;
-        } else {
-          // Session ended — redirect back
-          window.location.href = siteUrl || 'about:blank';
-        }
-      } catch {}
-    }, 1000);
-
-    // Unlock button
-    document.getElementById('unlock-btn').addEventListener('click', async () => {
-      const btn = document.getElementById('unlock-btn');
-      btn.disabled = true;
-      btn.textContent = 'Unlocking…';
-
-      try {
-        const response = await new Promise((resolve) => {
-          chrome.runtime.sendMessage(
-            { type: 'UNLOCK_WEBSITE', websiteId: siteId, websiteUrl: siteUrl },
-            resolve
-          );
-        });
-
-        if (response && response.success) {
-          btn.textContent = '✅ Unlocked! Redirecting…';
-          setTimeout(() => {
-            window.location.href = siteUrl;
-          }, 1000);
-        } else {
-          btn.textContent = response?.message || 'Failed to unlock';
-          setTimeout(() => {
-            btn.textContent = '🪙 Use 10 Coins to Unlock';
-            btn.disabled = false;
-          }, 3000);
-        }
-      } catch {
-        btn.textContent = 'Error — try again';
-        btn.disabled = false;
-      }
-    });
-
-    // Go back button
-    document.getElementById('go-back-btn').addEventListener('click', () => {
-      if (window.history.length > 1) {
-        window.history.back();
-      } else {
-        window.close();
-      }
-    });
-
-    // Random motivational messages
-    const messages = [
-      'Stay strong! Your focus session earns you coins.',
-      'Deep work builds deep skills.',
-      'Every minute counts. You\'ve got this!',
-      'Distractions are temporary. Results are permanent.',
-      'Future you will thank present you.',
-      'Focus is a superpower. Keep going!',
-      'The urge to check will pass in 10 seconds.',
-    ];
-    document.getElementById('motivation-text').textContent =
-      messages[Math.floor(Math.random() * messages.length)];
-  </script>
+  <script src="block.js"></script>
 </body>
 </html>

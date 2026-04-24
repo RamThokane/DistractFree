@@ -10,10 +10,11 @@ import { motivationalQuotes } from '../utils/mockData';
 import { HiOutlinePlay, HiOutlinePause, HiOutlineStop } from 'react-icons/hi2';
 
 const SESSION_PRESETS = [
-  { label: '25 min', seconds: 25 * 60, coins: 20 },
-  { label: '40 min', seconds: 40 * 60, coins: 35 },
-  { label: '60 min', seconds: 60 * 60, coins: 50 },
-  { label: '90 min', seconds: 90 * 60, coins: 80 },
+  { label: '15 min', seconds: 15 * 60, coins: 5 },
+  { label: '25 min (Pomodoro)', seconds: 25 * 60, coins: 10 },
+  { label: '50 min (Deep Work)', seconds: 50 * 60, coins: 25 },
+  { label: '90 min (Marathon)', seconds: 90 * 60, coins: 40 },
+  { label: '120 min (Ultra)', seconds: 120 * 60, coins: 60 },
 ];
 
 const FocusSession = () => {
@@ -23,19 +24,29 @@ const FocusSession = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [quote, setQuote] = useState(() => getRandomQuote(motivationalQuotes));
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [mlStatus, setMlStatus] = useState('Focused');
   const intervalRef = useRef(null);
+  const pollIntervalRef = useRef(null);
 
   const totalTime = SESSION_PRESETS[selectedPreset].seconds;
   const elapsed = totalTime - timeLeft;
   const progressPercent = (elapsed / totalTime) * 100;
   const earnableCoins = SESSION_PRESETS[selectedPreset].coins;
 
-  const distractionRisk = Math.min(95, Math.round(15 + (elapsed / totalTime) * 50 + Math.sin(elapsed / 300) * 10));
-
   const startTimer = useCallback(() => {
     setIsRunning(true);
     setIsComplete(false);
-  }, []);
+    // Notify extension
+    window.dispatchEvent(new CustomEvent('DF_SESSION_START', { 
+      detail: { duration: Math.round(totalTime / 60) } 
+    }));
+    localStorage.setItem('df_session_action', JSON.stringify({
+      action: 'start',
+      duration: Math.round(totalTime / 60),
+      ts: Date.now()
+    }));
+  }, [totalTime]);
 
   const pauseTimer = useCallback(() => {
     setIsRunning(false);
@@ -50,6 +61,12 @@ const FocusSession = () => {
     }
     setTimeLeft(SESSION_PRESETS[selectedPreset].seconds);
     setIsComplete(false);
+    // Notify extension
+    window.dispatchEvent(new CustomEvent('DF_SESSION_END'));
+    localStorage.setItem('df_session_action', JSON.stringify({
+      action: 'end',
+      ts: Date.now()
+    }));
   }, [elapsed, totalTime, earnableCoins, addCoins, selectedPreset]);
 
   const selectPreset = (idx) => {
@@ -58,6 +75,55 @@ const FocusSession = () => {
     setTimeLeft(SESSION_PRESETS[idx].seconds);
     setIsComplete(false);
   };
+
+  useEffect(() => {
+    const fetchActiveSession = async () => {
+      try {
+        const token = localStorage.getItem('df_token');
+        if (!token) return;
+        const res = await fetch('http://localhost:5000/api/session/active', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && data.session) {
+          const session = data.session;
+          if (session.mlStatus) {
+            setMlStatus(session.mlStatus);
+          }
+          const elapsedSecs = Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000);
+          const totalSecs = session.plannedDuration * 60;
+          const remaining = totalSecs - elapsedSecs;
+
+          if (remaining > 0) {
+            // Find best matching preset
+            const presetIdx = SESSION_PRESETS.findIndex(p => p.seconds === totalSecs);
+            if (presetIdx !== -1) setSelectedPreset(presetIdx);
+            
+            setTimeLeft(remaining);
+            setIsRunning(true);
+            setIsComplete(false);
+          } else {
+            // It finished while we were away
+            setTimeLeft(0);
+            setIsRunning(false);
+            setIsComplete(true);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to sync active session', e);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    fetchActiveSession();
+
+    // Poll every 5 seconds for ML Status if running
+    pollIntervalRef.current = setInterval(() => {
+      if (isRunning) fetchActiveSession();
+    }, 5000);
+
+    return () => clearInterval(pollIntervalRef.current);
+  }, [isRunning]);
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
@@ -73,6 +139,12 @@ const FocusSession = () => {
       setIsRunning(false);
       setIsComplete(true);
       addCoins(earnableCoins, `Focus session completed (${Math.round(totalTime / 60)} min)`);
+      // Notify extension
+      window.dispatchEvent(new CustomEvent('DF_SESSION_END'));
+      localStorage.setItem('df_session_action', JSON.stringify({
+        action: 'end',
+        ts: Date.now()
+      }));
     }
   }, [timeLeft, isRunning, addCoins, earnableCoins, totalTime]);
 
@@ -84,8 +156,13 @@ const FocusSession = () => {
   return (
     <PageTransition>
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* ── Timer ── */}
-        <motion.div
+        {isInitializing && (
+          <div className="text-center text-gray-500 py-10">Syncing session state...</div>
+        )}
+        {!isInitializing && (
+          <>
+            {/* ── Timer ── */}
+            <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
@@ -93,7 +170,7 @@ const FocusSession = () => {
           <GlassCard className="flex flex-col items-center py-10 relative overflow-hidden">
             {/* Background progress bar */}
             <div
-              className="absolute bottom-0 left-0 h-1 bg-dash-accent transition-all duration-1000 ease-linear rounded-full"
+              className="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-1000 ease-linear rounded-full"
               style={{ width: `${progressPercent}%` }}
             />
 
@@ -123,7 +200,7 @@ const FocusSession = () => {
                 max={totalTime}
                 size={260}
                 strokeWidth={14}
-                color={isComplete ? '#3FAE6A' : '#3FAE6A'}
+                color={isComplete ? '#10B981' : '#3B82F6'}
                 label={isComplete ? '✓' : formatTime(timeLeft)}
                 sublabel={isComplete ? 'Session Complete!' : isRunning ? 'Stay focused...' : 'Ready to focus'}
               />
@@ -166,8 +243,8 @@ const FocusSession = () => {
             {/* Coins to earn */}
             <div className="mt-4 flex items-center gap-2">
               <span className="text-lg">🪙</span>
-              <span className="text-dash-muted text-sm">
-                Earn up to <span className="text-sage font-semibold">{earnableCoins}</span> Focus Coins
+              <span className="text-gray-400 text-sm">
+                Earn up to <span className="text-blue-600 font-semibold">{earnableCoins}</span> Focus Coins
               </span>
             </div>
           </GlassCard>
@@ -175,30 +252,25 @@ const FocusSession = () => {
 
         {/* ── Bottom Info Row ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* AI Distraction Risk */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
             <GlassCard>
-              <h3 className="text-dash-text font-semibold mb-3">AI Distraction Risk</h3>
+              <h3 className="text-gray-900 font-semibold mb-3">Live ML State</h3>
               <div className="flex items-center gap-4">
-                <CircularProgress
-                  value={distractionRisk}
-                  max={100}
-                  size={90}
-                  strokeWidth={8}
-                  color={distractionRisk > 60 ? '#EF6B6B' : distractionRisk > 35 ? '#F5B638' : '#3FAE6A'}
-                  label={`${distractionRisk}%`}
-                />
+                <div className={`p-4 rounded-full ${mlStatus === 'Distracted' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                  <span className="text-3xl font-bold">{mlStatus === 'Distracted' ? '⚠️' : '🎯'}</span>
+                </div>
                 <div>
-                  <p className="text-dash-muted text-sm leading-relaxed">
-                    {distractionRisk > 60
-                      ? 'High risk — take a short break or stretch.'
-                      : distractionRisk > 35
-                      ? 'Moderate — stay mindful of your current task.'
-                      : 'Low risk — you\'re in the zone! Keep going.'}
+                  <h4 className={`text-xl font-bold ${mlStatus === 'Distracted' ? 'text-red-600' : 'text-green-600'}`}>
+                    {mlStatus}
+                  </h4>
+                  <p className="text-dash-muted text-sm leading-relaxed mt-1">
+                    {mlStatus === 'Distracted' 
+                      ? 'You seem distracted! Too many tab switches. Focus up!' 
+                      : 'You are perfectly in the zone. Keep going!'}
                   </p>
                 </div>
               </div>
@@ -229,6 +301,8 @@ const FocusSession = () => {
             </GlassCard>
           </motion.div>
         </div>
+        </>
+        )}
       </div>
     </PageTransition>
   );

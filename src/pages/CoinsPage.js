@@ -1,34 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from '../components/GlassCard';
-import Button from '../components/Button';
 import AnimatedCounter from '../components/AnimatedCounter';
 import PageTransition from '../components/PageTransition';
 import { useCoins } from '../context/CoinContext';
 import { mockTransactions } from '../utils/mockData';
 import { formatRelativeTime } from '../utils/helpers';
-import { HiOutlineLockOpen, HiOutlineArrowUp, HiOutlineArrowDown, HiOutlineStar } from 'react-icons/hi2';
-
-const UNLOCK_OPTIONS = [
-  { coins: 10, minutes: 5, icon: '⏱️' },
-  { coins: 25, minutes: 15, icon: '🕐' },
-  { coins: 50, minutes: 30, icon: '🔓' },
-];
+import { HiOutlineArrowUp, HiOutlineArrowDown, HiOutlineStar } from 'react-icons/hi2';
 
 const CoinsPage = () => {
-  const { balance, spendCoins } = useCoins();
+  const { balance } = useCoins();
   const [transactions] = useState(mockTransactions);
-  const [unlockingIdx, setUnlockingIdx] = useState(null);
-
-  const handleUnlock = (idx) => {
-    const opt = UNLOCK_OPTIONS[idx];
-    if (balance < opt.coins) return;
-    setUnlockingIdx(idx);
-    setTimeout(() => {
-      spendCoins(opt.coins);
-      setUnlockingIdx(null);
-    }, 1000);
-  };
 
   const getTypeIcon = (type) => {
     switch (type) {
@@ -59,53 +41,7 @@ const CoinsPage = () => {
           </GlassCard>
         </motion.div>
 
-        {/* ── Unlock Options ── */}
-        <div>
-          <h2 className="text-dash-text font-semibold text-xl mb-4 flex items-center gap-2">
-            <HiOutlineLockOpen className="w-5 h-5 text-sage" />
-            Unlock Options
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {UNLOCK_OPTIONS.map((opt, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <GlassCard
-                  hover
-                  className={`relative overflow-hidden text-center ${
-                    balance < opt.coins ? 'opacity-50' : ''
-                  }`}
-                >
-                  {/* Top accent line */}
-                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-sage" />
 
-                  <span className="text-4xl block mb-3">{opt.icon}</span>
-                  <h3 className="text-dash-text font-bold text-2xl mb-1">{opt.minutes} min</h3>
-                  <p className="text-dash-muted text-sm mb-4">Controlled unlock break</p>
-
-                  <div className="flex items-center justify-center gap-1 mb-4">
-                    <span className="text-lg">🪙</span>
-                    <span className="text-dash-text font-semibold">{opt.coins} coins</span>
-                  </div>
-
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="w-full"
-                    disabled={balance < opt.coins}
-                    loading={unlockingIdx === i}
-                    onClick={() => handleUnlock(i)}
-                  >
-                    {balance < opt.coins ? 'Not enough coins' : 'Unlock'}
-                  </Button>
-                </GlassCard>
-              </motion.div>
-            ))}
-          </div>
-        </div>
 
         {/* ── Transaction History ── */}
         <motion.div

@@ -16,13 +16,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 responses
+// Handle 401 responses — redirect to landing page, not login
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('df_token');
-      window.location.href = '/login';
+      // Only redirect if we're on a protected page, not during login/register
+      const path = window.location.pathname;
+      if (path.startsWith('/dashboard')) {
+        window.location.href = '/';
+      }
     }
     return Promise.reject(error);
   }

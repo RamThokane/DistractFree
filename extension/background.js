@@ -5,10 +5,10 @@
  * Responsibilities:
  *  1. Monitor tab navigation events.
  *  2. Check URLs against the user's blocked-site list.
- *  3. Redirect blocked sites to block.html.
+ *  3. Redirect blocked sites to block.html — ALWAYS (not just during sessions).
  *  4. Log browsing activity to the backend.
  *  5. Manage focus session state and timer.
- *  6. Sync blocked-sites list from the backend on session start.
+ *  6. Sync blocked-sites list from the backend on login and periodically.
  */
 
 const API_BASE = 'http://localhost:5000/api';
@@ -17,18 +17,30 @@ const API_BASE = 'http://localhost:5000/api';
 let blockedSites = [];
 let activeSession = null;
 let authToken = null;
-let sessionTimer = null;
-let temporarilyUnlocked = new Set(); // URLs unlocked with coins
+let temporarilyUnlocked = new Map(); // URLs unlocked with coins -> Expiry timestamp
+
+// ML Telemetry tracking
+let sessionTelemetry = {
+  tabSwitches: 0,
+  interruptions: 0,
+  blockAttempts: 0,
+};
+let liveSyncInterval = null;
 
 // ── Initialisation ─────────────────────────────────
 
+const loadPromise = loadFromStorage();
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[DistractFree] Extension installed');
-  loadFromStorage();
 });
 
-chrome.runtime.onStartup.addListener(() => {
-  loadFromStorage();
+chrome.runtime.onStartup.addListener(async () => {
+  await loadPromise;
+  // Re-sync blocked sites on browser startup
+  if (authToken) {
+    await syncBlockedSites();
+  }
 });
 
 async function loadFromStorage() {
@@ -41,6 +53,12 @@ async function loadFromStorage() {
   authToken = data.authToken || null;
   blockedSites = data.blockedSites || [];
   activeSession = data.activeSession || null;
+
+  console.log('[DistractFree] Loaded from storage:', {
+    authenticated: !!authToken,
+    blockedCount: blockedSites.length,
+    hasSession: !!activeSession,
+  });
 
   if (activeSession) {
     startSessionTimer();
@@ -79,18 +97,24 @@ async function syncBlockedSites() {
   try {
     const data = await apiRequest('/websites/list');
     blockedSites = (data.websites || [])
-      .filter((w) => w.isActive)
+      .filter((w) => w.isActive !== false)
       .map((w) => ({
         id: w._id,
-        url: w.websiteUrl,
+        url: (w.websiteUrl || '')
+          .replace(/^https?:\/\//, '')
+          .replace(/^www\./, '')
+          .replace(/\/+$/, '')
+          .toLowerCase(),
         category: w.category,
-        displayName: w.displayName,
+        displayName: w.displayName || w.websiteUrl,
       }));
 
     await chrome.storage.local.set({ blockedSites });
-    console.log('[DistractFree] Synced', blockedSites.length, 'blocked sites');
+    console.log('[DistractFree] Synced', blockedSites.length, 'blocked sites:', blockedSites.map(s => s.url));
+    return blockedSites.length;
   } catch (err) {
     console.error('[DistractFree] Sync failed:', err.message);
+    return 0;
   }
 }
 
@@ -105,17 +129,33 @@ function extractHostname(url) {
   }
 }
 
+/**
+ * Check if a URL is blocked.
+ * Sites are blocked ALWAYS when in the blocked list (not just during sessions).
+ * The user must be authenticated and have blocked sites configured.
+ */
 function isBlocked(url) {
-  if (!activeSession) return false;
+  // Must be authenticated
+  if (!authToken) return false;
+
+  // Must have blocked sites
+  if (blockedSites.length === 0) return false;
 
   const hostname = extractHostname(url);
   if (!hostname) return false;
 
   // Check temporarily unlocked
-  if (temporarilyUnlocked.has(hostname)) return false;
+  if (temporarilyUnlocked.has(hostname)) {
+    if (Date.now() < temporarilyUnlocked.get(hostname)) {
+      return false; // Still unlocked
+    } else {
+      temporarilyUnlocked.delete(hostname); // Expired
+    }
+  }
 
   return blockedSites.some((site) => {
-    return hostname === site.url || hostname.endsWith('.' + site.url);
+    const siteUrl = site.url;
+    return hostname === siteUrl || hostname.endsWith('.' + siteUrl);
   });
 }
 
@@ -126,12 +166,13 @@ function getBlockedSiteInfo(url) {
   );
 }
 
-// ── Navigation listener ───────────────────────────
+// ── Navigation listener — BLOCKS ALWAYS ───────────
 
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+  await loadPromise;
+
   // Only handle main frame navigations
   if (details.frameId !== 0) return;
-  if (!activeSession) return;
 
   const url = details.url;
 
@@ -139,13 +180,22 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   if (
     url.startsWith('chrome://') ||
     url.startsWith('chrome-extension://') ||
-    url.startsWith('about:')
+    url.startsWith('about:') ||
+    url.startsWith('edge://') ||
+    url.startsWith('brave://')
   ) {
+    return;
+  }
+
+  // Skip localhost (our own dashboard)
+  if (url.includes('localhost:3000') || url.includes('localhost:5000')) {
     return;
   }
 
   if (isBlocked(url)) {
     const siteInfo = getBlockedSiteInfo(url);
+
+    console.log('[DistractFree] BLOCKING:', url, '→ matched', siteInfo?.url);
 
     // Redirect to block page
     const blockPageUrl = chrome.runtime.getURL('block.html');
@@ -153,15 +203,46 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
       url: url,
       site: siteInfo?.displayName || extractHostname(url),
       siteId: siteInfo?.id || '',
-      remaining: getRemainingTime(),
+      remaining: activeSession ? getRemainingTime() : 'always',
     });
 
     chrome.tabs.update(details.tabId, {
       url: `${blockPageUrl}?${params.toString()}`,
     });
 
-    // Log the blocked attempt
-    logBrowsingEvent(url, true, false);
+    // Log the blocked attempt (only during sessions)
+    if (activeSession) {
+      logBrowsingEvent(url, true, false);
+      sessionTelemetry.blockAttempts += 1;
+    }
+  }
+});
+
+// Also check when tab URL changes (handles redirects, SPA navigations)
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  await loadPromise;
+
+  if (changeInfo.url && changeInfo.url.startsWith('http')) {
+    // Don't re-block if already on block page
+    if (changeInfo.url.includes('block.html')) return;
+    if (changeInfo.url.includes('localhost:3000') || changeInfo.url.includes('localhost:5000')) return;
+
+    if (isBlocked(changeInfo.url)) {
+      const siteInfo = getBlockedSiteInfo(changeInfo.url);
+      console.log('[DistractFree] BLOCKING (tab update):', changeInfo.url);
+
+      const blockPageUrl = chrome.runtime.getURL('block.html');
+      const params = new URLSearchParams({
+        url: changeInfo.url,
+        site: siteInfo?.displayName || extractHostname(changeInfo.url),
+        siteId: siteInfo?.id || '',
+        remaining: activeSession ? getRemainingTime() : 'always',
+      });
+
+      chrome.tabs.update(tabId, {
+        url: `${blockPageUrl}?${params.toString()}`,
+      });
+    }
   }
 });
 
@@ -171,6 +252,7 @@ let activeTabUrl = '';
 let activeTabStartTime = Date.now();
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  await loadPromise;
   // Record time on previous tab
   if (activeTabUrl && activeSession) {
     const duration = Math.round((Date.now() - activeTabStartTime) / 1000);
@@ -184,15 +266,17 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     activeTabUrl = tab.url || '';
     activeTabStartTime = Date.now();
+    
+    // ML Tracking
+    if (activeSession) {
+      sessionTelemetry.tabSwitches += 1;
+      // If navigating to non-work sites, consider it an interruption
+      if (activeTabUrl.includes('youtube.com') || activeTabUrl.includes('twitter.com') || activeTabUrl.includes('instagram.com')) {
+         sessionTelemetry.interruptions += 1;
+      }
+    }
   } catch {
     activeTabUrl = '';
-  }
-});
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.url) {
-    activeTabUrl = changeInfo.url;
-    activeTabStartTime = Date.now();
   }
 });
 
@@ -226,8 +310,11 @@ async function logBrowsingEvent(url, wasBlocked = false, wasUnlocked = false, du
 
 // ── Focus session management ───────────────────────
 
-async function startFocusSession(plannedDuration) {
+async function startFocusSession(plannedDuration, selectedSiteIds) {
   try {
+    // First sync blocked sites to make sure we have the latest list
+    await syncBlockedSites();
+
     const data = await apiRequest('/session/start', {
       method: 'POST',
       body: JSON.stringify({ plannedDuration }),
@@ -237,16 +324,48 @@ async function startFocusSession(plannedDuration) {
       sessionId: data.session._id,
       startTime: Date.now(),
       plannedDuration,
-      blockedSites: data.session.blockedSitesUsed,
+      blockedSites: selectedSiteIds || data.session.blockedSitesUsed,
     };
 
+    // If there were explicit site selections, we filter our global blockedSites 
+    // down to ONLY what was selected for this session, UNLESS global setting overrides.
+    // However, the user simply requested it asks what to block.
+    // For now we store it.
+
     await chrome.storage.local.set({ activeSession });
-    await syncBlockedSites();
     temporarilyUnlocked.clear();
+    
+    // ML Tracking Reset & Start
+    sessionTelemetry = { tabSwitches: 0, interruptions: 0, blockAttempts: 0 };
+    startLiveSync();
+
     startSessionTimer();
 
+    console.log('[DistractFree] Session started:', plannedDuration, 'min');
     return { success: true, session: data.session };
   } catch (err) {
+    if (err.message.includes('409') || err.message.toLowerCase().includes('already have an active')) {
+      console.warn('[DistractFree] Backend thinks we have an active session. Syncing with it.');
+      // Fetch the active session from backend
+      try {
+        const activeData = await apiRequest('/session/active');
+        if (activeData && activeData.session) {
+          activeSession = {
+            sessionId: activeData.session._id,
+            startTime: new Date(activeData.session.startTime).getTime(),
+            plannedDuration: activeData.session.plannedDuration,
+            blockedSites: activeData.session.blockedSitesUsed || [],
+          };
+          await chrome.storage.local.set({ activeSession });
+          temporarilyUnlocked.clear();
+          startSessionTimer();
+          return { success: true, session: activeData.session };
+        }
+      } catch (syncErr) {
+        console.error('[DistractFree] Failed to sync active session:', syncErr);
+      }
+      return { success: false, code: 409, message: 'You already have an active focus session running. Please complete or cancel it from the dashboard.' };
+    }
     console.error('[DistractFree] Failed to start session:', err.message);
     return { success: false, message: err.message };
   }
@@ -268,6 +387,7 @@ async function endFocusSession(cancelled = false) {
     temporarilyUnlocked.clear();
     await chrome.storage.local.remove('activeSession');
     stopSessionTimer();
+    stopLiveSync();
 
     return { success: true, session: data.session };
   } catch (err) {
@@ -276,7 +396,35 @@ async function endFocusSession(cancelled = false) {
   }
 }
 
-// ── Timer ──────────────────────────────────────────
+// ── Timer & ML Telemetry ──────────────────────────
+
+function startLiveSync() {
+  if (liveSyncInterval) clearInterval(liveSyncInterval);
+  // Sync ML data every 10 seconds
+  liveSyncInterval = setInterval(async () => {
+    if (!activeSession) return;
+    const elapsedMinutes = Math.round((Date.now() - activeSession.startTime) / 60000);
+    try {
+      await apiRequest('/session/live-update', {
+        method: 'POST',
+        body: JSON.stringify({
+          sessionId: activeSession.sessionId,
+          duration: elapsedMinutes,
+          tabSwitches: sessionTelemetry.tabSwitches,
+          interruptions: sessionTelemetry.interruptions,
+          blockAttempts: sessionTelemetry.blockAttempts
+        })
+      });
+      console.log('[ML Sync] Sent live data:', sessionTelemetry);
+    } catch(e) {
+      console.warn('[ML Sync] Failed:', e.message);
+    }
+  }, 10000);
+}
+
+function stopLiveSync() {
+  if (liveSyncInterval) clearInterval(liveSyncInterval);
+}
 
 function startSessionTimer() {
   if (!activeSession) return;
@@ -303,7 +451,8 @@ function getRemainingTime() {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-chrome.alarms.onAlarm.addListener((alarm) => {
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  await loadPromise;
   if (alarm.name === 'sessionEnd') {
     endFocusSession(false);
     // Notify the user
@@ -325,10 +474,11 @@ async function unlockWebsite(websiteId, websiteUrl) {
       body: JSON.stringify({ websiteId }),
     });
 
-    // Temporarily allow the URL for this session
+    // Temporarily allow the URL for 2 minutes
     const hostname = extractHostname(websiteUrl) || websiteUrl;
-    temporarilyUnlocked.add(hostname);
+    temporarilyUnlocked.set(hostname, Date.now() + 2 * 60 * 1000);
 
+    console.log('[DistractFree] Unlocked:', hostname);
     return { success: true, remainingCoins: data.remainingCoins };
   } catch (err) {
     return { success: false, message: err.message };
@@ -343,6 +493,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       authToken = message.token;
       await chrome.storage.local.set({ authToken: message.token });
       await syncBlockedSites();
+      console.log('[DistractFree] Logged in, synced sites');
       sendResponse({ success: true });
     },
 
@@ -352,11 +503,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       blockedSites = [];
       temporarilyUnlocked.clear();
       await chrome.storage.local.clear();
+      console.log('[DistractFree] Logged out');
       sendResponse({ success: true });
     },
 
     START_SESSION: async () => {
-      const result = await startFocusSession(message.plannedDuration);
+      const result = await startFocusSession(message.plannedDuration, message.selectedSites);
       sendResponse(result);
     },
 
@@ -375,6 +527,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
           : null,
         blockedSitesCount: blockedSites.length,
+        blockedSites: blockedSites
       });
     },
 
@@ -384,19 +537,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     },
 
     SYNC_BLOCKED_SITES: async () => {
-      await syncBlockedSites();
-      sendResponse({ success: true, count: blockedSites.length });
+      const count = await syncBlockedSites();
+      sendResponse({ success: true, count });
     },
 
     CHECK_URL: async () => {
       const blocked = isBlocked(message.url);
-      sendResponse({ blocked });
+      const hostname = extractHostname(message.url);
+      const unlockExpiry = temporarilyUnlocked.has(hostname) ? temporarilyUnlocked.get(hostname) : null;
+      sendResponse({ blocked, unlockExpiry });
     },
 
-    /**
-     * Receive time-on-page data from content.js.
-     * Logs the browsing duration to the backend.
-     */
     PAGE_TIME: async () => {
       if (message.url && message.duration > 0) {
         logBrowsingEvent(message.url, false, false, message.duration);
@@ -404,9 +555,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ received: true });
     },
 
-    /**
-     * Refresh coin balance — called by block page after an unlock.
-     */
     REFRESH_COINS: async () => {
       try {
         const data = await apiRequest('/coins/balance');
@@ -418,7 +566,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   };
 
   if (handlers[message.type]) {
-    handlers[message.type]();
+    loadPromise.then(() => handlers[message.type]());
     return true; // keep message channel open for async response
   }
 });

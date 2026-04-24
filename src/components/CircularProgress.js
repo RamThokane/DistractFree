@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CircularProgress = ({ value = 0, max = 100, size = 160, strokeWidth = 10, color = '#3FAE6A', label, sublabel }) => {
+const CircularProgress = ({ value = 0, max = 100, size = 160, strokeWidth = 10, color = '#3B82F6', label, sublabel }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const progress = Math.min(value / max, 1);
@@ -15,7 +15,7 @@ const CircularProgress = ({ value = 0, max = 100, size = 160, strokeWidth = 10, 
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#E8EBF0"
+          stroke="#F3F4F6"
           strokeWidth={strokeWidth}
         />
         {/* Progress arc */}
@@ -33,8 +33,8 @@ const CircularProgress = ({ value = 0, max = 100, size = 160, strokeWidth = 10, 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {label && <span className="text-2xl font-bold text-dash-text">{label}</span>}
-        {sublabel && <span className="text-xs text-dash-muted mt-1">{sublabel}</span>}
+        {label && <span className="text-2xl font-bold text-gray-900">{label}</span>}
+        {sublabel && <span className="text-xs text-gray-400 mt-1">{sublabel}</span>}
       </div>
     </div>
   );
