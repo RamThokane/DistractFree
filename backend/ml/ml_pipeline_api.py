@@ -161,12 +161,66 @@ def predict_api():
         interruptions = data.get('interruptions', 0)
         block_attempts = data.get('block_attempts', 0)
         
-        # Predict using our function
-        prediction = predict_focus(duration, tab_switches, interruptions, block_attempts)
+        # Load model
+        try:
+            model = joblib.load('model/distractfree_model.pkl')
+        except FileNotFoundError:
+            return jsonify({"error": "Model not found. Please train it first."}), 500
         
-        # Return JSON response
+        # Prepare input array
+        features = np.array([[duration, tab_switches, interruptions, block_attempts]])
+        feature_names = ['session_duration', 'tab_switch_count', 'interruptions', 'block_attempts']
+        
+        # Predict
+        prediction_encoded = model.predict(features)[0]
+        prediction = "Distracted" if prediction_encoded == 1 else "Focused"
+        
+        # Confidence (probability)
+        confidence = 0.0
+        probabilities = {}
+        if hasattr(model, 'predict_proba'):
+            proba = model.predict_proba(features)[0]
+            confidence = round(float(max(proba)) * 100, 1)
+            probabilities = {
+                "Focused": round(float(proba[0]) * 100, 1),
+                "Distracted": round(float(proba[1]) * 100, 1) if len(proba) > 1 else 0
+            }
+        
+        # Feature importance
+        importance = {}
+        if hasattr(model, 'feature_importances_'):
+            for name, imp in zip(feature_names, model.feature_importances_):
+                importance[name] = round(float(imp) * 100, 1)
+        
+        # Generate explanation
+        explanation_parts = []
+        if tab_switches > 10:
+            explanation_parts.append(f"High tab switching ({tab_switches} switches) indicates distraction.")
+        if interruptions > 5:
+            explanation_parts.append(f"Frequent interruptions ({interruptions}) reduce focus quality.")
+        if block_attempts > 3:
+            explanation_parts.append(f"Multiple blocked site attempts ({block_attempts}) suggest urge to browse.")
+        if duration < 15:
+            explanation_parts.append(f"Short session ({duration} min) may not reach deep focus.")
+        if duration >= 50 and tab_switches < 5 and block_attempts < 2:
+            explanation_parts.append(f"Long focused session ({duration} min) with minimal distractions — excellent!")
+        
+        if not explanation_parts:
+            explanation_parts.append("Your session metrics are within normal range.")
+        
+        # Return enhanced JSON response
         return jsonify({
-            "prediction": prediction
+            "prediction": prediction,
+            "confidence": confidence,
+            "probabilities": probabilities,
+            "feature_importance": importance,
+            "explanation": " ".join(explanation_parts),
+            "features_received": {
+                "duration": duration,
+                "tab_switches": tab_switches,
+                "interruptions": interruptions,
+                "block_attempts": block_attempts
+            }
         })
         
     except Exception as e:

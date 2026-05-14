@@ -176,6 +176,7 @@ exports.getMe = async (req, res) => {
         currentStreak: user.currentStreak,
         longestStreak: user.longestStreak,
         settings: user.settings,
+        dailyGoal: user.dailyGoal,
         createdAt: user.createdAt,
       },
     });
@@ -190,7 +191,7 @@ exports.getMe = async (req, res) => {
 // ────────────────────────────────────────────────────
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, theme, strictMode, notifications } = req.body;
+    const { name, theme, strictMode, notifications, dailyGoal } = req.body;
     
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -208,6 +209,13 @@ exports.updateProfile = async (req, res) => {
       };
     }
 
+    // Daily goal update
+    if (dailyGoal) {
+      if (dailyGoal.focusMinutes !== undefined) user.dailyGoal.focusMinutes = dailyGoal.focusMinutes;
+      if (dailyGoal.sessions !== undefined) user.dailyGoal.sessions = dailyGoal.sessions;
+      user.dailyGoal.lastSetDate = new Date();
+    }
+
     await user.save();
 
     res.json({
@@ -221,6 +229,7 @@ exports.updateProfile = async (req, res) => {
         currentStreak: user.currentStreak,
         longestStreak: user.longestStreak,
         settings: user.settings,
+        dailyGoal: user.dailyGoal,
         createdAt: user.createdAt,
       },
     });

@@ -5,21 +5,21 @@ import CircularProgress from '../components/CircularProgress';
 import Button from '../components/Button';
 import PageTransition from '../components/PageTransition';
 import { useCoins } from '../context/CoinContext';
-import { formatTime, getRandomQuote } from '../utils/helpers';
-import { motivationalQuotes } from '../utils/mockData';
+import { formatTime, getRandomQuote, motivationalQuotes } from '../utils/helpers';
 import { HiOutlinePlay, HiOutlinePause, HiOutlineStop } from 'react-icons/hi2';
 
 const SESSION_PRESETS = [
-  { label: '15 min', seconds: 15 * 60, coins: 5 },
   { label: '25 min (Pomodoro)', seconds: 25 * 60, coins: 10 },
   { label: '50 min (Deep Work)', seconds: 50 * 60, coins: 25 },
   { label: '90 min (Marathon)', seconds: 90 * 60, coins: 40 },
   { label: '120 min (Ultra)', seconds: 120 * 60, coins: 60 },
+  { label: 'Custom', isCustom: true },
 ];
 
 const FocusSession = () => {
   const { addCoins } = useCoins();
   const [selectedPreset, setSelectedPreset] = useState(0);
+  const [customMinutes, setCustomMinutes] = useState(30);
   const [timeLeft, setTimeLeft] = useState(SESSION_PRESETS[0].seconds);
   const [isRunning, setIsRunning] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -29,10 +29,14 @@ const FocusSession = () => {
   const intervalRef = useRef(null);
   const pollIntervalRef = useRef(null);
 
-  const totalTime = SESSION_PRESETS[selectedPreset].seconds;
-  const elapsed = totalTime - timeLeft;
+  const isCustomPreset = SESSION_PRESETS[selectedPreset]?.isCustom;
+  const parsedCustomMinutes = parseInt(customMinutes);
+  const effectiveCustomMinutes = isNaN(parsedCustomMinutes) ? 25 : Math.max(25, Math.min(180, parsedCustomMinutes));
+  
+  const totalTime = isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds;
+  const elapsed = Math.max(0, totalTime - timeLeft);
   const progressPercent = (elapsed / totalTime) * 100;
-  const earnableCoins = SESSION_PRESETS[selectedPreset].coins;
+  const earnableCoins = isCustomPreset ? Math.round(effectiveCustomMinutes * 0.4) : SESSION_PRESETS[selectedPreset].coins;
 
   const startTimer = useCallback(() => {
     setIsRunning(true);
@@ -48,10 +52,6 @@ const FocusSession = () => {
     }));
   }, [totalTime]);
 
-  const pauseTimer = useCallback(() => {
-    setIsRunning(false);
-  }, []);
-
   const stopTimer = useCallback(() => {
     setIsRunning(false);
     if (elapsed >= 60) {
@@ -59,7 +59,7 @@ const FocusSession = () => {
       const coinsEarned = Math.round(earnableCoins * ratio);
       addCoins(coinsEarned, `Focus session completed (${Math.round(elapsed / 60)} min)`);
     }
-    setTimeLeft(SESSION_PRESETS[selectedPreset].seconds);
+    setTimeLeft(isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds);
     setIsComplete(false);
     // Notify extension
     window.dispatchEvent(new CustomEvent('DF_SESSION_END'));
@@ -72,7 +72,13 @@ const FocusSession = () => {
   const selectPreset = (idx) => {
     if (isRunning) return;
     setSelectedPreset(idx);
-    setTimeLeft(SESSION_PRESETS[idx].seconds);
+    if (SESSION_PRESETS[idx].isCustom) {
+      const num = parseInt(customMinutes);
+      const effective = isNaN(num) ? 25 : Math.max(25, Math.min(180, num));
+      setTimeLeft(effective * 60);
+    } else {
+      setTimeLeft(SESSION_PRESETS[idx].seconds);
+    }
     setIsComplete(false);
   };
 
@@ -167,85 +173,110 @@ const FocusSession = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <GlassCard className="flex flex-col items-center py-10 relative overflow-hidden">
-            {/* Background progress bar */}
-            <div
-              className="absolute bottom-0 left-0 h-1 bg-blue-500 transition-all duration-1000 ease-linear rounded-full"
-              style={{ width: `${progressPercent}%` }}
-            />
-
-            {/* Session presets */}
-            <div className="flex gap-2 mb-8">
-              {SESSION_PRESETS.map((p, i) => (
-                <motion.button
-                  key={i}
-                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                    i === selectedPreset
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-dash-hover border border-dash-border text-dash-muted hover:text-dash-text hover:border-dash-border-light'
-                  } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => selectPreset(i)}
-                  whileHover={!isRunning ? { scale: 1.05 } : {}}
-                  whileTap={!isRunning ? { scale: 0.95 } : {}}
-                >
-                  {p.label}
-                </motion.button>
-              ))}
-            </div>
-
-            {/* Timer ring */}
-            <div className="relative">
-              <CircularProgress
-                value={elapsed}
-                max={totalTime}
-                size={260}
-                strokeWidth={14}
-                color={isComplete ? '#10B981' : '#3B82F6'}
-                label={isComplete ? '✓' : formatTime(timeLeft)}
-                sublabel={isComplete ? 'Session Complete!' : isRunning ? 'Stay focused...' : 'Ready to focus'}
+          <GlassCard className="py-10 relative overflow-hidden">
+            <div className="flex flex-col items-center w-full relative z-20">
+              {/* Background progress bar */}
+              <div
+                className="absolute bottom-[-40px] left-[-24px] right-[-24px] h-1 bg-blue-500 transition-all duration-1000 ease-linear rounded-full opacity-50"
+                style={{ width: `${progressPercent}%` }}
               />
-            </div>
 
-            {/* Controls */}
-            <div className="flex items-center gap-4 mt-8">
-              {!isRunning && !isComplete && (
-                <Button variant="primary" size="lg" onClick={startTimer} icon={<HiOutlinePlay className="w-5 h-5" />}>
-                  Start Focus
-                </Button>
-              )}
-              {isRunning && (
-                <>
-                  <Button variant="ghost" size="md" onClick={pauseTimer} icon={<HiOutlinePause className="w-5 h-5" />}>
-                    Pause
-                  </Button>
-                  <Button variant="danger" size="md" onClick={stopTimer} icon={<HiOutlineStop className="w-5 h-5" />}>
-                    End
-                  </Button>
-                </>
-              )}
-              {!isRunning && elapsed > 0 && !isComplete && (
-                <>
+              {/* Session presets */}
+              <div className="flex flex-wrap justify-center gap-2 mb-8">
+                {SESSION_PRESETS.map((p, i) => (
+                  <motion.button
+                    key={i}
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                      i === selectedPreset
+                        ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                        : 'bg-white/[0.03] border border-white/[0.06] text-gray-400 hover:text-white hover:bg-white/[0.06]'
+                    } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => selectPreset(i)}
+                    whileHover={!isRunning ? { scale: 1.05 } : {}}
+                    whileTap={!isRunning ? { scale: 0.95 } : {}}
+                  >
+                    {p.label}
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Custom Time Input */}
+              <AnimatePresence>
+                {isCustomPreset && !isRunning && !isComplete && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    className="flex items-center gap-3 overflow-hidden"
+                  >
+                    <span className="text-sm text-gray-400">Duration (minutes):</span>
+                    <input
+                      type="number"
+                      min="25"
+                      max="180"
+                      value={customMinutes}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (val !== '' && parseInt(val) > 180) val = '180';
+                        setCustomMinutes(val);
+                        const num = parseInt(val);
+                        if (!isNaN(num) && num >= 25 && num <= 180) setTimeLeft(num * 60);
+                      }}
+                      onBlur={(e) => {
+                        let val = parseInt(e.target.value);
+                        if (isNaN(val) || val < 25) val = 25;
+                        if (val > 180) val = 180;
+                        setCustomMinutes(val);
+                        setTimeLeft(val * 60);
+                      }}
+                      className="w-24 text-center bg-white/[0.03] border border-white/[0.1] text-white rounded-lg py-1.5 focus:outline-none focus:border-indigo-500"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Timer ring */}
+              <div className="relative">
+                <CircularProgress
+                  value={elapsed}
+                  max={totalTime}
+                  size={260}
+                  strokeWidth={14}
+                  color={isComplete ? '#10B981' : '#7E8CF6'}
+                  label={isComplete ? '✓' : formatTime(timeLeft)}
+                  sublabel={isComplete ? 'Session Complete!' : isRunning ? 'Stay focused...' : 'Ready to focus'}
+                />
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-4 mt-8">
+                {!isRunning && !isComplete && (
                   <Button variant="primary" size="lg" onClick={startTimer} icon={<HiOutlinePlay className="w-5 h-5" />}>
-                    Resume
+                    Start Focus
                   </Button>
+                )}
+                {isRunning && (
                   <Button variant="danger" size="md" onClick={stopTimer} icon={<HiOutlineStop className="w-5 h-5" />}>
-                    End
+                    Cancel
                   </Button>
-                </>
-              )}
-              {isComplete && (
-                <Button variant="accent" size="lg" onClick={() => { setTimeLeft(SESSION_PRESETS[selectedPreset].seconds); setIsComplete(false); }}>
-                  Start Another
-                </Button>
-              )}
-            </div>
+                )}
+                {isComplete && (
+                  <Button variant="accent" size="lg" onClick={() => { 
+                    setTimeLeft(isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds); 
+                    setIsComplete(false); 
+                  }}>
+                    Start Another
+                  </Button>
+                )}
+              </div>
 
-            {/* Coins to earn */}
-            <div className="mt-4 flex items-center gap-2">
-              <span className="text-lg">🪙</span>
-              <span className="text-gray-400 text-sm">
-                Earn up to <span className="text-blue-600 font-semibold">{earnableCoins}</span> Focus Coins
-              </span>
+              {/* Coins to earn */}
+              <div className="mt-6 flex items-center justify-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-full px-5 py-2.5">
+                <span className="text-lg">🪙</span>
+                <span className="text-gray-400 text-sm">
+                  Earn up to <span className="text-amber-400 font-semibold">{earnableCoins}</span> Focus Coins
+                </span>
+              </div>
             </div>
           </GlassCard>
         </motion.div>

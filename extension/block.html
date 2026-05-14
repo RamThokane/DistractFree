@@ -3,20 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DistractFree — Site Blocked</title>
+  <title>Stay Focused</title>
   <link rel="stylesheet" href="block.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Background Ambient Layers -->
+  <div class="bg-orb bg-orb--1"></div>
+  <div class="bg-orb bg-orb--2"></div>
+  <div class="bg-orb bg-orb--3"></div>
+  <div class="bg-grid"></div>
+  <div class="focus-ring-deco focus-ring-deco--1"></div>
+  <div class="focus-ring-deco focus-ring-deco--2"></div>
+  <div class="focus-ring-deco focus-ring-deco--3"></div>
+
   <div class="simple-container">
     <div class="simple-card">
+
+      <!-- Shield/Focus Icon -->
       <div class="icon-circle">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
         </svg>
       </div>
       
-      <h1 class="title">This site is paused</h1>
+      <h1 class="title">Stay Focused</h1>
+      <p class="subtitle">This website is paused during your focus session.</p>
       
       <div class="info-section">
         <div class="info-row">
@@ -24,26 +35,42 @@
           <span class="value" id="blocked-site">...</span>
         </div>
         <div class="info-row" id="timer-row">
-          <span class="label">Time Remaining</span>
+          <span class="label">Time Left</span>
           <span class="value font-mono" id="remaining-time">--:--</span>
         </div>
       </div>
 
       <div class="actions">
-        <button id="go-back-btn" class="btn btn-primary">
-          Return to Google
-        </button>
+        <!-- Strict mode banner (hidden by default, shown by JS) -->
+        <div id="strict-mode-msg" class="strict-mode-banner" style="display:none;">
+          <span class="strict-icon">🔒</span>
+          <span class="strict-text">Strict Mode is active. Unlocking is disabled for this session.</span>
+        </div>
+
         <button id="unlock-btn" class="btn btn-secondary">
-          Unlock for 5 Coins
+          🪙 Unlock for 5 Coins
+        </button>
+        <button id="go-back-btn" class="btn btn-primary">
+          ← Return to Google
         </button>
       </div>
       
-      <p id="motivation-text" class="motivation">
-        Stay focused. You can do this.
-      </p>
+      <div class="divider"></div>
+
+      <!-- Rotating Motivational Quotes -->
+      <div class="quote-section">
+        <p id="quote-text" class="quote-text">"Discipline is choosing what you want most over what you want now."</p>
+      </div>
+
+      <p class="support-text">Every distraction resisted strengthens your focus.</p>
     </div>
   </div>
 
   <script src="block.js"></script>
+
+  <!-- Cat GIF -->
+  <div class="cat-gif-container" style="height: 120px;">
+    <iframe src="https://tenor.com/embed/9360083726644374992" width="100%" height="100%" frameBorder="0" scrolling="no" allowFullScreen></iframe>
+  </div>
 </body>
 </html>

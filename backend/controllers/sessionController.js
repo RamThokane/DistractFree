@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const FocusSession = require('../models/FocusSession');
 const User = require('../models/User');
 const BlockedWebsite = require('../models/BlockedWebsite');
@@ -230,7 +231,7 @@ exports.getSessionHistory = async (req, res) => {
 // ────────────────────────────────────────────────────
 exports.getSessionStats = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = new mongoose.Types.ObjectId(req.user._id);
 
     const stats = await FocusSession.aggregate([
       { $match: { userId, status: 'completed' } },
@@ -282,6 +283,178 @@ exports.getSessionStats = async (req, res) => {
     });
   } catch (error) {
     console.error('[Session] Stats error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ────────────────────────────────────────────────────
+// GET /api/session/dashboard
+// ────────────────────────────────────────────────────
+exports.getDashboard = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+
+    // Today boundaries
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    // Today's stats
+    const todayAgg = await FocusSession.aggregate([
+      { $match: { userId, status: 'completed', startTime: { $gte: todayStart, $lt: todayEnd } } },
+      {
+        $group: {
+          _id: null,
+          focusMinutes: { $sum: '$duration' },
+          coinsEarned: { $sum: '$coinsEarned' },
+          sessions: { $sum: 1 },
+          distractions: { $sum: '$distractionAttempts' },
+        },
+      },
+    ]);
+
+    const today = todayAgg[0] || { focusMinutes: 0, coinsEarned: 0, sessions: 0, distractions: 0 };
+
+    // User for streak and goal
+    const user = await User.findById(userId);
+
+    // Weekly data (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const weeklyRaw = await FocusSession.aggregate([
+      { $match: { userId, status: 'completed', startTime: { $gte: sevenDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime' } },
+          minutes: { $sum: '$duration' },
+          coins: { $sum: '$coinsEarned' },
+          distractions: { $sum: '$distractionAttempts' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Fill in missing days
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weeklyFocusData = [];
+    const distractionTrend = [];
+    const coinsEarnedWeekly = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayName = dayNames[d.getDay()];
+      const found = weeklyRaw.find((r) => r._id === dateStr);
+
+      weeklyFocusData.push({ day: dayName, minutes: found ? found.minutes : 0 });
+      coinsEarnedWeekly.push({ day: dayName, coins: found ? found.coins : 0 });
+      distractionTrend.push({ day: dayName, score: found ? found.distractions : 0 });
+    }
+
+    // AI Focus Score from latest prediction (or compute from distraction data)
+    let aiFocusScore = 0;
+    const lastSession = await FocusSession.findOne({ userId, status: 'completed' }).sort({ endTime: -1 });
+    if (lastSession) {
+      // Simple heuristic: 100 - (distraction penalty)
+      const penalty = Math.min(lastSession.distractionAttempts * 8, 60);
+      aiFocusScore = Math.max(0, 100 - penalty);
+    }
+
+    res.json({
+      success: true,
+      todayFocusMinutes: today.focusMinutes,
+      coinsEarnedToday: today.coinsEarned,
+      sessionsToday: today.sessions,
+      currentStreak: user.currentStreak || 0,
+      aiFocusScore,
+      dailyGoal: user.dailyGoal || { focusMinutes: 0, sessions: 0 },
+      goalMinutes: user.settings?.dailyGoalMinutes || 120,
+      weeklyFocusData,
+      distractionTrend,
+      coinsEarnedWeekly,
+    });
+  } catch (error) {
+    console.error('[Session] Dashboard error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ────────────────────────────────────────────────────
+// GET /api/session/leaderboard
+// ────────────────────────────────────────────────────
+exports.getLeaderboard = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // Aggregate all users' completed sessions in the last 7 days
+    const leaderboardRaw = await FocusSession.aggregate([
+      { $match: { status: 'completed', startTime: { $gte: sevenDaysAgo } } },
+      {
+        $group: {
+          _id: '$userId',
+          totalMinutes: { $sum: '$duration' },
+          totalCoins: { $sum: '$coinsEarned' },
+          totalSessions: { $sum: 1 },
+        },
+      },
+      { $sort: { totalMinutes: -1 } },
+      { $limit: 50 },
+    ]);
+
+    // Populate user names
+    const userIds = leaderboardRaw.map((e) => e._id);
+    const users = await User.find({ _id: { $in: userIds } }).select('name avatar');
+    const userMap = {};
+    users.forEach((u) => {
+      userMap[u._id.toString()] = { name: u.name, avatar: u.avatar };
+    });
+
+    const leaderboard = leaderboardRaw.map((entry, i) => ({
+      rank: i + 1,
+      name: userMap[entry._id.toString()]?.name || 'Anonymous',
+      avatar: userMap[entry._id.toString()]?.avatar || '',
+      weeklyHours: Math.round((entry.totalMinutes / 60) * 10) / 10,
+      coins: entry.totalCoins,
+      sessions: entry.totalSessions,
+      isCurrentUser: entry._id.toString() === userId.toString(),
+    }));
+
+    // If current user not in top 50, add them
+    const userInList = leaderboard.find((e) => e.isCurrentUser);
+    if (!userInList) {
+      const userStats = await FocusSession.aggregate([
+        { $match: { userId, status: 'completed', startTime: { $gte: sevenDaysAgo } } },
+        {
+          $group: {
+            _id: null,
+            totalMinutes: { $sum: '$duration' },
+            totalCoins: { $sum: '$coinsEarned' },
+            totalSessions: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const me = userStats[0] || { totalMinutes: 0, totalCoins: 0, totalSessions: 0 };
+      const user = await User.findById(userId);
+      leaderboard.push({
+        rank: leaderboard.length + 1,
+        name: user?.name || 'You',
+        avatar: user?.avatar || '',
+        weeklyHours: Math.round((me.totalMinutes / 60) * 10) / 10,
+        coins: me.totalCoins,
+        sessions: me.totalSessions,
+        isCurrentUser: true,
+      });
+    }
+
+    res.json({ success: true, leaderboard });
+  } catch (error) {
+    console.error('[Session] Leaderboard error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

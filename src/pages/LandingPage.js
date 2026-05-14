@@ -5,8 +5,47 @@ import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import ThemeToggle from '../components/ThemeToggle';
 import GlassNavbar from '../components/GlassNavbar';
+
+/* ── Subtle floating background productivity visuals ── */
+const BackgroundVisuals = () => (
+  <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    {/* Gradient orbs */}
+    <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.07] blur-[100px] float-element" style={{background:'radial-gradient(circle, #5C6BC0, transparent 70%)'}} />
+    <div className="absolute -bottom-40 -right-40 w-[450px] h-[450px] rounded-full opacity-[0.06] blur-[100px] float-element-2" style={{background:'radial-gradient(circle, #8B5CF6, transparent 70%)'}} />
+
+    {/* Abstract dashboard card outline */}
+    <div className="absolute top-[15%] right-[8%] w-[180px] h-[110px] rounded-xl border border-white/[0.03] opacity-[0.4] float-element-2">
+      <div className="m-3 h-2 w-16 rounded bg-white/[0.04]" />
+      <div className="mx-3 mt-2 h-8 w-24 rounded bg-white/[0.03]" />
+      <div className="mx-3 mt-2 flex gap-1">
+        <div className="h-1 w-8 rounded bg-white/[0.04]" />
+        <div className="h-1 w-6 rounded bg-white/[0.03]" />
+      </div>
+    </div>
+
+    {/* Timer ring outline */}
+    <svg className="absolute bottom-[20%] left-[6%] w-24 h-24 opacity-[0.04] float-element-3" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#5C6BC0" strokeWidth="2" strokeDasharray="180 84" />
+      <circle cx="50" cy="50" r="30" fill="none" stroke="#7E8CF6" strokeWidth="1" strokeDasharray="120 70" />
+    </svg>
+
+    {/* Focus ring */}
+    <div className="absolute top-[45%] right-[12%] w-16 h-16 rounded-full border border-white/[0.03] focus-ring-pulse" />
+    <div className="absolute top-[46%] right-[12.5%] w-12 h-12 rounded-full border border-white/[0.02] focus-ring-pulse" style={{animationDelay:'1s'}} />
+
+    {/* Abstract workflow lines */}
+    <svg className="absolute top-[60%] left-[15%] w-40 h-20 opacity-[0.03] float-element" viewBox="0 0 160 80" fill="none">
+      <path d="M0 40 Q40 10 80 40 T160 40" stroke="#5C6BC0" strokeWidth="1.5" />
+      <path d="M0 50 Q40 20 80 50 T160 50" stroke="#7E8CF6" strokeWidth="1" />
+    </svg>
+
+    {/* Mini graph bars */}
+    <div className="absolute bottom-[35%] right-[5%] flex items-end gap-1 opacity-[0.04] float-element-2">
+      {[16,28,20,36,24,32,18].map((h,i) => <div key={i} className="w-2 rounded-sm bg-white/40" style={{height:`${h}px`}} />)}
+    </div>
+  </div>
+);
 
 /* ═══════════════════════════════════════════════════════════════
    DistractFree — Landing Page
@@ -66,6 +105,41 @@ const MiniStat = ({ label, value, sub }) => (
 
 const LandingPage = () => {
   const [scrolled, setScrolled] = React.useState(false);
+  const [activeSection, setActiveSection] = React.useState('');
+
+  // Track which nav section is in view as the user scrolls.
+  React.useEffect(() => {
+    const sectionIds = ['how-it-works', 'product', 'research'];
+    const observers = [];
+
+    // Keep a map of ratio-per-section so we highlight the most visible one.
+    const ratios = {};
+
+    const pickActive = () => {
+      let best = '';
+      let bestRatio = 0;
+      for (const [id, ratio] of Object.entries(ratios)) {
+        if (ratio > bestRatio) { bestRatio = ratio; best = id; }
+      }
+      setActiveSection(best ? `#${best}` : '');
+    };
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          ratios[id] = entry.intersectionRatio;
+          pickActive();
+        },
+        { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0], rootMargin: '-80px 0px 0px 0px' }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+
+    return () => observers.forEach((obs) => obs.disconnect());
+  }, []);
 
   React.useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -74,18 +148,19 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-land-bg dark:bg-land-dark-bg text-land-text dark:text-land-dark-text antialiased selection:bg-sage-100 selection:text-sage-dark theme-transition">
+    <div className="min-h-screen landing-bg text-white antialiased">
+      <BackgroundVisuals />
 
       {/* ────────────── NAV ────────────── */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-white/70 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50 shadow-sm' : 'bg-transparent border-b border-transparent'
+        scrolled ? 'bg-[#0F1115]/80 backdrop-blur-xl border-b border-white/[0.06] shadow-lg shadow-black/20' : 'bg-transparent border-b border-transparent'
       }`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-xl bg-gradient-primary flex items-center justify-center transition-transform duration-200 group-hover:scale-105 shadow-sm">
               <span className="text-white font-bold text-sm">D</span>
             </div>
-            <span className="font-semibold text-land-text dark:text-land-dark-text tracking-tight">DistractFree</span>
+            <span className="font-semibold text-white tracking-tight">DistractFree</span>
           </Link>
 
           <GlassNavbar
@@ -94,20 +169,19 @@ const LandingPage = () => {
               { label: 'Product', path: '#product' },
               { label: 'Research', path: '#research' },
             ]}
-            activePath=""
+            activePath={activeSection}
           />
 
           <div className="flex items-center gap-3">
-            <ThemeToggle />
             <Link
               to="/login"
-              className="text-sm font-medium text-land-muted dark:text-land-dark-muted hover:text-primary dark:hover:text-primary transition-colors"
+              className="text-sm font-medium text-gray-400 hover:text-white transition-colors duration-200"
             >
               Log in
             </Link>
             <Link
               to="/register"
-              className="text-sm font-medium text-white bg-gradient-primary hover:shadow-glow px-6 py-2.5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95"
+              className="text-sm font-medium text-white px-6 py-2.5 rounded-full transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-95" style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}
             >
               Start Free
             </Link>
@@ -119,7 +193,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 1 — HERO                                       */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="pt-20 md:pt-28 pb-24 px-6">
+      <section className="relative z-10 pt-24 md:pt-32 pb-24 px-6">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
           {/* LEFT — Copy */}
           <motion.div
@@ -128,7 +202,7 @@ const LandingPage = () => {
             variants={stagger}
           >
             <motion.p
-              className="text-sage font-medium text-sm mb-5 tracking-wide uppercase"
+              className="font-medium text-sm mb-5 tracking-wide uppercase" style={{color:'#7E8CF6'}}
               variants={fadeUp}
               custom={0}
             >
@@ -136,7 +210,7 @@ const LandingPage = () => {
             </motion.p>
 
             <motion.h1
-              className="text-4xl md:text-[3.25rem] lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-land-text dark:text-land-dark-text mb-6"
+              className="text-4xl md:text-[3.25rem] lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-white mb-6"
               variants={fadeUp}
               custom={0.05}
             >
@@ -148,7 +222,7 @@ const LandingPage = () => {
             </motion.h1>
 
             <motion.p
-              className="text-land-muted dark:text-land-dark-muted text-lg leading-relaxed max-w-lg mb-10"
+              className="text-gray-400 text-lg leading-relaxed max-w-lg mb-10"
               variants={fadeUp}
               custom={0.1}
             >
@@ -163,7 +237,7 @@ const LandingPage = () => {
             >
               <Link
                 to="/register"
-                className="inline-flex items-center gap-2 bg-gradient-primary hover:shadow-glow text-white font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 shadow-md"
+                className="inline-flex items-center gap-2 text-white font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/20" style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}
               >
                 Start Free
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -172,7 +246,7 @@ const LandingPage = () => {
               </Link>
               <a
                 href="#how-it-works"
-                className="inline-flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95"
+                className="inline-flex items-center gap-2 border border-white/[0.1] text-gray-300 hover:border-white/[0.2] hover:bg-white/[0.04] font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:scale-[1.02] active:scale-95"
               >
                 See How It Works
               </a>
@@ -209,10 +283,10 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 2 — PROBLEM STATEMENT                          */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-white dark:bg-land-dark-card">
+      <section className="relative z-10 py-24 px-6 land-section-alt">
         <div className="max-w-6xl mx-auto">
           <motion.h2
-            className="text-3xl md:text-4xl font-bold tracking-tight text-land-text dark:text-land-dark-text mb-16 max-w-2xl"
+            className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-16 max-w-2xl"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
@@ -220,7 +294,7 @@ const LandingPage = () => {
           >
             Most website blockers punish.
             <br />
-            <span className="text-land-muted dark:text-land-dark-muted">We motivate.</span>
+            <span className="text-gray-500">We motivate.</span>
           </motion.h2>
 
           <motion.div
@@ -232,17 +306,17 @@ const LandingPage = () => {
           >
             {/* Traditional Blockers */}
             <motion.div
-              className="border border-land-border dark:border-land-dark-border rounded-2xl p-8 bg-land-subtle dark:bg-land-dark-subtle"
+              className="border border-white/[0.06] rounded-2xl p-8 bg-white/[0.03]"
               variants={fadeUp}
             >
-              <p className="text-sm font-medium text-land-muted dark:text-land-dark-muted mb-6 uppercase tracking-wide">Traditional blockers</p>
+              <p className="text-sm font-medium text-gray-500 mb-6 uppercase tracking-wide">Traditional blockers</p>
               <ul className="space-y-4">
                 {[
                   'Harsh restrictions that create frustration',
                   'Easy to bypass — a quick incognito tab away',
                   'Short-term control with no lasting habits',
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-land-muted dark:text-land-dark-muted">
+                  <li key={i} className="flex items-start gap-3 text-gray-500">
                     <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
                     <span className="text-[15px] leading-relaxed">{item}</span>
                   </li>
@@ -252,18 +326,18 @@ const LandingPage = () => {
 
             {/* DistractFree */}
             <motion.div
-              className="border border-sage-100 dark:border-sage-dark/30 rounded-2xl p-8 bg-sage-50 dark:bg-sage-dark/10"
+              className="border border-indigo-500/20 rounded-2xl p-8 bg-indigo-500/[0.06]"
               variants={fadeUp}
             >
-              <p className="text-sm font-medium text-sage-dark dark:text-sage-light mb-6 uppercase tracking-wide">DistractFree</p>
+              <p className="text-sm font-medium mb-6 uppercase tracking-wide" style={{color:'#7E8CF6'}}>DistractFree</p>
               <ul className="space-y-4">
                 {[
                   'Reward-based system that makes focus feel good',
                   'AI-guided insights that adapt to your patterns',
                   'Long-term habit building, not temporary fixes',
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-land-text dark:text-land-dark-text">
-                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-sage flex-shrink-0" />
+                  <li key={i} className="flex items-start gap-3 text-gray-200">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:'#5C6BC0'}} />
                     <span className="text-[15px] leading-relaxed">{item}</span>
                   </li>
                 ))}
@@ -277,7 +351,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3 — HOW IT WORKS                               */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="py-24 px-6 bg-land-bg dark:bg-land-dark-bg">
+      <section id="how-it-works" className="relative z-10 py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="mb-16"
@@ -286,8 +360,8 @@ const LandingPage = () => {
             viewport={{ once: true, margin: '-80px' }}
             variants={fadeUp}
           >
-            <p className="text-sage font-medium text-sm mb-3 uppercase tracking-wide">How it works</p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-land-text dark:text-land-dark-text max-w-lg">
+            <p className="font-medium text-sm mb-3 uppercase tracking-wide" style={{color:'#7E8CF6'}}>How it works</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white max-w-lg">
               Three steps to sustainable focus.
             </h2>
           </motion.div>
@@ -308,7 +382,7 @@ const LandingPage = () => {
                     <span className="text-xs text-land-muted font-medium">Focus Session</span>
                     <span className="text-xs text-sage font-medium">25:00</span>
                   </div>
-                  <div className="w-full h-2 bg-land-subtle rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-white/[0.04] rounded-full overflow-hidden">
                     <motion.div
                       className="h-full bg-sage rounded-full"
                       initial={{ width: 0 }}
@@ -318,7 +392,7 @@ const LandingPage = () => {
                     />
                   </div>
                   <div className="flex items-center gap-3 mt-4">
-                    <div className="w-8 h-8 rounded-lg bg-sage/10 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
                       <svg className="w-3.5 h-3.5 text-sage" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                       </svg>
@@ -333,9 +407,9 @@ const LandingPage = () => {
               </div>
               <div className="flex items-baseline gap-3 mb-2">
                 <span className="text-sm font-medium text-sage">01</span>
-                <h3 className="text-lg font-semibold text-land-text dark:text-land-dark-text">Start a Focus Session</h3>
+                <h3 className="text-lg font-semibold text-white">Start a Focus Session</h3>
               </div>
-              <p className="text-land-muted dark:text-land-dark-muted text-[15px] leading-relaxed pl-8">
+              <p className="text-gray-400 text-[15px] leading-relaxed pl-8">
                 Choose your duration, hit start, and enter a distraction-aware focus state.
               </p>
             </motion.div>
@@ -348,15 +422,15 @@ const LandingPage = () => {
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-land-muted font-medium">Session Complete</span>
                   </div>
-                  <div className="flex items-center gap-3 bg-sage-50 rounded-xl p-3">
-                    <div className="w-10 h-10 rounded-full bg-sage/10 flex items-center justify-center text-lg">&#x1FA99;</div>
+                  <div className="flex items-center gap-3 bg-indigo-500/[0.06] rounded-xl p-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-lg">&#x1FA99;</div>
                     <div>
-                      <p className="text-sage-dark font-semibold text-base">+20 Focus Coins</p>
+                      <p className="text-indigo-300 font-semibold text-base">+20 Focus Coins</p>
                       <p className="text-sage text-xs">25 min focused session</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
-                    <div className="flex-1 h-1 bg-sage/20 rounded-full">
+                    <div className="flex-1 h-1 bg-indigo-500/20 rounded-full">
                       <div className="h-full w-3/4 bg-sage rounded-full" />
                     </div>
                     <span className="text-[10px] text-land-muted">340 total</span>
@@ -365,9 +439,9 @@ const LandingPage = () => {
               </div>
               <div className="flex items-baseline gap-3 mb-2">
                 <span className="text-sm font-medium text-sage">02</span>
-                <h3 className="text-lg font-semibold text-land-text dark:text-land-dark-text">Earn Focus Coins</h3>
+                <h3 className="text-lg font-semibold text-white">Earn Focus Coins</h3>
               </div>
-              <p className="text-land-muted dark:text-land-dark-muted text-[15px] leading-relaxed pl-8">
+              <p className="text-gray-400 text-[15px] leading-relaxed pl-8">
                 Every focused minute earns coins. Longer sessions are worth more — consistency is rewarded.
               </p>
             </motion.div>
@@ -389,10 +463,10 @@ const LandingPage = () => {
                       <div
                         key={i}
                         className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs ${
-                          opt1.active ? 'bg-sage-50 border border-sage/20' : 'bg-gray-50 border border-transparent'
+                          opt1.active ? 'bg-indigo-500/[0.06] border border-indigo-500/20' : 'bg-gray-50 border border-transparent'
                         }`}
                       >
-                        <span className={opt1.active ? 'font-medium text-sage-dark' : 'text-land-muted'}>
+                        <span className={opt1.active ? 'font-medium text-indigo-300' : 'text-land-muted'}>
                           {opt1.mins} break
                         </span>
                         <span className={`flex items-center gap-1 ${opt1.active ? 'text-sage font-medium' : 'text-gray-400'}`}>
@@ -405,9 +479,9 @@ const LandingPage = () => {
               </div>
               <div className="flex items-baseline gap-3 mb-2">
                 <span className="text-sm font-medium text-sage">03</span>
-                <h3 className="text-lg font-semibold text-land-text dark:text-land-dark-text">Unlock breaks intentionally</h3>
+                <h3 className="text-lg font-semibold text-white">Unlock breaks intentionally</h3>
               </div>
-              <p className="text-land-muted dark:text-land-dark-muted text-[15px] leading-relaxed pl-8">
+              <p className="text-gray-400 text-[15px] leading-relaxed pl-8">
                 Spend coins on controlled break time. You choose when — it's always your decision.
               </p>
             </motion.div>
@@ -419,7 +493,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3.5 — SMART WEBSITE BLOCKING                   */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-white dark:bg-land-dark-card">
+      <section className="relative z-10 py-24 px-6 land-section-alt">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="mb-16"
@@ -429,19 +503,19 @@ const LandingPage = () => {
             variants={stagger}
           >
             <motion.p
-              className="text-sage font-medium text-sm mb-3 uppercase tracking-wide"
+              className="font-medium text-sm mb-3 uppercase tracking-wide" style={{color:'#7E8CF6'}}
               variants={fadeUp}
             >
               Website blocking
             </motion.p>
             <motion.h2
-              className="text-3xl md:text-4xl font-bold tracking-tight text-land-text dark:text-land-dark-text max-w-xl mb-4"
+              className="text-3xl md:text-4xl font-bold tracking-tight text-white max-w-xl mb-4"
               variants={fadeUp}
             >
               Smart Website Blocking — On Your Terms
             </motion.h2>
             <motion.p
-              className="text-land-muted dark:text-land-dark-muted text-[15px] leading-relaxed max-w-lg"
+              className="text-gray-400 text-[15px] leading-relaxed max-w-lg"
               variants={fadeUp}
             >
               During focus sessions, selected websites are temporarily paused.
@@ -501,12 +575,12 @@ const LandingPage = () => {
                   className="flex gap-4"
                   variants={fadeUp}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-sage/10 dark:bg-sage/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                     {item.icon}
                   </div>
                   <div>
-                    <h3 className="text-land-text dark:text-land-dark-text font-semibold text-[15px] mb-1">{item.title}</h3>
-                    <p className="text-land-muted dark:text-land-dark-muted text-sm leading-relaxed">{item.desc}</p>
+                    <h3 className="text-white font-semibold text-[15px] mb-1">{item.title}</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -521,12 +595,12 @@ const LandingPage = () => {
             >
               <div className="land-card rounded-2xl overflow-hidden">
                 {/* Fake browser chrome */}
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-land-border dark:border-land-dark-border bg-land-subtle dark:bg-land-dark-subtle">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-white/[0.04] dark:bg-land-dark-subtle">
                   <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
                   <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
                   <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
                   <div className="flex-1 mx-4">
-                    <div className="bg-white dark:bg-land-dark-bg border border-land-border dark:border-land-dark-border rounded-lg px-3 py-1.5 text-xs text-land-muted dark:text-land-dark-muted">
+                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-gray-400">
                       twitter.com
                     </div>
                   </div>
@@ -535,23 +609,23 @@ const LandingPage = () => {
                 {/* Blocked content */}
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                   {/* Shield icon */}
-                  <div className="w-14 h-14 rounded-2xl bg-sage/10 dark:bg-sage/15 flex items-center justify-center mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/15 flex items-center justify-center mb-6">
                     <svg className="w-7 h-7 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                     </svg>
                   </div>
 
-                  <h3 className="text-xl font-semibold text-land-text dark:text-land-dark-text mb-2">
+                  <h3 className="text-xl font-semibold text-white mb-2">
                     This site is paused
                   </h3>
-                  <p className="text-land-muted dark:text-land-dark-muted text-sm mb-8">
+                  <p className="text-gray-400 text-sm mb-8">
                     You're in a focus session.
                   </p>
 
                   {/* Timer */}
                   <div className="mb-6">
-                    <p className="text-xs text-land-muted dark:text-land-dark-muted uppercase tracking-wide mb-2">Return in</p>
-                    <p className="text-3xl font-bold text-land-text dark:text-land-dark-text tracking-tight font-mono">
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Return in</p>
+                    <p className="text-3xl font-bold text-white tracking-tight font-mono">
                       18:42
                     </p>
                   </div>
@@ -560,7 +634,7 @@ const LandingPage = () => {
                   <div className="w-12 h-px bg-land-border dark:bg-land-dark-border mb-6" />
 
                   {/* Unlock button */}
-                  <button className="inline-flex items-center gap-2 border border-land-border dark:border-land-dark-border text-land-muted dark:text-land-dark-muted hover:text-land-text dark:hover:text-land-dark-text text-sm font-medium px-5 py-2.5 rounded-xl transition-colors">
+                  <button className="inline-flex items-center gap-2 border border-white/[0.06] text-gray-400 hover:text-land-text dark:hover:text-land-dark-text text-sm font-medium px-5 py-2.5 rounded-xl transition-colors">
                     <span>&#x1FA99;</span>
                     Unlock using 10 Focus Coins
                   </button>
@@ -575,7 +649,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 4 — PRODUCT PREVIEW                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="product" className="py-24 px-6 bg-white dark:bg-land-dark-card">
+      <section id="product" className="relative z-10 py-24 px-6 land-section-alt">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial="hidden"
@@ -584,7 +658,7 @@ const LandingPage = () => {
             variants={fadeUp}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900 dark:text-land-dark-text tracking-tight mb-3">
+            <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-3">
               See what you're building toward.
             </h2>
           </motion.div>
@@ -683,7 +757,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 5 — AI TRANSPARENCY                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="py-24 px-6 bg-land-bg dark:bg-land-dark-bg">
+      <section className="relative z-10 py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <motion.div
@@ -693,19 +767,19 @@ const LandingPage = () => {
               variants={stagger}
             >
               <motion.p
-                className="text-sage font-medium text-sm mb-3 uppercase tracking-wide"
+                className="font-medium text-sm mb-3 uppercase tracking-wide" style={{color:'#7E8CF6'}}
                 variants={fadeUp}
               >
                 AI Transparency
               </motion.p>
               <motion.h2
-                className="text-3xl md:text-4xl font-bold tracking-tight text-land-text dark:text-land-dark-text mb-6"
+                className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-6"
                 variants={fadeUp}
               >
                 AI that explains itself.
               </motion.h2>
               <motion.p
-                className="text-land-muted dark:text-land-dark-muted text-[15px] leading-relaxed mb-6 max-w-lg"
+                className="text-gray-400 text-[15px] leading-relaxed mb-6 max-w-lg"
                 variants={fadeUp}
               >
                 We use simple, explainable models to predict your distraction patterns.
@@ -732,8 +806,8 @@ const LandingPage = () => {
                   <div key={i} className="land-card rounded-xl p-4 flex gap-4">
                     <div className="w-1 rounded-full bg-sage flex-shrink-0" />
                     <div>
-                      <p className="text-land-text dark:text-land-dark-text font-medium text-sm mb-0.5">{tip.title}</p>
-                      <p className="text-land-muted dark:text-land-dark-muted text-[13px] leading-relaxed">{tip.desc}</p>
+                      <p className="text-white font-medium text-sm mb-0.5">{tip.title}</p>
+                      <p className="text-gray-400 text-[13px] leading-relaxed">{tip.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -748,15 +822,15 @@ const LandingPage = () => {
               transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
             >
               <div className="land-card rounded-2xl p-6">
-                <p className="text-sm font-medium text-land-text dark:text-land-dark-text mb-1">Distraction Risk by Time</p>
-                <p className="text-xs text-land-muted dark:text-land-dark-muted mb-4">AI-generated from your last 30 days</p>
+                <p className="text-sm font-medium text-white mb-1">Distraction Risk by Time</p>
+                <p className="text-xs text-gray-400 mb-4">AI-generated from your last 30 days</p>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={[
                     { h: '8am', r: 12 }, { h: '10am', r: 8 }, { h: '12pm', r: 22 },
                     { h: '2pm', r: 58 }, { h: '4pm', r: 72 }, { h: '6pm', r: 45 },
                     { h: '8pm', r: 55 }, { h: '10pm', r: 38 },
                   ]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E8EBF0" className="dark:opacity-20" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E8EBF0" className="opacity-10" />
                     <XAxis dataKey="h" stroke="#9CA3AF" fontSize={11} tickLine={false} />
                     <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
                     <Line
@@ -769,7 +843,7 @@ const LandingPage = () => {
                     />
                   </LineChart>
                 </ResponsiveContainer>
-                <div className="mt-3 flex items-center gap-2 text-xs text-land-muted dark:text-land-dark-muted">
+                <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
                   <div className="w-3 h-0.5 bg-sage rounded" />
                   <span>Higher = more vulnerable to distraction</span>
                 </div>
@@ -783,7 +857,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 6 — BUILT ON RESEARCH                          */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="research" className="py-24 px-6 bg-white dark:bg-land-dark-card">
+      <section id="research" className="relative z-10 py-24 px-6 land-section-alt">
         <div className="max-w-3xl mx-auto">
           <motion.div
             initial="hidden"
@@ -792,24 +866,24 @@ const LandingPage = () => {
             variants={stagger}
           >
             <motion.p
-              className="text-sage font-medium text-sm mb-3 uppercase tracking-wide"
+              className="font-medium text-sm mb-3 uppercase tracking-wide" style={{color:'#7E8CF6'}}
               variants={fadeUp}
             >
               Built on research
             </motion.p>
             <motion.h2
-              className="text-3xl md:text-4xl font-bold tracking-tight text-land-text dark:text-land-dark-text mb-6"
+              className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-6"
               variants={fadeUp}
             >
               Grounded in behavioral science.
             </motion.h2>
             <motion.div className="space-y-5" variants={fadeUp}>
-              <p className="text-land-muted dark:text-land-dark-muted text-[15px] leading-[1.8]">
+              <p className="text-gray-400 text-[15px] leading-[1.8]">
                 DistractFree draws on established research in habit formation, self-determination theory,
                 and digital wellbeing. The reward-based model is inspired by intrinsic motivation frameworks
                 — the same principles behind why autonomy and competence drive sustained behavior change.
               </p>
-              <p className="text-land-muted dark:text-land-dark-muted text-[15px] leading-[1.8]">
+              <p className="text-gray-400 text-[15px] leading-[1.8]">
                 Studies consistently show that punitive approaches to screen time (strict blocking, shame-based
                 trackers) produce short-term compliance but fail to build lasting habits. Our approach prioritizes
                 self-regulation — giving users agency, transparency, and incremental reinforcement.
@@ -822,7 +896,7 @@ const LandingPage = () => {
               {['Self-Determination Theory', 'Habit Loop Framework', 'Operant Conditioning', 'Flow State Research'].map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs font-medium text-land-muted dark:text-land-dark-muted border border-land-border dark:border-land-dark-border rounded-full px-4 py-1.5"
+                  className="text-xs font-medium text-gray-400 border border-white/[0.06] rounded-full px-4 py-1.5"
                 >
                   {tag}
                 </span>
@@ -851,13 +925,13 @@ const LandingPage = () => {
           variants={stagger}
         >
           <motion.h2
-            className="text-3xl md:text-5xl font-bold tracking-tight text-land-text dark:text-land-dark-text mb-5"
+            className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-5"
             variants={fadeUp}
           >
             Build better focus habits.
           </motion.h2>
           <motion.p
-            className="text-land-muted dark:text-land-dark-muted text-lg mb-10 max-w-md mx-auto"
+            className="text-gray-400 text-lg mb-10 max-w-md mx-auto"
             variants={fadeUp}
           >
             Free to start. No credit card required.
@@ -878,15 +952,15 @@ const LandingPage = () => {
 
 
       {/* ────────────── FOOTER ────────────── */}
-      <footer className="border-t border-land-border dark:border-land-dark-border py-8 px-6 bg-white dark:bg-land-dark-card">
+      <footer className="border-t border-white/[0.06] py-8 px-6 bg-white dark:bg-land-dark-card">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-lg bg-sage flex items-center justify-center">
               <span className="text-white font-bold text-[10px]">D</span>
             </div>
-            <span className="text-land-muted dark:text-land-dark-muted text-sm">&copy; 2026 DistractFree</span>
+            <span className="text-gray-400 text-sm">&copy; 2026 DistractFree</span>
           </div>
-          <div className="flex gap-6 text-land-muted dark:text-land-dark-muted text-sm">
+          <div className="flex gap-6 text-gray-400 text-sm">
             <a href="#privacy" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">Privacy</a>
             <a href="#terms" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">Terms</a>
             <a href="#contact" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">Contact</a>

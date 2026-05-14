@@ -62,7 +62,7 @@ if (process.env.NODE_ENV !== 'test') {
 // ── Rate limiting ──────────────────────────────────
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 1000, // Increased to avoid blocking during testing
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests. Try again later.' },
@@ -72,7 +72,7 @@ app.use('/api/', apiLimiter);
 // Stricter limiter for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 1000, // Increased to avoid blocking during testing
   message: { success: false, message: 'Too many auth attempts. Try again later.' },
 });
 app.use('/api/auth/login', authLimiter);

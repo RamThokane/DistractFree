@@ -50,3 +50,17 @@ export const formatRelativeTime = (dateStr) => {
   if (diffDays < 7) return `${diffDays}d ago`;
   return formatDate(dateStr);
 };
+
+export const motivationalQuotes = [
+  "The secret of getting ahead is getting started.",
+  "Focus on being productive instead of busy.",
+  "Small disciplines repeated with consistency lead to great achievements.",
+  "Your future self will thank you for the focus you give today.",
+  "Discipline is choosing between what you want now and what you want most.",
+  "The ability to concentrate and to use time well is everything.",
+  "Where focus goes, energy flows.",
+  "Don't watch the clock; do what it does — keep going.",
+  "It's not about having time, it's about making time.",
+  "Starve your distractions, feed your focus.",
+];
+

@@ -4,29 +4,33 @@ import api from './api';
 export const authService = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/register', data),
+  getMe: () => api.get('/auth/me'),
+  updateProfile: (data) => api.put('/auth/profile', data),
 };
 
 /* ── Sessions ── */
 export const sessionService = {
-  getSessions: () => api.get('/sessions'),
-  createSession: (data) => api.post('/sessions', data),
-  getStats: () => api.get('/sessions/stats'),
+  start: (data) => api.post('/session/start', data),
+  end: (data) => api.post('/session/end', data),
+  liveUpdate: (data) => api.post('/session/live-update', data),
+  getActive: () => api.get('/session/active'),
+  getHistory: (params) => api.get('/session/history', { params }),
+  getStats: () => api.get('/session/stats'),
+  getDashboard: () => api.get('/session/dashboard'),
+  getLeaderboard: () => api.get('/session/leaderboard'),
 };
 
 /* ── Coins ── */
 export const coinService = {
-  getBalance: () => api.get('/coins'),
+  getBalance: () => api.get('/coins/balance'),
+  getHistory: (params) => api.get('/coins/history', { params }),
+  getSummary: () => api.get('/coins/summary'),
   unlock: (data) => api.post('/coins/unlock', data),
-  getTransactions: () => api.get('/coins/transactions'),
 };
 
 /* ── AI Insights ── */
 export const insightService = {
-  getInsights: () => api.get('/insights'),
-  getPatterns: () => api.get('/insights/patterns'),
-};
-
-/* ── Leaderboard ── */
-export const leaderboardService = {
-  getLeaderboard: () => api.get('/leaderboard'),
+  predict: () => api.get('/insights/predict'),
+  getAnalytics: (params) => api.get('/insights/analytics', { params }),
+  downloadWeeklyReport: () => api.get('/insights/weekly-report', { responseType: 'blob' }),
 };

@@ -13,13 +13,13 @@ const Button = ({
 }) => {
   const variants = {
     primary:
-      'bg-gradient-primary hover:shadow-glow text-white shadow-md',
+      'bg-gradient-to-r from-[#7C5CFC] to-[#4FACFE] text-white shadow-[0_0_20px_rgba(124,92,252,0.25)] hover:shadow-[0_0_35px_rgba(124,92,252,0.4)]',
     accent:
-      'bg-white text-primary border border-gray-200 hover:shadow-card-hover hover:border-primary/30',
+      'bg-[rgba(124,92,252,0.1)] text-[#9B7FFF] border border-[rgba(124,92,252,0.2)] hover:bg-[rgba(124,92,252,0.18)] hover:shadow-[0_0_20px_rgba(124,92,252,0.15)]',
     ghost:
-      'bg-transparent border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300',
+      'bg-transparent border border-[rgba(124,92,252,0.15)] text-[#C0B8FF] hover:bg-[rgba(124,92,252,0.06)] hover:border-[rgba(124,92,252,0.3)]',
     danger:
-      'bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 hover:shadow-sm',
+      'bg-[rgba(255,107,107,0.1)] border border-[rgba(255,107,107,0.2)] text-[#FF6B6B] hover:bg-[rgba(255,107,107,0.18)] hover:shadow-[0_0_15px_rgba(255,107,107,0.15)]',
   };
 
   const sizes = {
@@ -37,6 +37,7 @@ const Button = ({
         ${variants[variant]} ${sizes[size]} ${className}
       `}
       disabled={disabled || loading}
+      whileHover={!disabled ? { scale: 1.04 } : {}}
       whileTap={!disabled ? { scale: 0.97 } : {}}
       {...props}
     >

@@ -23,14 +23,10 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_
 
 function App() {
   React.useEffect(() => {
-    const theme = localStorage.getItem('df_theme') || 'light';
     const root = document.documentElement;
-    root.setAttribute('data-theme', theme);
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    root.setAttribute('data-theme', 'dark');
+    root.classList.add('dark');
+    localStorage.setItem('df_theme', 'dark');
   }, []);
 
   return (

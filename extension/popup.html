@@ -8,13 +8,7 @@
 </head>
 <body>
   <div class="popup-container">
-    <!-- ── Header ──────────────────────────── -->
-    <header class="popup-header">
-      <div class="logo-row">
-        <div class="logo-badge">D</div>
-        <h1>DistractFree</h1>
-      </div>
-    </header>
+
 
     <!-- ── Auth Section ────────────────────── -->
     <section id="auth-section" class="section">
@@ -110,15 +104,19 @@
       <div id="start-section" class="start-section">
         <label for="duration-select" class="input-label-text">Focus Duration</label>
         <select id="duration-select" class="select-input">
-          <option value="15">15 minutes</option>
           <option value="25" selected>25 minutes (Pomodoro)</option>
           <option value="50">50 minutes (Deep Work)</option>
           <option value="90">90 minutes (Marathon)</option>
           <option value="120">120 minutes (Ultra)</option>
+          <option value="custom">Custom</option>
         </select>
         
-        <label class="input-label-text mt-3">Select Sites to Block</label>
-        <div id="site-selection-list" class="site-selection-list">
+        <div id="custom-duration-container" class="hidden mt-2">
+          <input type="number" id="custom-duration-input" class="select-input" placeholder="Minutes (e.g. 30)" min="25" max="180" style="width: 100%; text-align: center;">
+        </div>
+        
+        <label class="input-label-text mt-3">Blocked Sites</label>
+        <div id="site-selection-list" class="site-selection-list" style="max-height: 80px; overflow-y: auto;">
           <div class="text-xs text-gray-500">Loading sites...</div>
         </div>
         <button id="start-session-btn" class="btn btn-primary btn-full">

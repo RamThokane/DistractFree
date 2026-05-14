@@ -6,6 +6,8 @@ const {
   getSessionHistory,
   getSessionStats,
   updateLiveSession,
+  getDashboard,
+  getLeaderboard,
 } = require('../controllers/sessionController');
 const { protect } = require('../middleware/authMiddleware');
 const {
@@ -25,5 +27,8 @@ router.post('/live-update', updateLiveSession);
 router.get('/active', getActiveSession);
 router.get('/history', validatePagination, getSessionHistory);
 router.get('/stats', getSessionStats);
+router.get('/dashboard', getDashboard);
+router.get('/leaderboard', getLeaderboard);
 
 module.exports = router;
+

@@ -30,7 +30,6 @@ const SettingsPage = () => {
     weeklyReport: true,
     coinEarned: false,
   });
-  const [theme, setTheme] = useState(() => localStorage.getItem('df_theme') || 'light');
   const [displayName, setDisplayName] = useState('');
   const [displayEmail, setDisplayEmail] = useState('');
   const [saved, setSaved] = useState(false);
@@ -41,7 +40,6 @@ const SettingsPage = () => {
       setDisplayName(user.name || '');
       setDisplayEmail(user.email || '');
       if (user.settings) {
-        if (user.settings.theme) setTheme(user.settings.theme);
         if (user.settings.strictMode !== undefined) setStrictMode(user.settings.strictMode);
         if (user.settings.notifications) {
           setNotifications({
@@ -54,18 +52,6 @@ const SettingsPage = () => {
       }
     }
   }, [user]);
-
-  // Apply theme to document
-  useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute('data-theme', theme);
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('df_theme', theme);
-  }, [theme]);
 
   // ── Fetch blocked sites from backend ──
   const fetchBlockedSites = useCallback(async () => {
@@ -94,9 +80,10 @@ const SettingsPage = () => {
   }, [fetchBlockedSites]);
 
   // ── Add site to backend ──
-  const addSite = async () => {
+  const addSite = async (siteToAdd = null) => {
     setSiteError('');
-    const site = newSite
+    const rawSite = typeof siteToAdd === 'string' ? siteToAdd : newSite;
+    const site = rawSite
       .trim()
       .toLowerCase()
       .replace(/^(https?:\/\/)?(www\.)?/, '')
@@ -130,7 +117,9 @@ const SettingsPage = () => {
           ...prev,
           { id: newW._id, url: newW.websiteUrl, displayName: newW.displayName, isActive: true },
         ]);
-        setNewSite('');
+        if (typeof siteToAdd !== 'string') {
+          setNewSite('');
+        }
       }
     } catch (err) {
       const msg =
@@ -163,7 +152,6 @@ const SettingsPage = () => {
     try {
       const res = await api.put('/auth/profile', {
         name: displayName,
-        theme,
         strictMode,
         notifications
       });
@@ -174,6 +162,23 @@ const SettingsPage = () => {
       }
     } catch (err) {
       console.error('Failed to save profile:', err);
+    }
+  };
+
+  const toggleStrictMode = async () => {
+    const newVal = !strictMode;
+    setStrictMode(newVal);
+    try {
+      const res = await api.put('/auth/profile', {
+        name: displayName,
+        strictMode: newVal,
+        notifications
+      });
+      if (res.data.success) {
+        updateUser(res.data.user);
+      }
+    } catch (err) {
+      console.error('Failed to auto-save strict mode:', err);
     }
   };
 
@@ -295,6 +300,26 @@ const SettingsPage = () => {
               </div>
             )}
 
+            {/* Suggested Sites */}
+            <div className="mt-6 border-t border-dash-border pt-4">
+              <p className="text-dash-muted text-xs mb-3 font-medium uppercase tracking-wider">Suggested to block</p>
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                {['youtube.com', 'instagram.com', 'facebook.com', 'netflix.com', 'chatgpt.com', 'reddit.com', 'x.com', 'pinterest.com', 'tiktok.com', 'amazon.com']
+                  .filter(site => !blockedSites.some(s => s.url === site))
+                  .map(site => (
+                  <button
+                    key={site}
+                    onClick={() => addSite(site)}
+                    disabled={addingState === 'adding'}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dash-border bg-white/[0.02] hover:bg-white/[0.06] text-dash-muted hover:text-white transition-colors text-xs font-medium"
+                  >
+                    <HiOutlinePlus className="w-3 h-3" />
+                    {site}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Strict Mode Toggle */}
             <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dash-hover border border-dash-border">
               <div className="flex items-center gap-3">
@@ -305,7 +330,7 @@ const SettingsPage = () => {
                 </div>
               </div>
               <button
-                onClick={() => setStrictMode(!strictMode)}
+                onClick={toggleStrictMode}
                 className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
                   strictMode ? 'bg-sage' : 'bg-dash-border'
                 }`}
@@ -373,64 +398,6 @@ const SettingsPage = () => {
           </GlassCard>
         </motion.div>
 
-        {/* ── Theme ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <GlassCard>
-            <h2 className="text-dash-text font-semibold text-base mb-1 flex items-center gap-2">
-              <HiOutlinePaintBrush className="w-5 h-5 text-purple-400" />
-              Theme
-            </h2>
-            <p className="text-dash-muted text-sm mb-4">Choose your visual style</p>
-
-            <div className="grid grid-cols-3 gap-3">
-              {themes.map((t) => (
-                <motion.button
-                  key={t.value}
-                  className={`p-4 rounded-xl border text-left transition-colors duration-150 ${
-                    theme === t.value
-                      ? 'border-sage ring-2 ring-sage/20 bg-sage-50'
-                      : 'border-dash-border bg-white hover:bg-dash-hover'
-                  }`}
-                  onClick={() => setTheme(t.value)}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {/* Theme preview with actual color swatches */}
-                  <div className="w-full h-16 rounded-lg border border-gray-200 overflow-hidden mb-3 relative"
-                    style={{ backgroundColor: t.colors[0] }}
-                  >
-                    {/* Mini dashboard mockup */}
-                    <div className="absolute inset-1 flex flex-col gap-1">
-                      {/* Header bar */}
-                      <div className="h-2 rounded-full w-full" style={{ backgroundColor: t.colors[1] }} />
-                      {/* Content rows */}
-                      <div className="flex gap-1 flex-1">
-                        <div className="w-1/3 rounded" style={{ backgroundColor: t.colors[1] }} />
-                        <div className="flex-1 flex flex-col gap-0.5">
-                          <div className="h-2 rounded-full w-3/4" style={{ backgroundColor: t.colors[2], opacity: 0.6 }} />
-                          <div className="h-1.5 rounded-full w-1/2" style={{ backgroundColor: t.colors[1] }} />
-                          <div className="flex gap-0.5 mt-auto">
-                            <div className="w-3 h-4 rounded-sm" style={{ backgroundColor: t.colors[2], opacity: 0.4 }} />
-                            <div className="w-3 h-5 rounded-sm" style={{ backgroundColor: t.colors[2], opacity: 0.6 }} />
-                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: t.colors[2], opacity: 0.3 }} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-dash-text font-medium text-sm">{t.label}</p>
-                  <p className="text-dash-muted text-xs">{t.desc}</p>
-                  {theme === t.value && (
-                    <span className="inline-block mt-1.5 text-sage text-xs font-medium">✓ Active</span>
-                  )}
-                </motion.button>
-              ))}
-            </div>
-          </GlassCard>
-        </motion.div>
 
         {/* ── Account ── */}
         <motion.div

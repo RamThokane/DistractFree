@@ -531,6 +531,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     },
 
+    GET_USER: async () => {
+      try {
+        const data = await apiRequest('/auth/me');
+        sendResponse({ success: true, user: data.user });
+      } catch (err) {
+        sendResponse({ success: false, message: err.message });
+      }
+    },
+
     UNLOCK_WEBSITE: async () => {
       const result = await unlockWebsite(message.websiteId, message.websiteUrl);
       sendResponse(result);

@@ -56,6 +56,11 @@ const userSchema = new mongoose.Schema(
         ref: 'BlockedWebsite',
       },
     ],
+    dailyGoal: {
+      focusMinutes: { type: Number, default: 0 },
+      sessions: { type: Number, default: 0 },
+      lastSetDate: { type: Date, default: null },
+    },
     settings: {
       dailyGoalMinutes: { type: Number, default: 120 },
       theme: { type: String, enum: ['light', 'dark', 'minimal', 'system'], default: 'light' },

@@ -40,6 +40,8 @@ const statusCard = $('status-card');
 const timerDisplay = $('timer-display');
 const timerProgress = $('timer-progress');
 const durationSelect = $('duration-select');
+const customDurationContainer = $('custom-duration-container');
+const customDurationInput = $('custom-duration-input');
 const startSessionBtn = $('start-session-btn');
 const endSessionBtn = $('end-session-btn');
 const cancelSessionBtn = $('cancel-session-btn');
@@ -431,10 +433,10 @@ function showStartSection(blockedSites = []) {
       listContainer.innerHTML = '<div class="text-xs text-gray-500">No websites to block. Add them in dashboard settings.</div>';
     } else {
       listContainer.innerHTML = blockedSites.map(site => `
-        <label class="flex items-center" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px;">
-          <input type="checkbox" class="site-checkbox" value="${site.url}" checked />
-          ${site.displayName || site.url}
-        </label>
+        <div class="flex items-center" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px;">
+          <span style="color: var(--danger); font-size: 10px;">🔴</span>
+          <span class="site-value" data-url="${site.url}">${site.displayName || site.url}</span>
+        </div>
       `).join('');
     }
   }
@@ -444,18 +446,29 @@ function showStartSection(blockedSites = []) {
 // SESSION CONTROLS
 // ══════════════════════════════════════════════════
 
-startSessionBtn.addEventListener('click', async () => {
-  const duration = parseInt(durationSelect.value);
+durationSelect.addEventListener('change', (e) => {
+  if (e.target.value === 'custom') {
+    customDurationContainer.classList.remove('hidden');
+  } else {
+    customDurationContainer.classList.add('hidden');
+  }
+});
 
-  if (!duration || duration < 1) {
-    alert('Please select a valid duration');
+startSessionBtn.addEventListener('click', async () => {
+  let duration;
+  if (durationSelect.value === 'custom') {
+    duration = parseInt(customDurationInput.value);
+  } else {
+    duration = parseInt(durationSelect.value);
+  }
+
+  if (!duration || duration < 25 || duration > 180) {
+    alert('Please enter a valid duration (25-180 minutes)');
     return;
   }
 
-  const checkboxes = document.querySelectorAll('.site-checkbox');
-  const selectedSites = Array.from(checkboxes)
-    .filter(cb => cb.checked)
-    .map(cb => cb.value);
+  const siteElements = document.querySelectorAll('.site-value');
+  const selectedSites = Array.from(siteElements).map(el => el.getAttribute('data-url'));
 
   startSessionBtn.disabled = true;
   startSessionBtn.textContent = 'Starting…';
