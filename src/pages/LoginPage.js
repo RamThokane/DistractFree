@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import GoogleAuthButton from '../components/GoogleAuthButton';
+import { FiClock, FiShield, FiTrendingUp, FiCheckCircle } from 'react-icons/fi';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -143,7 +144,7 @@ const LoginPage = () => {
               <div className="flex justify-center bg-[#14171C] hover:bg-[#1A1D24] border border-white/[0.06] rounded-2xl p-1 transition-colors overflow-hidden">
                  <GoogleAuthButton
                   onSuccess={handleGoogleSuccess}
-                  onError={() => setError('Google sign-in failed')}
+                  onError={(err) => setError(err?.response?.data?.message || err?.message || 'Google sign-in failed')}
                 />
               </div>
             </motion.div>
@@ -189,52 +190,96 @@ const LoginPage = () => {
               <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]/80" />
             </div>
             <div className="p-6">
-               <div className="w-32 h-4 rounded-md bg-white/[0.06] mb-6" />
+               <h3 className="text-white font-medium text-lg mb-6 flex items-center gap-2">
+                 <FiTrendingUp className="text-indigo-400" />
+                 Weekly Productivity
+               </h3>
                <div className="flex gap-4 mb-6">
-                 <div className="flex-1 h-24 rounded-xl bg-indigo-500/[0.08] border border-indigo-500/20 p-4">
-                    <div className="w-8 h-8 rounded-full bg-indigo-500/20 mb-3" />
-                    <div className="w-16 h-3 rounded bg-indigo-500/40" />
+                 <div className="flex-1 rounded-xl bg-indigo-500/[0.08] border border-indigo-500/20 p-4 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-full -mr-8 -mt-8" />
+                    <FiClock className="text-indigo-400 text-xl mb-3" />
+                    <div className="text-2xl font-bold text-white mb-1">32h 14m</div>
+                    <div className="text-xs text-indigo-300/80 font-medium">Deep Work Time</div>
                  </div>
-                 <div className="flex-1 h-24 rounded-xl bg-white/[0.03] border border-white/[0.04] p-4">
-                    <div className="w-8 h-8 rounded-full bg-white/[0.06] mb-3" />
-                    <div className="w-16 h-3 rounded bg-white/[0.1]" />
+                 <div className="flex-1 rounded-xl bg-emerald-500/[0.05] border border-emerald-500/10 p-4 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full -mr-8 -mt-8" />
+                    <FiShield className="text-emerald-400 text-xl mb-3" />
+                    <div className="text-2xl font-bold text-white mb-1">85%</div>
+                    <div className="text-xs text-emerald-300/80 font-medium">Focus Score</div>
                  </div>
                </div>
-               <div className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/[0.04]" />
+               
+               <div className="w-full rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
+                 <h4 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-4">Recent Sessions</h4>
+                 <div className="space-y-3">
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                         <FiCheckCircle className="text-indigo-400 text-sm" />
+                       </div>
+                       <div>
+                         <div className="text-sm text-gray-200 font-medium">Deep Work: Coding</div>
+                         <div className="text-xs text-gray-500">Completed 45m</div>
+                       </div>
+                     </div>
+                     <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/20">+150 XP</span>
+                   </div>
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                       <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                         <FiCheckCircle className="text-emerald-400 text-sm" />
+                       </div>
+                       <div>
+                         <div className="text-sm text-gray-200 font-medium">Reading Documentation</div>
+                         <div className="text-xs text-gray-500">Completed 30m</div>
+                       </div>
+                     </div>
+                     <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">+100 XP</span>
+                   </div>
+                 </div>
+               </div>
             </div>
           </motion.div>
 
           {/* Floating Element 1 - Timer */}
           <motion.div 
-            className="absolute z-30 top-[15%] right-[5%] w-48 rounded-xl bg-[#1A1D24]/90 backdrop-blur-xl border border-white/[0.08] p-4 shadow-xl shadow-black/40"
+            className="absolute z-30 top-[15%] right-[2%] w-56 rounded-xl bg-[#1A1D24]/95 backdrop-blur-xl border border-white/[0.08] p-4 shadow-xl shadow-black/40"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.5 }}
             style={{ y: -10 }}
           >
              <div className="flex items-center justify-between mb-3">
-               <div className="w-12 h-3 rounded bg-white/[0.1]" />
-               <div className="w-4 h-4 rounded-full bg-indigo-500/80 shadow-[0_0_10px_rgba(92,107,192,0.5)]" />
+               <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
+                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                 Active Focus
+               </div>
+               <div className="text-indigo-400 font-mono text-sm">24:59</div>
              </div>
-             <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-               <div className="w-2/3 h-full bg-indigo-500/80 rounded-full" />
+             <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+               <motion.div 
+                 className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" 
+                 initial={{ width: "100%" }}
+                 animate={{ width: "0%" }}
+                 transition={{ duration: 1500, ease: "linear" }}
+               />
              </div>
           </motion.div>
 
           {/* Floating Element 2 - Notification */}
           <motion.div 
-            className="absolute z-30 bottom-[20%] left-[5%] w-56 rounded-xl bg-white/[0.05] backdrop-blur-xl border border-white/[0.1] p-4 shadow-xl shadow-black/40"
+            className="absolute z-30 bottom-[15%] left-[2%] w-64 rounded-xl bg-white/[0.05] backdrop-blur-xl border border-white/[0.1] p-4 shadow-xl shadow-black/40"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.7 }}
           >
-            <div className="flex gap-3 items-center">
-              <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 text-lg">
-                &#x1FA99;
+            <div className="flex gap-4 items-center">
+              <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 flex items-center justify-center border border-yellow-500/30 text-2xl shadow-[0_0_15px_rgba(234,179,8,0.2)]">
+                🏆
               </div>
               <div>
-                <div className="w-20 h-3 rounded bg-white/[0.2] mb-2" />
-                <div className="w-12 h-2 rounded bg-indigo-400/60" />
+                <div className="text-sm text-white font-semibold mb-1">New Milestone!</div>
+                <div className="text-xs text-gray-400 leading-relaxed">You've reached <span className="text-yellow-400 font-medium">Level 10</span>. Keep up the great focus!</div>
               </div>
             </div>
           </motion.div>

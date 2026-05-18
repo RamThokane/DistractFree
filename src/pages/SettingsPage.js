@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
 import PageTransition from '../components/PageTransition';
+import PDFReportGenerator from '../components/PDFReportGenerator';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import {
@@ -182,20 +183,7 @@ const SettingsPage = () => {
     }
   };
 
-  const handleDownloadReport = async () => {
-    try {
-      const res = await api.get('/insights/weekly-report', { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'Weekly_Productivity_Report.csv');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err) {
-      console.error('Failed to download report', err);
-    }
-  };
+
 
   const themes = [
     {
@@ -363,9 +351,7 @@ const SettingsPage = () => {
                 { key: 'focusReminder', label: 'Focus Reminders', desc: 'Gentle nudges to start a session' },
                 { key: 'streakAlert', label: 'Streak Alerts', desc: "Don't lose your streak!" },
                 { key: 'weeklyReport', label: 'Weekly Report', desc: 'Summary of your productivity', action: (
-                  <button onClick={handleDownloadReport} className="ml-4 text-xs text-sage hover:underline whitespace-nowrap bg-sage/10 px-2 py-1 rounded-md">
-                    Download Info
-                  </button>
+                  <PDFReportGenerator user={user} />
                 ) },
                 { key: 'coinEarned', label: 'Coin Notifications', desc: 'Alert when coins are earned' },
               ].map((item) => (

@@ -15,6 +15,7 @@ import DashboardHome from './pages/DashboardHome';
 import FocusSession from './pages/FocusSession';
 import CoinsPage from './pages/CoinsPage';
 import InsightsPage from './pages/InsightsPage';
+import ProductivityHeatmapPage from './pages/ProductivityHeatmapPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import SettingsPage from './pages/SettingsPage';
 
@@ -54,6 +55,7 @@ function App() {
                 <Route path="focus" element={<FocusSession />} />
                 <Route path="coins" element={<CoinsPage />} />
                 <Route path="insights" element={<InsightsPage />} />
+                <Route path="heatmap" element={<ProductivityHeatmapPage />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>

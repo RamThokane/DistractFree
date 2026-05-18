@@ -180,7 +180,7 @@ const RegisterPage = () => {
               <div className="flex justify-center bg-[#14171C] hover:bg-[#1A1D24] border border-white/[0.06] rounded-2xl p-1 transition-colors overflow-hidden">
                  <GoogleAuthButton
                   onSuccess={handleGoogleSuccess}
-                  onError={() => setError('Google sign-in failed')}
+                  onError={(err) => setError(err?.response?.data?.message || err?.message || 'Google sign-in failed')}
                 />
               </div>
             </motion.div>

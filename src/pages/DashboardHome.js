@@ -20,10 +20,10 @@ import {
 const CustomTooltip = memo(({ active, payload, label }) => {
   if (active && payload?.length) {
     return (
-      <div className="bg-white/90 backdrop-blur-md border border-gray-100 rounded-2xl px-5 py-4 shadow-glass">
-        <p className="text-gray-500 text-xs mb-1.5 uppercase tracking-wide">{label}</p>
+      <div className="bg-[#14171C]/90 backdrop-blur-md border border-white/[0.08] rounded-2xl px-5 py-4 shadow-glass">
+        <p className="text-gray-400 text-xs mb-1.5 uppercase tracking-wide">{label}</p>
         {payload.map((p, i) => (
-          <p key={i} className="text-gray-900 text-sm font-semibold flex items-center gap-2">
+          <p key={i} className="text-white text-sm font-semibold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }}></span>
             {p.name}: {p.value}{p.name === 'minutes' ? ' min' : ''}
           </p>

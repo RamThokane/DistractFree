@@ -402,7 +402,7 @@ exports.getLeaderboard = async (req, res) => {
           totalSessions: { $sum: 1 },
         },
       },
-      { $sort: { totalMinutes: -1 } },
+      { $sort: { totalMinutes: -1, totalCoins: -1 } },
       { $limit: 50 },
     ]);
 

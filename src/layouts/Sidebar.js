@@ -7,6 +7,7 @@ import {
   HiOutlineClock,
   HiOutlineCurrencyDollar,
   HiOutlineLightBulb,
+  HiOutlineCalendarDays,
   HiOutlineTrophy,
   HiOutlineCog6Tooth,
   HiOutlineArrowRightOnRectangle,
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/dashboard/focus', icon: HiOutlineClock, label: 'Focus Session' },
   { to: '/dashboard/coins', icon: HiOutlineCurrencyDollar, label: 'Coins' },
   { to: '/dashboard/insights', icon: HiOutlineLightBulb, label: 'AI Insights' },
+  { to: '/dashboard/heatmap', icon: HiOutlineCalendarDays, label: 'Productivity Heatmap' },
   { to: '/dashboard/leaderboard', icon: HiOutlineTrophy, label: 'Leaderboard' },
   { to: '/dashboard/settings', icon: HiOutlineCog6Tooth, label: 'Settings' },
 ];
