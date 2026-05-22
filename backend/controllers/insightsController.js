@@ -459,13 +459,13 @@ function _getModelPerformance() {
   }
 
   return {
-    accuracy: 92,
-    precision: 89,
-    recall: 91,
-    f1Score: 90,
+    accuracy: null,
+    precision: null,
+    recall: null,
+    f1Score: null,
     trainedAt: null,
     trainingSamples: null,
-    modelType: 'Decision Tree Classifier (Heuristic Fallback)',
+    modelType: 'Decision Tree Classifier (Awaiting Training Data)',
   };
 }
 

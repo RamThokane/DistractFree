@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
@@ -6,14 +6,67 @@ import {
   XAxis, YAxis, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import GlassNavbar from '../components/GlassNavbar';
+import '../styles/landing.css';
+
+/* ── 6-Layer Background System ── */
+const BackgroundSystem = () => (
+  <div className="landing-bg-system">
+    <div className="landing-bg-mesh">
+      <div className="landing-orb-a" />
+      <div className="landing-orb-b" />
+      <div className="landing-orb-c" />
+      <div className="landing-noise" />
+    </div>
+  </div>
+);
+
+/* ── Upgraded Section Divider (3-layer) ── */
+const SectionDivider = () => (
+  <div className="section-divider-upgrade" style={{ position: 'relative', zIndex: 1 }}>
+    <div className="divider-glow" />
+    <div className="divider-line" />
+  </div>
+);
+
+/* ── Floating CTA Particles ── */
+const CTAParticles = () => {
+  const particles = [
+    { size: 4, color: 'rgba(123,111,238,0.6)', top: '15%', left: '8%',   dur: '3s',   delay: '0s',   drift: '8px' },
+    { size: 6, color: 'rgba(0,212,200,0.5)',    top: '70%', left: '12%',  dur: '4.5s', delay: '0.8s', drift: '-12px' },
+    { size: 4, color: 'rgba(240,192,64,0.5)',   top: '30%', left: '85%',  dur: '3.8s', delay: '1.5s', drift: '5px' },
+    { size: 5, color: 'rgba(123,111,238,0.5)',   top: '60%', left: '90%',  dur: '5s',   delay: '2.2s', drift: '-8px' },
+    { size: 3, color: 'rgba(0,212,200,0.4)',    top: '80%', left: '25%',  dur: '3.2s', delay: '0.4s', drift: '10px' },
+    { size: 7, color: 'rgba(123,111,238,0.4)',   top: '45%', left: '75%',  dur: '4.2s', delay: '1.2s', drift: '-6px' },
+    { size: 4, color: 'rgba(240,192,64,0.4)',   top: '25%', left: '60%',  dur: '5.5s', delay: '2.8s', drift: '4px' },
+    { size: 5, color: 'rgba(0,212,200,0.45)',   top: '55%', left: '40%',  dur: '3.6s', delay: '1.8s', drift: '-10px' },
+  ];
+
+  return (
+    <>
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          className="cta-particle"
+          style={{
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            boxShadow: `0 0 6px ${p.color}`,
+            top: p.top,
+            left: p.left,
+            '--dur': p.dur,
+            '--delay': p.delay,
+            '--drift-x': p.drift,
+          }}
+        />
+      ))}
+    </>
+  );
+};
 
 /* ── Subtle floating background productivity visuals ── */
 const BackgroundVisuals = () => (
   <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-    {/* Gradient orbs */}
-    <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.07] blur-[100px] float-element" style={{background:'radial-gradient(circle, #5C6BC0, transparent 70%)'}} />
-    <div className="absolute -bottom-40 -right-40 w-[450px] h-[450px] rounded-full opacity-[0.06] blur-[100px] float-element-2" style={{background:'radial-gradient(circle, #8B5CF6, transparent 70%)'}} />
-
     {/* Abstract dashboard card outline */}
     <div className="absolute top-[15%] right-[8%] w-[180px] h-[110px] rounded-xl border border-white/[0.03] opacity-[0.4] float-element-2">
       <div className="m-3 h-2 w-16 rounded bg-white/[0.04]" />
@@ -79,11 +132,11 @@ const stagger = {
 
 /* ── Mini window chrome for product mockups ── */
 const WindowFrame = ({ children, className = '', title = '' }) => (
-  <div className={`window-frame ${className}`}>
-    <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
-      <div className="window-dot-red" />
-      <div className="window-dot-yellow" />
-      <div className="window-dot-green" />
+  <div className={`window-frame window-frame-upgrade ${className}`}>
+    <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] window-titlebar-upgrade">
+      <div className="window-dot-red window-dot-red-glow" />
+      <div className="window-dot-yellow window-dot-yellow-glow" />
+      <div className="window-dot-green window-dot-green-glow" />
       {title && <span className="text-[11px] text-gray-500 ml-3 font-medium">{title}</span>}
     </div>
     <div className="p-4">{children}</div>
@@ -91,8 +144,8 @@ const WindowFrame = ({ children, className = '', title = '' }) => (
 );
 
 /* ── Small inline stat for mockup dashboards ── */
-const MiniStat = ({ label, value, sub }) => (
-  <div className="bg-white/[0.06] rounded-xl p-3">
+const MiniStat = ({ label, value, sub, className = '' }) => (
+  <div className={`bg-white/[0.06] rounded-xl p-3 ${className}`}>
     <p className="text-[10px] text-gray-500 mb-0.5">{label}</p>
     <p className="text-white font-semibold text-lg leading-tight">{value}</p>
     {sub && <p className="text-[10px] text-emerald-400 mt-0.5">{sub}</p>}
@@ -142,24 +195,27 @@ const LandingPage = () => {
   }, []);
 
   React.useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
-    <div className="min-h-screen landing-bg text-white antialiased">
+    <div className="min-h-screen landing-bg text-white antialiased relative overflow-hidden" style={{ background: 'var(--bg-void, #03040a)' }}>
+      {/* 6-Layer Background System */}
+      <BackgroundSystem />
       <BackgroundVisuals />
 
+      {/* All content above bg system */}
+      <div className="landing-page-root">
+
       {/* ────────────── NAV ────────────── */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-[#0F1115]/80 backdrop-blur-xl border-b border-white/[0.06] shadow-lg shadow-black/20' : 'bg-transparent border-b border-transparent'
-      }`}>
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 landing-nav-upgrade ${scrolled ? 'nav-scrolled' : ''}`}
+      >
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-primary flex items-center justify-center transition-transform duration-200 group-hover:scale-105 shadow-sm">
-              <span className="text-white font-bold text-sm">D</span>
-            </div>
+            <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-xl transition-transform duration-200 group-hover:scale-105 shadow-sm" />
             <span className="font-semibold text-white tracking-tight">DistractFree</span>
           </Link>
 
@@ -181,7 +237,8 @@ const LandingPage = () => {
             </Link>
             <Link
               to="/register"
-              className="text-sm font-medium text-white px-6 py-2.5 rounded-full transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-95" style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}
+              className="text-sm font-medium text-white px-6 py-2.5 rounded-full landing-nav-cta"
+              style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}
             >
               Start Free
             </Link>
@@ -193,51 +250,49 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 1 — HERO                                       */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative z-10 pt-24 md:pt-32 pb-24 px-6">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+      <section className="hero-section relative z-10 pt-24 md:pt-32 pb-24 px-6" style={{ background: 'transparent' }}>
+        {/* Dot grid — hero only */}
+        <div className="landing-dot-grid" />
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center" style={{ position: 'relative', zIndex: 1 }}>
           {/* LEFT — Copy */}
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={stagger}
-          >
-            <motion.p
-              className="font-medium text-sm mb-5 tracking-wide uppercase" style={{color:'#7E8CF6'}}
-              variants={fadeUp}
-              custom={0}
+          <div className="flex flex-col">
+            <p
+              className="font-medium text-sm mb-5 tracking-wide uppercase animate-fade-up-headline section-label-upgrade"
             >
-              AI-powered focus companion
-            </motion.p>
+              <span className="hero-badge-upgrade inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px]" style={{background:'rgba(123,111,238,0.08)', color: '#a89fff'}}>
+                <span style={{width:8,height:8,borderRadius:'50%',background:'#a89fff',display:'inline-block',animation:'pulse 1.8s ease infinite'}} />
+                AI-Powered Focus Companion
+                <span style={{background:'var(--brand-subtle,rgba(123,111,238,0.07))',color:'var(--brand,#7b6fee)',fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:4}}>NEW</span>
+              </span>
+            </p>
 
-            <motion.h1
-              className="text-4xl md:text-[3.25rem] lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-white mb-6"
-              variants={fadeUp}
-              custom={0.05}
+            <h1
+              className="text-4xl md:text-[3.25rem] lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-white mb-6 animate-fade-up-headline section-headline-upgrade"
+              style={{ animationDelay: '0.1s', letterSpacing: '-2px' }}
             >
               Focus should feel
               <br />
-              empowering, not
+              <span className="hero-shimmer-word">empowering,</span> not
               <br />
               restrictive.
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              className="text-gray-400 text-lg leading-relaxed max-w-lg mb-10"
-              variants={fadeUp}
-              custom={0.1}
+            <p
+              className="text-gray-400 text-lg leading-relaxed max-w-lg mb-10 animate-fade-up-subtext"
+              style={{ animationDelay: '0.3s' }}
             >
               DistractFree helps you build sustainable focus habits using AI insights
               and a reward-based system — instead of forceful blocking.
-            </motion.p>
+            </p>
 
-            <motion.div
-              className="flex flex-wrap gap-3"
-              variants={fadeUp}
-              custom={0.15}
+            <div
+              className="flex flex-wrap gap-3 animate-fade-up-ctas"
+              style={{ animationDelay: '0.5s' }}
             >
               <Link
                 to="/register"
-                className="inline-flex items-center gap-2 text-white font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:brightness-110 hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/20" style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}
+                className="inline-flex items-center gap-2 text-white font-medium px-8 py-3.5 rounded-full hero-btn-primary hero-pulse-ring"
+                style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)', boxShadow: '0 0 0 1px rgba(123,111,238,0.4), 0 4px 24px rgba(108,92,231,0.4), inset 0 1px 0 rgba(255,255,255,0.18)'}}
               >
                 Start Free
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -246,12 +301,14 @@ const LandingPage = () => {
               </Link>
               <a
                 href="#how-it-works"
-                className="inline-flex items-center gap-2 border border-white/[0.1] text-gray-300 hover:border-white/[0.2] hover:bg-white/[0.04] font-medium px-8 py-3.5 rounded-full transition-all duration-300 hover:scale-[1.02] active:scale-95"
+                className="inline-flex items-center gap-2 border border-white/[0.1] text-gray-300 hover:border-white/[0.2] hover:bg-white/[0.04] font-medium px-8 py-3.5 rounded-full spring-hover hero-btn-secondary"
               >
+                <span className="play-icon-nudge">▶</span>
                 See How It Works
               </a>
-            </motion.div>
-          </motion.div>
+            </div>
+
+          </div>
 
           {/* RIGHT — Product mockup */}
           <motion.div
@@ -259,34 +316,38 @@ const LandingPage = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.9, ease: [0.25, 0.1, 0.25, 1], delay: 0.2 }}
           >
-            <WindowFrame title="DistractFree — Dashboard">
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <MiniStat label="Today's Focus" value="2h 25m" sub="+18% vs yesterday" />
-                <MiniStat label="Focus Coins" value="340" sub="+45 today" />
-                <MiniStat label="Streak" value="12 days" sub="Personal best!" />
-              </div>
-              <div className="bg-white/[0.04] rounded-xl p-3">
-                <p className="text-[10px] text-gray-500 mb-2">Weekly Focus Time</p>
-                <ResponsiveContainer width="100%" height={120}>
-                  <BarChart data={weeklyData}>
-                    <Bar dataKey="m" fill="#4A7C6F" radius={[4, 4, 0, 0]} barSize={24} />
-                    <XAxis dataKey="d" stroke="#555" fontSize={9} tickLine={false} axisLine={false} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </WindowFrame>
+            <div className="animate-dashboard-float hero-mockup-wrapper">
+              <WindowFrame title="DistractFree — Dashboard" className="hero-mockup-glow">
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <MiniStat label="Today's Focus" value="2h 25m" sub="+18% vs yesterday" />
+                  <MiniStat label="Focus Coins" value="340" sub="+45 today" />
+                  <MiniStat label="Streak" value="12 days" sub="Personal best!" className="hero-stat-streak" />
+                </div>
+                <div className="bg-white/[0.04] rounded-xl p-3">
+                  <p className="text-[10px] text-gray-500 mb-2">Weekly Focus Time</p>
+                  <ResponsiveContainer width="100%" height={120}>
+                    <BarChart data={weeklyData}>
+                      <Bar dataKey="m" fill="#4A7C6F" radius={[4, 4, 0, 0]} barSize={24} />
+                      <XAxis dataKey="d" stroke="#555" fontSize={9} tickLine={false} axisLine={false} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </WindowFrame>
+            </div>
           </motion.div>
         </div>
       </section>
+
+      <SectionDivider />
 
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 2 — PROBLEM STATEMENT                          */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative z-10 py-24 px-6 land-section-alt">
+      <section className="relative z-10 py-[72px] px-6 problem-section">
         <div className="max-w-6xl mx-auto">
           <motion.h2
-            className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-16 max-w-2xl"
+            className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-16 max-w-2xl section-headline-upgrade"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
@@ -294,7 +355,7 @@ const LandingPage = () => {
           >
             Most website blockers punish.
             <br />
-            <span className="text-gray-500">We motivate.</span>
+            <span className="text-gray-500" style={{ fontStyle: 'italic', fontWeight: 300 }}>We motivate.</span>
           </motion.h2>
 
           <motion.div
@@ -303,10 +364,14 @@ const LandingPage = () => {
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
             variants={stagger}
+            style={{ position: 'relative' }}
           >
+            {/* VS Badge */}
+            <div className="compare-vs-badge hidden md:flex">VS</div>
+
             {/* Traditional Blockers */}
             <motion.div
-              className="border border-white/[0.06] rounded-2xl p-8 bg-white/[0.03]"
+              className="border border-white/[0.06] rounded-2xl p-8 bg-white/[0.03] land-card-upgrade compare-left-card"
               variants={fadeUp}
             >
               <p className="text-sm font-medium text-gray-500 mb-6 uppercase tracking-wide">Traditional blockers</p>
@@ -317,7 +382,9 @@ const LandingPage = () => {
                   'Short-term control with no lasting habits',
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-gray-500">
-                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                    <span className="mt-1 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center" style={{background:'rgba(255,80,80,0.1)'}}>
+                      <span style={{color:'rgba(255,80,80,0.8)', fontSize: 11, fontWeight: 700}}>×</span>
+                    </span>
                     <span className="text-[15px] leading-relaxed">{item}</span>
                   </li>
                 ))}
@@ -326,10 +393,10 @@ const LandingPage = () => {
 
             {/* DistractFree */}
             <motion.div
-              className="border border-indigo-500/20 rounded-2xl p-8 bg-indigo-500/[0.06]"
+              className="border border-indigo-500/20 rounded-2xl p-8 bg-indigo-500/[0.06] land-card-upgrade compare-right-card"
               variants={fadeUp}
             >
-              <p className="text-sm font-medium mb-6 uppercase tracking-wide" style={{color:'#7E8CF6'}}>DistractFree</p>
+              <p className="text-sm font-medium mb-6 uppercase tracking-wide section-label-upgrade">DistractFree</p>
               <ul className="space-y-4">
                 {[
                   'Reward-based system that makes focus feel good',
@@ -337,7 +404,9 @@ const LandingPage = () => {
                   'Long-term habit building, not temporary fixes',
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-gray-200">
-                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:'#5C6BC0'}} />
+                    <span className="mt-1 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center" style={{background:'rgba(0,212,140,0.1)'}}>
+                      <span style={{color:'var(--teal, #00d4c8)', fontSize: 11, fontWeight: 700}}>✓</span>
+                    </span>
                     <span className="text-[15px] leading-relaxed">{item}</span>
                   </li>
                 ))}
@@ -347,11 +416,13 @@ const LandingPage = () => {
         </div>
       </section>
 
+      <SectionDivider />
+
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3 — HOW IT WORKS                               */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="relative z-10 py-24 px-6">
+      <section id="how-it-works" className="relative z-10 py-24 px-6 how-it-works-section">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="mb-16"
@@ -360,8 +431,8 @@ const LandingPage = () => {
             viewport={{ once: true, margin: '-80px' }}
             variants={fadeUp}
           >
-            <p className="font-medium text-sm mb-3 uppercase tracking-wide" style={{color:'#7E8CF6'}}>How it works</p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white max-w-lg">
+            <p className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade" style={{letterSpacing:'2px'}}>How it works</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white max-w-lg section-headline-upgrade">
               Three steps to sustainable focus.
             </h2>
           </motion.div>
@@ -372,19 +443,20 @@ const LandingPage = () => {
             whileInView="visible"
             viewport={{ once: true, margin: '-40px' }}
             variants={stagger}
+            style={{ position: 'relative' }}
           >
             {/* Step 1 */}
-            <motion.div variants={fadeUp}>
-              <div className="land-card rounded-2xl p-6 mb-5 h-48 flex items-end">
+            <motion.div variants={fadeUp} className="how-it-works-step">
+              <div className="land-card land-card-upgrade mocklet-upgrade rounded-2xl p-6 mb-5 h-48 flex items-end">
                 {/* Mini timer mockup */}
                 <div className="w-full">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-land-muted font-medium">Focus Session</span>
-                    <span className="text-xs text-sage font-medium">25:00</span>
+                    <span className="text-xs text-sage font-medium" style={{fontFamily:'monospace'}}>25:00</span>
                   </div>
                   <div className="w-full h-2 bg-white/[0.04] rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full bg-sage rounded-full"
+                      className="h-full bg-sage rounded-full progress-fill-shimmer"
                       initial={{ width: 0 }}
                       whileInView={{ width: '65%' }}
                       viewport={{ once: true }}
@@ -392,12 +464,12 @@ const LandingPage = () => {
                     />
                   </div>
                   <div className="flex items-center gap-3 mt-4">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center step-number-badge" style={{border: '1px solid var(--bd-brand, rgba(123,111,238,0.28))'}}>
                       <svg className="w-3.5 h-3.5 text-sage" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center" style={{background:'var(--bg-overlay, #191d38)',border:'1px solid var(--bd-1, rgba(255,255,255,0.042))'}}>
                       <svg className="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
@@ -406,49 +478,55 @@ const LandingPage = () => {
                 </div>
               </div>
               <div className="flex items-baseline gap-3 mb-2">
-                <span className="text-sm font-medium text-sage">01</span>
+                <span className="text-sm font-medium" style={{color:'var(--brand, #7b6fee)'}}>
+                  <span className="step-number-badge inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold" style={{background:'var(--brand-subtle)',border:'1px solid var(--bd-brand)'}}>1</span>
+                </span>
                 <h3 className="text-lg font-semibold text-white">Start a Focus Session</h3>
               </div>
-              <p className="text-gray-400 text-[15px] leading-relaxed pl-8">
+              <p className="text-gray-400 text-[15px] leading-relaxed pl-9">
                 Choose your duration, hit start, and enter a distraction-aware focus state.
               </p>
             </motion.div>
 
-            {/* Step 2 */}
-            <motion.div variants={fadeUp}>
-              <div className="land-card rounded-2xl p-6 mb-5 h-48 flex items-end">
+            {/* Step 2 — Featured */}
+            <motion.div variants={fadeUp} className="how-it-works-step">
+              <div className="land-card land-card-upgrade mocklet-upgrade rounded-2xl p-6 mb-5 h-48 flex items-end">
                 {/* Mini coins mockup */}
                 <div className="w-full">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-land-muted font-medium">Session Complete</span>
                   </div>
-                  <div className="flex items-center gap-3 bg-indigo-500/[0.06] rounded-xl p-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-lg">&#x1FA99;</div>
+                  <div className="flex items-center gap-3 rounded-xl p-3" style={{background:'rgba(123,111,238,0.06)'}}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg" style={{background:'linear-gradient(135deg,#f0c040,#e8a020)'}}>
+                      <span style={{fontSize:18}}>$</span>
+                    </div>
                     <div>
-                      <p className="text-indigo-300 font-semibold text-base">+20 Focus Coins</p>
-                      <p className="text-sage text-xs">25 min focused session</p>
+                      <p className="font-semibold text-base" style={{color:'var(--gold, #f0c040)'}}>+20 Focus Coins</p>
+                      <p className="text-xs" style={{color:'var(--teal, #00d4c8)'}}>25 min focused session</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
-                    <div className="flex-1 h-1 bg-indigo-500/20 rounded-full">
-                      <div className="h-full w-3/4 bg-sage rounded-full" />
+                    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{background:'rgba(240,192,64,0.15)'}}>
+                      <div className="h-full w-3/4 rounded-full progress-fill-shimmer" style={{background:'linear-gradient(90deg, #e8a020, #f0c040)'}} />
                     </div>
                     <span className="text-[10px] text-land-muted">340 total</span>
                   </div>
                 </div>
               </div>
               <div className="flex items-baseline gap-3 mb-2">
-                <span className="text-sm font-medium text-sage">02</span>
+                <span className="text-sm font-medium" style={{color:'var(--brand, #7b6fee)'}}>
+                  <span className="step-number-badge inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold" style={{background:'var(--brand-subtle)',border:'1px solid var(--bd-brand)'}}>2</span>
+                </span>
                 <h3 className="text-lg font-semibold text-white">Earn Focus Coins</h3>
               </div>
-              <p className="text-gray-400 text-[15px] leading-relaxed pl-8">
+              <p className="text-gray-400 text-[15px] leading-relaxed pl-9">
                 Every focused minute earns coins. Longer sessions are worth more — consistency is rewarded.
               </p>
             </motion.div>
 
             {/* Step 3 */}
-            <motion.div variants={fadeUp}>
-              <div className="land-card rounded-2xl p-6 mb-5 h-48 flex items-end">
+            <motion.div variants={fadeUp} className="how-it-works-step">
+              <div className="land-card land-card-upgrade mocklet-upgrade rounded-2xl p-6 mb-5 h-48 flex items-end">
                 {/* Mini unlock mockup */}
                 <div className="w-full">
                   <div className="flex items-center justify-between mb-3">
@@ -463,14 +541,19 @@ const LandingPage = () => {
                       <div
                         key={i}
                         className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs ${
-                          opt1.active ? 'bg-indigo-500/[0.06] border border-indigo-500/20' : 'bg-gray-50 border border-transparent'
+                          opt1.active ? '' : ''
                         }`}
+                        style={{
+                          background: opt1.active ? 'var(--brand-subtle, rgba(123,111,238,0.07))' : 'var(--bg-float, #13162c)',
+                          border: opt1.active ? '1px solid var(--bd-brand, rgba(123,111,238,0.28))' : '1px solid var(--bd-1, rgba(255,255,255,0.042))',
+                          borderLeft: opt1.active ? '3px solid var(--brand, #7b6fee)' : undefined,
+                        }}
                       >
-                        <span className={opt1.active ? 'font-medium text-indigo-300' : 'text-land-muted'}>
+                        <span className={opt1.active ? 'font-medium' : ''} style={{color: opt1.active ? 'var(--tx-1, #eeeef5)' : 'var(--tx-2, #8f8faa)'}}>
                           {opt1.mins} break
                         </span>
-                        <span className={`flex items-center gap-1 ${opt1.active ? 'text-sage font-medium' : 'text-gray-400'}`}>
-                          &#x1FA99; {opt1.cost}
+                        <span className="flex items-center gap-1" style={{color: opt1.active ? 'var(--gold, #f0c040)' : 'var(--tx-3, #55556e)'}}>
+                          <span style={{width:8,height:8,borderRadius:'50%',background:'#f0c040',display:'inline-block'}} /> {opt1.cost}
                         </span>
                       </div>
                     ))}
@@ -478,10 +561,12 @@ const LandingPage = () => {
                 </div>
               </div>
               <div className="flex items-baseline gap-3 mb-2">
-                <span className="text-sm font-medium text-sage">03</span>
+                <span className="text-sm font-medium" style={{color:'var(--brand, #7b6fee)'}}>
+                  <span className="step-number-badge inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold" style={{background:'var(--brand-subtle)',border:'1px solid var(--bd-brand)'}}>3</span>
+                </span>
                 <h3 className="text-lg font-semibold text-white">Unlock breaks intentionally</h3>
               </div>
-              <p className="text-gray-400 text-[15px] leading-relaxed pl-8">
+              <p className="text-gray-400 text-[15px] leading-relaxed pl-9">
                 Spend coins on controlled break time. You choose when — it's always your decision.
               </p>
             </motion.div>
@@ -489,11 +574,13 @@ const LandingPage = () => {
         </div>
       </section>
 
+      <SectionDivider />
+
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3.5 — SMART WEBSITE BLOCKING                   */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative z-10 py-24 px-6 land-section-alt">
+      <section className="relative z-10 py-24 px-6 smart-blocking-section">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="mb-16"
@@ -503,13 +590,14 @@ const LandingPage = () => {
             variants={stagger}
           >
             <motion.p
-              className="font-medium text-sm mb-3 uppercase tracking-wide" style={{color:'#7E8CF6'}}
+              className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade"
               variants={fadeUp}
+              style={{letterSpacing:'2px'}}
             >
               Website blocking
             </motion.p>
             <motion.h2
-              className="text-3xl md:text-4xl font-bold tracking-tight text-white max-w-xl mb-4"
+              className="text-3xl md:text-4xl font-bold tracking-tight text-white max-w-xl mb-4 section-headline-upgrade"
               variants={fadeUp}
             >
               Smart Website Blocking — On Your Terms
@@ -572,10 +660,10 @@ const LandingPage = () => {
               ].map((item, i) => (
                 <motion.div
                   key={i}
-                  className="flex gap-4"
+                  className="flex gap-4 spring-hover"
                   variants={fadeUp}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{background:'var(--brand-subtle, rgba(123,111,238,0.07))', border:'1px solid var(--bd-brand, rgba(123,111,238,0.28))'}}>
                     {item.icon}
                   </div>
                   <div>
@@ -593,14 +681,14 @@ const LandingPage = () => {
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <div className="land-card rounded-2xl overflow-hidden">
+              <div className="land-card land-card-upgrade rounded-2xl overflow-hidden">
                 {/* Fake browser chrome */}
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-white/[0.04] dark:bg-land-dark-subtle">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
+                <div className="flex items-center gap-2 px-4 py-3 border-b window-titlebar-upgrade">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57] window-dot-red-glow" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E] window-dot-yellow-glow" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#28C840] window-dot-green-glow" />
                   <div className="flex-1 mx-4">
-                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-gray-400">
+                    <div className="rounded-lg px-3 py-1.5 text-xs text-gray-400" style={{background:'var(--bg-overlay, #191d38)', border:'1px solid var(--bd-1)'}}>
                       twitter.com
                     </div>
                   </div>
@@ -609,8 +697,14 @@ const LandingPage = () => {
                 {/* Blocked content */}
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                   {/* Shield icon */}
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/15 flex items-center justify-center mb-6">
-                    <svg className="w-7 h-7 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <div className="w-14 h-14 rounded-2xl shield-glow-wrap flex items-center justify-center mb-6">
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="url(#shieldGrad)" strokeWidth={1.5}>
+                      <defs>
+                        <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="var(--brand, #7b6fee)" />
+                          <stop offset="100%" stopColor="var(--teal, #00d4c8)" />
+                        </linearGradient>
+                      </defs>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                     </svg>
                   </div>
@@ -624,18 +718,18 @@ const LandingPage = () => {
 
                   {/* Timer */}
                   <div className="mb-6">
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Return in</p>
-                    <p className="text-3xl font-bold text-white tracking-tight font-mono">
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2" style={{letterSpacing:'2px'}}>Return in</p>
+                    <p className="text-3xl font-bold text-white tracking-tight font-mono countdown-glow">
                       18:42
                     </p>
                   </div>
 
                   {/* Divider */}
-                  <div className="w-12 h-px bg-land-border dark:bg-land-dark-border mb-6" />
+                  <div className="w-12 h-px mb-6" style={{background:'linear-gradient(90deg, transparent, var(--bd-2, rgba(255,255,255,0.08)), transparent)'}} />
 
                   {/* Unlock button */}
-                  <button className="inline-flex items-center gap-2 border border-white/[0.06] text-gray-400 hover:text-land-text dark:hover:text-land-dark-text text-sm font-medium px-5 py-2.5 rounded-xl transition-colors">
-                    <span>&#x1FA99;</span>
+                  <button className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-full spring-hover" style={{background:'var(--brand-subtle)', border:'1px solid var(--bd-brand)', color:'var(--brand, #7b6fee)'}}>
+                    <span style={{width:8,height:8,borderRadius:'50%',background:'#f0c040',display:'inline-block'}} />
                     Unlock using 10 Focus Coins
                   </button>
                 </div>
@@ -645,12 +739,14 @@ const LandingPage = () => {
         </div>
       </section>
 
+      <SectionDivider />
+
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 4 — PRODUCT PREVIEW                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="product" className="relative z-10 py-24 px-6 land-section-alt">
-        <div className="max-w-6xl mx-auto">
+      <section id="product" className="relative z-10 py-24 px-6 product-section product-ambient-glow">
+        <div className="max-w-6xl mx-auto" style={{position:'relative', zIndex:1}}>
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -658,7 +754,7 @@ const LandingPage = () => {
             variants={fadeUp}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-3">
+            <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-3 section-headline-upgrade">
               See what you're building toward.
             </h2>
           </motion.div>
@@ -683,11 +779,11 @@ const LandingPage = () => {
                       <AreaChart data={trendData}>
                         <defs>
                           <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#4A7C6F" stopOpacity={0.25} />
-                            <stop offset="100%" stopColor="#4A7C6F" stopOpacity={0} />
+                            <stop offset="0%" stopColor="#00d4c8" stopOpacity={0.25} />
+                            <stop offset="100%" stopColor="#00d4c8" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <Area type="monotone" dataKey="s" stroke="#4A7C6F" strokeWidth={2} fill="url(#trendFill)" dot={false} />
+                        <Area type="monotone" dataKey="s" stroke="#00d4c8" strokeWidth={2} fill="url(#trendFill)" dot={false} />
                         <XAxis dataKey="w" stroke="#555" fontSize={9} tickLine={false} axisLine={false} />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -709,16 +805,20 @@ const LandingPage = () => {
                     {/* Timer ring */}
                     <div className="relative w-24 h-24 flex-shrink-0">
                       <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
-                        <circle cx="50" cy="50" r="42" fill="none" stroke="#4A7C6F" strokeWidth="6"
-                          strokeDasharray="264" strokeDashoffset="70" strokeLinecap="round" />
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+                        {/* Glow ring */}
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(0,212,200,0.2)" strokeWidth="10"
+                          strokeDasharray="264" strokeDashoffset="71" strokeLinecap="round" className="ring-timer-glow" />
+                        {/* Progress ring */}
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="#00d4c8" strokeWidth="6"
+                          strokeDasharray="264" strokeDashoffset="71" strokeLinecap="round" />
                       </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm">18:32</span>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-[7px] font-medium" style={{color:'var(--teal, #00d4c8)'}}>In Progress</span>
+                        <span className="text-white font-semibold text-sm" style={{fontFamily:'monospace', filter:'drop-shadow(0 0 8px rgba(0,212,200,0.4))'}}>18:32</span>
                       </div>
                     </div>
                     <div>
-                      <p className="text-gray-400 text-[11px] mb-0.5">In Progress</p>
                       <p className="text-white font-semibold text-base">Deep Work Session</p>
                       <p className="text-gray-500 text-[11px] mt-1">25 min &middot; Earn up to 20 coins</p>
                     </div>
@@ -736,13 +836,13 @@ const LandingPage = () => {
                 <WindowFrame title="Coin Activity">
                   <div className="space-y-2.5">
                     {[
-                      { desc: 'Focus session (25 min)', amt: '+20', color: 'text-emerald-400' },
-                      { desc: 'Unlocked 5 min break', amt: '-10', color: 'text-red-400' },
-                      { desc: '7-day streak bonus', amt: '+50', color: 'text-emerald-400' },
+                      { desc: 'Focus session (25 min)', amt: '+20', color: 'var(--teal, #00d4c8)' },
+                      { desc: 'Unlocked 5 min break', amt: '-10', color: 'rgba(255,80,80,0.9)' },
+                      { desc: '7-day streak bonus', amt: '+50', color: 'var(--teal, #00d4c8)' },
                     ].map((tx, i) => (
                       <div key={i} className="flex items-center justify-between py-1.5">
                         <span className="text-gray-400 text-[12px]">{tx.desc}</span>
-                        <span className={`text-[12px] font-medium ${tx.color}`}>{tx.amt}</span>
+                        <span className="text-[12px] font-medium" style={{color: tx.color}}>{tx.amt}</span>
                       </div>
                     ))}
                   </div>
@@ -753,11 +853,13 @@ const LandingPage = () => {
         </div>
       </section>
 
+      <SectionDivider />
+
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 5 — AI TRANSPARENCY                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative z-10 py-24 px-6">
+      <section className="relative z-10 py-24 px-6 ai-transparency-section">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <motion.div
@@ -767,13 +869,14 @@ const LandingPage = () => {
               variants={stagger}
             >
               <motion.p
-                className="font-medium text-sm mb-3 uppercase tracking-wide" style={{color:'#7E8CF6'}}
+                className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade"
                 variants={fadeUp}
+                style={{letterSpacing:'2px'}}
               >
                 AI Transparency
               </motion.p>
               <motion.h2
-                className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-6"
+                className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-6 section-headline-upgrade"
                 variants={fadeUp}
               >
                 AI that explains itself.
@@ -793,18 +896,21 @@ const LandingPage = () => {
                   {
                     title: 'Pattern detection',
                     desc: 'Your distraction risk increases after 45 minutes. Try 40-minute sessions.',
+                    borderColor: 'var(--brand, #7b6fee)',
                   },
                   {
                     title: 'Peak hours',
                     desc: 'Your focus score peaks between 9-11 AM. Schedule deep work here.',
+                    borderColor: 'var(--teal, #00d4c8)',
                   },
                   {
                     title: 'Break timing',
                     desc: 'A 5-min break every 40 minutes reduces your afternoon distraction rate by 35%.',
+                    borderColor: 'var(--gold, #f0c040)',
                   },
                 ].map((tip, i) => (
-                  <div key={i} className="land-card rounded-xl p-4 flex gap-4">
-                    <div className="w-1 rounded-full bg-sage flex-shrink-0" />
+                  <div key={i} className="land-card land-card-upgrade rounded-xl p-4 flex gap-4 spring-hover">
+                    <div className="w-1 rounded-full flex-shrink-0" style={{background: tip.borderColor}} />
                     <div>
                       <p className="text-white font-medium text-sm mb-0.5">{tip.title}</p>
                       <p className="text-gray-400 text-[13px] leading-relaxed">{tip.desc}</p>
@@ -821,7 +927,7 @@ const LandingPage = () => {
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <div className="land-card rounded-2xl p-6">
+              <div className="land-card land-card-upgrade rounded-2xl p-6">
                 <p className="text-sm font-medium text-white mb-1">Distraction Risk by Time</p>
                 <p className="text-xs text-gray-400 mb-4">AI-generated from your last 30 days</p>
                 <ResponsiveContainer width="100%" height={200}>
@@ -836,15 +942,15 @@ const LandingPage = () => {
                     <Line
                       type="monotone"
                       dataKey="r"
-                      stroke="#4A7C6F"
+                      stroke="#00d4c8"
                       strokeWidth={2}
-                      dot={{ fill: '#4A7C6F', r: 3, strokeWidth: 0 }}
-                      activeDot={{ r: 5, fill: '#4A7C6F', stroke: '#fff', strokeWidth: 2 }}
+                      dot={{ fill: '#00d4c8', r: 3, strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: '#00d4c8', stroke: '#fff', strokeWidth: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
-                  <div className="w-3 h-0.5 bg-sage rounded" />
+                  <div className="w-3 h-0.5 rounded" style={{background:'var(--teal, #00d4c8)'}} />
                   <span>Higher = more vulnerable to distraction</span>
                 </div>
               </div>
@@ -853,11 +959,13 @@ const LandingPage = () => {
         </div>
       </section>
 
+      <SectionDivider />
+
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 6 — BUILT ON RESEARCH                          */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="research" className="relative z-10 py-24 px-6 land-section-alt">
+      <section id="research" className="relative z-10 py-24 px-6 research-section">
         <div className="max-w-3xl mx-auto">
           <motion.div
             initial="hidden"
@@ -866,13 +974,14 @@ const LandingPage = () => {
             variants={stagger}
           >
             <motion.p
-              className="font-medium text-sm mb-3 uppercase tracking-wide" style={{color:'#7E8CF6'}}
+              className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade"
               variants={fadeUp}
+              style={{letterSpacing:'2px'}}
             >
               Built on research
             </motion.p>
             <motion.h2
-              className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-6"
+              className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-6 section-headline-upgrade"
               variants={fadeUp}
             >
               Grounded in behavioral science.
@@ -896,7 +1005,23 @@ const LandingPage = () => {
               {['Self-Determination Theory', 'Habit Loop Framework', 'Operant Conditioning', 'Flow State Research'].map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs font-medium text-gray-400 border border-white/[0.06] rounded-full px-4 py-1.5"
+                  className="text-xs font-medium rounded-full px-4 py-1.5 spring-hover cursor-pointer"
+                  style={{
+                    color: 'var(--tx-2, #8f8faa)',
+                    border: '1px solid var(--bd-1, rgba(255,255,255,0.042))',
+                    background: 'rgba(255,255,255,0.025)',
+                    transition: 'all 0.2s var(--ease-spring)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'var(--brand-subtle)';
+                    e.target.style.borderColor = 'var(--bd-brand)';
+                    e.target.style.color = 'var(--tx-1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(255,255,255,0.025)';
+                    e.target.style.borderColor = 'var(--bd-1)';
+                    e.target.style.color = 'var(--tx-2)';
+                  }}
                 >
                   {tag}
                 </span>
@@ -906,16 +1031,15 @@ const LandingPage = () => {
         </div>
       </section>
 
+      <SectionDivider />
+
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* FINAL CTA                                              */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="py-28 px-6 bg-land-bg dark:bg-land-dark-bg relative overflow-hidden">
-        {/* Subtle glass accent */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-sage/[0.04] blur-[80px]" />
-          <div className="absolute -bottom-40 -left-40 w-[400px] h-[400px] rounded-full bg-sage/[0.03] blur-[60px]" />
-        </div>
+      <section className="py-28 px-6 final-cta-section relative overflow-hidden cta-section-upgrade cta-bg-depth">
+        {/* Floating particles */}
+        <CTAParticles />
 
         <motion.div
           className="max-w-2xl mx-auto text-center relative z-10"
@@ -924,22 +1048,39 @@ const LandingPage = () => {
           viewport={{ once: true, margin: '-80px' }}
           variants={stagger}
         >
+          {/* Badge */}
+          <motion.div variants={fadeUp} className="mb-6">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px]" style={{background:'var(--brand-subtle)', border:'1px solid var(--bd-brand)', color:'var(--tx-2)'}}>
+              Free to start · No credit card required
+            </span>
+          </motion.div>
+
           <motion.h2
             className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-5"
             variants={fadeUp}
+            style={{letterSpacing: '-2px'}}
           >
-            Build better focus habits.
+            <span className="section-headline-upgrade">Build better</span>
+            <br />
+            <span className="hero-shimmer-word" style={{fontSize:'inherit', fontWeight:'inherit'}}>focus habits.</span>
           </motion.h2>
           <motion.p
             className="text-gray-400 text-lg mb-10 max-w-md mx-auto"
             variants={fadeUp}
+            style={{fontWeight: 300, fontStyle: 'italic'}}
           >
             Free to start. No credit card required.
           </motion.p>
           <motion.div variants={fadeUp}>
             <Link
               to="/register"
-              className="inline-flex items-center gap-2 bg-sage hover:bg-sage-light text-white font-medium px-8 py-3.5 rounded-full transition-all duration-200 hover:shadow-lg active:scale-[0.97] text-base"
+              className="inline-flex items-center gap-2 text-white font-medium px-10 py-4 rounded-full text-base hero-btn-primary hero-pulse-ring cta-btn-upgrade"
+              style={{
+                background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)',
+                boxShadow: '0 0 0 1px rgba(123,111,238,0.4), 0 4px 24px rgba(108,92,231,0.4), inset 0 1px 0 rgba(255,255,255,0.18)',
+                height: 60,
+                fontSize: 16,
+              }}
             >
               Create Free Account
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -952,21 +1093,26 @@ const LandingPage = () => {
 
 
       {/* ────────────── FOOTER ────────────── */}
-      <footer className="border-t border-white/[0.06] py-8 px-6 bg-white dark:bg-land-dark-card">
+      <footer className="py-8 px-6 footer-upgrade">
+        {/* Footer top divider */}
+        <div className="section-divider-upgrade mb-8">
+          <div className="divider-glow" />
+          <div className="divider-line" />
+        </div>
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-sage flex items-center justify-center">
-              <span className="text-white font-bold text-[10px]">D</span>
-            </div>
-            <span className="text-gray-400 text-sm">&copy; 2026 DistractFree</span>
+            <img src="/favicon.svg" alt="DistractFree Logo" className="w-6 h-6 rounded-lg footer-logo-glow" />
+            <span className="text-sm" style={{color:'var(--tx-3, #55556e)'}}>&copy; 2026 DistractFree</span>
           </div>
-          <div className="flex gap-6 text-gray-400 text-sm">
-            <a href="#privacy" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">Privacy</a>
-            <a href="#terms" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">Terms</a>
-            <a href="#contact" className="hover:text-land-text dark:hover:text-land-dark-text transition-colors">Contact</a>
+          <div className="flex gap-6 text-sm" style={{color:'var(--tx-3, #55556e)'}}>
+            <a href="#privacy" className="hover:text-white transition-colors duration-200">Privacy</a>
+            <a href="#terms" className="hover:text-white transition-colors duration-200">Terms</a>
+            <a href="#contact" className="hover:text-white transition-colors duration-200">Contact</a>
           </div>
         </div>
       </footer>
+
+      </div>
     </div>
   );
 };

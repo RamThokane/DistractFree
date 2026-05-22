@@ -1,7 +1,9 @@
 const User = require('../models/User');
+const CoinTransaction = require('../models/CoinTransaction');
 const { generateToken } = require('../middleware/authMiddleware');
 const { verifyGoogleToken } = require('../config/googleAuth');
 const { validationResult } = require('express-validator');
+const { createNotification } = require('./notificationController');
 
 // ────────────────────────────────────────────────────
 // POST /api/auth/register
@@ -26,6 +28,23 @@ exports.register = async (req, res) => {
 
     const user = await User.create({ name, email, password });
     const token = generateToken(user._id);
+
+    // Welcome bonus: 20 starter coins (already set as default in schema)
+    await CoinTransaction.create({
+      userId: user._id,
+      type: 'bonus',
+      amount: 20,
+      balanceAfter: 20,
+      description: 'Welcome bonus — 20 starter Focus Coins!',
+    });
+
+    // Welcome notification
+    await createNotification(
+      user._id,
+      'welcome',
+      '🎉 Welcome to DistractFree!',
+      'You have received 20 starter Focus Coins. Start a focus session to earn more!'
+    );
 
     res.status(201).json({
       success: true,
@@ -136,6 +155,22 @@ exports.googleAuth = async (req, res) => {
         googleId: googleUser.googleId,
         avatar: googleUser.picture,
       });
+
+      // Welcome bonus for new Google users
+      await CoinTransaction.create({
+        userId: user._id,
+        type: 'bonus',
+        amount: 20,
+        balanceAfter: 20,
+        description: 'Welcome bonus — 20 starter Focus Coins!',
+      });
+
+      await createNotification(
+        user._id,
+        'welcome',
+        '🎉 Welcome to DistractFree!',
+        'You have received 20 starter Focus Coins. Start a focus session to earn more!'
+      );
     }
 
     const token = generateToken(user._id);

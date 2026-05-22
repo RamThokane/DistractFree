@@ -33,7 +33,7 @@ const userSchema = new mongoose.Schema(
     },
     focusCoins: {
       type: Number,
-      default: 0,
+      default: 20,
       min: 0,
     },
     currentStreak: {

@@ -18,6 +18,7 @@ const websiteRoutes = require('./routes/websiteRoutes');
 const coinRoutes = require('./routes/coinRoutes');
 const insightsRoutes = require('./routes/insightsRoutes');
 const browsingRoutes = require('./routes/browsingRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -85,6 +86,7 @@ app.use('/api/websites', websiteRoutes);
 app.use('/api/coins', coinRoutes);
 app.use('/api/insights', insightsRoutes);
 app.use('/api/browsing', browsingRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

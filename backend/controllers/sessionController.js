@@ -4,6 +4,7 @@ const User = require('../models/User');
 const BlockedWebsite = require('../models/BlockedWebsite');
 const CoinTransaction = require('../models/CoinTransaction');
 const { calculateCoins } = require('../utils/coinCalculator');
+const { createNotification } = require('./notificationController');
 
 // ────────────────────────────────────────────────────
 // POST /api/session/start
@@ -103,6 +104,27 @@ exports.endSession = async (req, res) => {
           description: `Completed ${session.duration}-min focus session (base: ${baseCoins}, streak: x${streakMultiplier}, penalty: -${Math.round(distractionPenalty * 100)}%)`,
           sessionId: session._id,
         });
+
+        // Notification: session complete
+        await createNotification(
+          userId,
+          'session_complete',
+          '✅ Focus Session Complete!',
+          `Great work! You focused for ${session.duration} minutes and earned ${totalCoins} Focus Coins.`,
+          { duration: session.duration, coins: totalCoins }
+        );
+      }
+
+      // Streak milestone notifications
+      const streakMilestones = [3, 7, 14, 21, 30, 50, 100];
+      if (streakMilestones.includes(user.currentStreak)) {
+        await createNotification(
+          userId,
+          'streak_milestone',
+          `🔥 ${user.currentStreak}-Day Streak!`,
+          `Amazing! You've maintained a ${user.currentStreak}-day focus streak. Keep it going!`,
+          { streak: user.currentStreak }
+        );
       }
     }
 
@@ -452,7 +474,7 @@ exports.getLeaderboard = async (req, res) => {
       });
     }
 
-    res.json({ success: true, leaderboard });
+    res.json({ success: true, leaderboard, currentUserRank: userInList?.rank || leaderboard.find(e => e.isCurrentUser)?.rank || null });
   } catch (error) {
     console.error('[Session] Leaderboard error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });

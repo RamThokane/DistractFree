@@ -18,7 +18,7 @@ html {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0F1115;
+  background: #0d0f17;
   color: #F0EEFF;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -61,7 +61,7 @@ body {
   background:
     radial-gradient(circle at top left, rgba(92,107,192,0.15), transparent 35%),
     radial-gradient(circle at bottom right, rgba(139,92,246,0.12), transparent 35%),
-    #0F1115;
+    #0d0f17;
   position: relative;
 }
 
@@ -219,33 +219,33 @@ body {
 /* ═══════════════════════════════════════════ */
 .land-card {
   background: rgba(26, 30, 36, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(12px);
-  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 .land-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(92, 107, 192, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  transform: translateY(-3px) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
 }
 
 .land-card-hover {
-  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 .land-card-hover:hover {
-  border-color: rgba(92, 107, 192, 0.15);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+  transform: translateY(-3px) !important;
 }
 
 /* Dark-mode variants (always dark now) */
 :is(.dark) .land-card,
 .land-card {
   background: rgba(26, 30, 36, 0.65);
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.07) !important;
 }
 
 .land-glass {
@@ -666,4 +666,159 @@ body {
   pointer-events: none;
   z-index: 9999;
   opacity: 0.3;
+}
+
+/* ═══════════════════════════════════════════ */
+/* ── DistractFree Visual Design Overhaul ──── */
+/* ═══════════════════════════════════════════ */
+
+/* Section custom transition styling */
+.hero-section {
+  position: relative;
+  background: radial-gradient(circle at top center, rgba(99, 82, 255, 0.12) 0%, transparent 60%), #0d0f17;
+  z-index: 1;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.problem-section {
+  background: linear-gradient(180deg, #0d0f17 0%, #111420 100%) !important;
+}
+
+.how-it-works-section {
+  background-color: #111420 !important;
+}
+
+.smart-blocking-section {
+  background: linear-gradient(180deg, #111420 0%, #0d0f17 100%) !important;
+}
+
+.product-section {
+  background: linear-gradient(180deg, #0d0f17 0%, #111420 100%) !important;
+}
+
+.ai-transparency-section {
+  background-color: #111420 !important;
+}
+
+.research-section {
+  background: linear-gradient(180deg, #111420 0%, #0d0f17 100%) !important;
+}
+
+.final-cta-section {
+  background-color: #0d0f17 !important;
+}
+
+/* Background Blur Blobs */
+.glow-blob-purple {
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 400px;
+  height: 400px;
+  background: rgba(99, 82, 255, 0.06);
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-blob-teal {
+  position: absolute;
+  top: 10%;
+  left: -150px;
+  width: 300px;
+  height: 300px;
+  background: rgba(29, 158, 117, 0.05);
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 3-Step Flow Connector */
+@media (min-width: 768px) {
+  .how-it-works-step {
+    position: relative;
+  }
+  
+  .how-it-works-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 96px; /* center of the h-48 (192px) card */
+    right: -20px; /* position it between cards */
+    width: 24px;
+    height: 1px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.2);
+    z-index: 10;
+  }
+}
+
+/* Comparison Highlight Card Glow */
+.distractfree-comparison-card {
+  box-shadow: 0 0 40px rgba(99, 82, 255, 0.15) !important;
+  border: 1px solid rgba(99, 82, 255, 0.3) !important;
+}
+
+/* CSS keyframe animations for hero section */
+@keyframes cssFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up-headline {
+  opacity: 0;
+  animation: cssFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-up-subtext {
+  opacity: 0;
+  animation: cssFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-up-ctas {
+  opacity: 0;
+  animation: cssFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Floating animation for dashboard mockup */
+@keyframes slowFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-dashboard-float {
+  animation: slowFloat 4s ease-in-out infinite;
+}
+
+/* Glowing pulsing border for "Start Free" CTA button */
+@keyframes glowPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 82, 255, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 2s infinite;
 }

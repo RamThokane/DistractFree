@@ -1,0 +1,389 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap");
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════
+   TAILWIND v4 — DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════ */
+@theme inline {
+  --color-background: #050508;
+  --color-foreground: #f0f0f5;
+  --color-surface-1: #0c0d16;
+  --color-surface-2: #111320;
+  --color-brand-purple: #7c6fef;
+  --color-brand-teal: #00d2c8;
+  --color-gold: #f5c842;
+  --color-text-primary: #f0f0f5;
+  --color-text-muted: rgba(240, 240, 245, 0.45);
+  --color-border-subtle: rgba(255, 255, 255, 0.055);
+  --color-border-hover: rgba(124, 111, 239, 0.35);
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CSS CUSTOM PROPERTIES
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg: #050508;
+  --surface-1: #0c0d16;
+  --surface-2: #11132060;
+  --purple: #7c6fef;
+  --teal: #00d2c8;
+  --gold: #f5c842;
+  --text: #f0f0f5;
+  --text-dim: rgba(240, 240, 245, 0.45);
+  --border: rgba(255, 255, 255, 0.055);
+  --border-hover: rgba(124, 111, 239, 0.35);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NOISE TEXTURE OVERLAY (feTurbulence)
+   ═══════════════════════════════════════════════════════════ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.022;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Shimmer gradient text */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* Float (dashboard mockup) */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+/* Pulse dot (green status) */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.6;
+  }
+}
+
+/* Aurora orb A */
+@keyframes aurora-a {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(-50px, 80px) scale(1.1);
+  }
+}
+
+/* Aurora orb B */
+@keyframes aurora-b {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(60px, -40px) scale(0.95);
+  }
+}
+
+/* Aurora orb C */
+@keyframes aurora-c {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(-30px, 50px) scale(1.05);
+  }
+}
+
+/* CTA ripple pulse */
+@keyframes ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 15px rgba(108, 92, 231, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+  }
+}
+
+/* Coin 3D flip */
+@keyframes coin-flip {
+  0%,
+  80% {
+    transform: perspective(400px) rotateY(0deg);
+  }
+  90% {
+    transform: perspective(400px) rotateY(180deg);
+  }
+  100% {
+    transform: perspective(400px) rotateY(360deg);
+  }
+}
+
+/* Bar chart grow */
+@keyframes bar-grow {
+  0% {
+    transform: scaleY(0);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+/* SVG dash draw */
+@keyframes dash-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Particle float upward */
+@keyframes particle-float {
+  0% {
+    transform: translateY(0px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-80px);
+    opacity: 0;
+  }
+}
+
+/* Confetti border shimmer */
+@keyframes confetti-border {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════ */
+
+/* Spring hover transition */
+.spring-hover {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Section gradient divider */
+.gradient-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06) 30%,
+    rgba(255, 255, 255, 0.06) 70%,
+    transparent
+  );
+}
+
+/* Glass surface for cards */
+.glass-surface {
+  background: rgba(12, 13, 22, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Shimmer text effect */
+.shimmer-text {
+  background: linear-gradient(90deg, #a29bfe, #ffffff, #7c6fef, #a29bfe);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+/* Float animation */
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+/* Pulse dot */
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Aurora orbs */
+.animate-aurora-a {
+  animation: aurora-a 18s ease-in-out infinite alternate;
+}
+.animate-aurora-b {
+  animation: aurora-b 22s ease-in-out infinite alternate;
+}
+.animate-aurora-c {
+  animation: aurora-c 14s ease-in-out infinite alternate;
+}
+
+/* Ripple */
+.animate-ripple {
+  animation: ripple 3s ease-out infinite;
+}
+
+/* Coin flip */
+.animate-coin-flip {
+  animation: coin-flip 4s ease-in-out infinite;
+}
+
+/* Bar grow */
+.animate-bar-grow {
+  animation: bar-grow 1s ease-out forwards;
+  transform-origin: bottom;
+}
+
+/* Particle float */
+.animate-particle {
+  animation: particle-float 4s ease-in-out infinite;
+}
+
+/* Confetti border */
+.confetti-border {
+  position: relative;
+}
+.confetti-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    90deg,
+    #7c6fef,
+    #00d2c8,
+    #f5c842,
+    #7c6fef,
+    #00d2c8
+  );
+  background-size: 300% 100%;
+  animation: confetti-border 4s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* Dot grid pattern */
+.dot-grid {
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.07) 1px,
+    transparent 1px
+  );
+  background-size: 40px 40px;
+  opacity: 0.5;
+  mask-image: linear-gradient(to bottom, black 50%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent);
+}
+
+/* Mesh gradient background */
+.mesh-gradient {
+  background: radial-gradient(
+      ellipse 70% 40% at 50% -5%,
+      rgba(124, 111, 239, 0.2),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 50% 50% at -10% 100%,
+      rgba(0, 210, 200, 0.1),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 40% 60% at 110% 40%,
+      rgba(124, 111, 239, 0.07),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 50% 50%,
+      rgba(11, 12, 25, 1),
+      transparent
+    );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050508;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 111, 239, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 111, 239, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SELECTION
+   ═══════════════════════════════════════════════════════════ */
+::selection {
+  background: rgba(124, 111, 239, 0.3);
+  color: #f0f0f5;
+}

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useCoins } from '../context/CoinContext';
 import { getGreeting } from '../utils/helpers';
+import api from '../services/api';
 import {
   HiOutlineHome,
   HiOutlineClock,
@@ -34,6 +35,46 @@ const TopNavbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      if (res.data.success) {
+        setNotifications(res.data.notifications);
+        setUnreadCount(res.data.unreadCount);
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // refresh every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await api.patch(`/notifications/${id}/read`);
+      fetchNotifications();
+    } catch (err) {
+      console.error('Failed to mark as read', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await api.patch('/notifications/read-all');
+      fetchNotifications();
+    } catch (err) {
+      console.error('Failed to mark all as read', err);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -62,9 +103,7 @@ const TopNavbar = () => {
         <div className="relative max-w-[1280px] mx-auto h-full px-6 flex items-center justify-between">
           {/* Left — Logo + Brand */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm" style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}>
-              <span className="text-white font-bold text-sm">D</span>
-            </div>
+            <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-lg shadow-sm" />
             <span className="text-white font-semibold text-base tracking-tight hidden sm:block">
               DistractFree
             </span>
@@ -124,13 +163,82 @@ const TopNavbar = () => {
             </div>
 
             {/* Notification Bell */}
-            <button
-              className="relative p-2 rounded-xl hover:bg-white/[0.06] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              aria-label="Notifications"
-            >
-              <HiOutlineBell className="w-[18px] h-[18px] text-gray-400" />
-              <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-            </button>
+            <div className="relative">
+              <button
+                className="relative p-2 rounded-xl hover:bg-white/[0.06] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                onClick={() => setShowNotifications(!showNotifications)}
+                aria-label="Notifications"
+              >
+                <HiOutlineBell className="w-[18px] h-[18px] text-gray-400" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 min-w-[14px] h-[14px] bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white px-0.5 border-2 border-[#0F1115]">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Dropdown */}
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-80 bg-[#14171C] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden z-50"
+                  >
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                      <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-sm text-gray-500">
+                          No notifications yet.
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif._id}
+                            className={`px-4 py-3 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors ${
+                              !notif.read ? 'bg-indigo-500/[0.03]' : ''
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <p className={`text-sm font-medium ${!notif.read ? 'text-white' : 'text-gray-300'}`}>
+                                  {notif.title}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                  {notif.message}
+                                </p>
+                                <span className="text-[10px] text-gray-600 mt-1.5 block">
+                                  {new Date(notif.createdAt).toLocaleDateString()} {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              {!notif.read && (
+                                <button
+                                  onClick={() => handleMarkAsRead(notif._id)}
+                                  className="w-2.5 h-2.5 rounded-full bg-indigo-500 flex-shrink-0 mt-1 hover:bg-indigo-400"
+                                  title="Mark as read"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Profile Avatar */}
             <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center cursor-pointer hover:bg-indigo-500/30 transition-colors duration-200">
@@ -183,9 +291,7 @@ const TopNavbar = () => {
               {/* Drawer Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}>
-                    <span className="text-white font-bold text-sm">D</span>
-                  </div>
+                  <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-lg" />
                   <span className="text-white font-semibold text-sm">DistractFree</span>
                 </div>
                 <button

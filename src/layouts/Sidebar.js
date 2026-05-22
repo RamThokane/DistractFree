@@ -40,9 +40,7 @@ const Sidebar = () => {
       {/* Logo */}
       <div className="px-6 pt-8 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-sage flex items-center justify-center">
-            <span className="text-white font-bold text-sm">D</span>
-          </div>
+          <img src="/favicon.svg" alt="DistractFree Logo" className="w-9 h-9 rounded-xl" />
           <span className="text-dash-text font-semibold text-lg tracking-tight">DistractFree</span>
         </div>
       </div>

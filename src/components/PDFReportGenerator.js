@@ -125,9 +125,7 @@ const PDFReportGenerator = ({ user }) => {
             {/* 1. Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
-                  <span className="text-white font-bold text-xl">D</span>
-                </div>
+                <img src="/favicon.svg" alt="DistractFree Logo" className="w-12 h-12 rounded-xl shadow-lg" />
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight">DistractFree Productivity Report</h1>
                   <p className="text-gray-400 text-sm">Generated for {user?.name || 'User'} • {new Date().toLocaleDateString()}</p>
