@@ -177,6 +177,23 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
                     {item.label}
                   </button>
                 ))}
+                <a
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); setMobileOpen(false); }}
+                  className={`
+                    w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150
+                    ${isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50'}
+                  `}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M21.17 8H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    <path d="M3.95 6.06L8.54 14.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    <path d="M10.88 21.94L15.46 13.88" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  Add to Chrome
+                </a>
               </div>
             </motion.div>
           </>

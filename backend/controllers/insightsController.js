@@ -38,13 +38,14 @@ const {
 exports.getFullInsights = async (req, res) => {
   try {
     const userId = req.user._id;
+    const tz = req.query.tz || 'UTC'; // User's IANA timezone (e.g. 'Asia/Kolkata')
 
     // Run all analytics in parallel for performance
     const [features, productivity, distraction, trends, breakdown, topSites] = await Promise.all([
       computeUserFeatures(userId, 7),
-      getProductivityWindows(userId, 30),
-      getHighDistractionHours(userId, 30),
-      getTrendAnalytics(userId, 7),
+      getProductivityWindows(userId, 30, tz),
+      getHighDistractionHours(userId, 30, tz),
+      getTrendAnalytics(userId, 7, tz),
       getDistractionBreakdown(userId, 7),
       getTopSites(userId, 7),
     ]);
@@ -84,8 +85,7 @@ exports.getFullInsights = async (req, res) => {
     );
     const sessionRec = getSessionRecommendation(features, productivity);
 
-    // ── Model Performance (from training metrics) ──
-    const modelPerformance = _getModelPerformance();
+
 
     // ── Decision path explanation ──────────────────
     const explanation = _buildExplanation(features, mlPrediction.riskLevel, topFeatures);
@@ -131,9 +131,6 @@ exports.getFullInsights = async (req, res) => {
 
       // Top sites
       topSites,
-
-      // Model info
-      modelPerformance,
 
       // Meta
       dataStatus: {
@@ -431,43 +428,7 @@ function _buildExplanation(features, riskLevel, topFeatures) {
   return explanation;
 }
 
-/**
- * Return the model's training performance metrics.
- * These come from the actual trained model metadata.
- */
-function _getModelPerformance() {
-  // Read from the model file if available
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const metaPath = path.resolve(__dirname, '..', 'ml', 'model', 'model_metadata.json');
 
-    if (fs.existsSync(metaPath)) {
-      const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
-      return {
-        accuracy: meta.accuracy || null,
-        precision: meta.precision || null,
-        recall: meta.recall || null,
-        f1Score: meta.f1_score || null,
-        trainedAt: meta.trained_at || null,
-        trainingSamples: meta.training_samples || null,
-        modelType: 'Decision Tree Classifier',
-      };
-    }
-  } catch (err) {
-    // Ignore
-  }
-
-  return {
-    accuracy: null,
-    precision: null,
-    recall: null,
-    f1Score: null,
-    trainedAt: null,
-    trainingSamples: null,
-    modelType: 'Decision Tree Classifier (Awaiting Training Data)',
-  };
-}
 
 // ────────────────────────────────────────────────────
 // GET /api/insights/heatmap

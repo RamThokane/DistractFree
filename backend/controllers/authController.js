@@ -129,7 +129,8 @@ exports.googleAuth = async (req, res) => {
 
     const googleUser = await verifyGoogleToken(credential);
 
-    if (!googleUser.emailVerified) {
+    // emailVerified might be undefined in some cases, so explicitly check for false
+    if (googleUser.emailVerified === false) {
       return res.status(401).json({
         success: false,
         message: 'Google email not verified',
@@ -149,11 +150,14 @@ exports.googleAuth = async (req, res) => {
         await user.save();
       }
     } else {
+      // Fallback name if missing from Google profile
+      const name = googleUser.name || googleUser.email.split('@')[0];
+      
       user = await User.create({
-        name: googleUser.name,
+        name: name.length > 60 ? name.substring(0, 60) : name,
         email: googleUser.email,
         googleId: googleUser.googleId,
-        avatar: googleUser.picture,
+        avatar: googleUser.picture || '',
       });
 
       // Welcome bonus for new Google users

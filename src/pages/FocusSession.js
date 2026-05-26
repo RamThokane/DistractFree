@@ -112,6 +112,8 @@ const FocusSession = () => {
           if (coins > 0) {
             refreshCoins();
           }
+          // Show alert to user
+          setTimeout(() => alert('✅ Focus Session Complete! Great job!'), 100);
         }
       } catch (err) {
         console.error('[FocusSession] Complete error:', err);

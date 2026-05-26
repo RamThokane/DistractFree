@@ -69,9 +69,8 @@ exports.endSession = async (req, res) => {
     }
 
     session.endTime = new Date();
-    session.duration = Math.round(
-      (session.endTime - session.startTime) / (1000 * 60) // minutes
-    );
+    const actualMinutes = Math.round((session.endTime - session.startTime) / (1000 * 60));
+    session.duration = Math.min(actualMinutes, session.plannedDuration);
 
     if (cancelled) {
       session.status = 'cancelled';
@@ -81,11 +80,14 @@ exports.endSession = async (req, res) => {
 
       // Calculate coins
       const user = await User.findById(userId);
-      const { totalCoins, baseCoins, streakMultiplier, distractionPenalty } = calculateCoins(
+      const { baseCoins, streakMultiplier, distractionPenalty, totalCoins } = calculateCoins(
         session.duration,
         user.currentStreak,
         session.distractionAttempts
       );
+
+      const afterStreak = Math.round(baseCoins * streakMultiplier);
+      const lostCoins = afterStreak - totalCoins;
 
       session.coinsEarned = totalCoins;
 
@@ -95,15 +97,27 @@ exports.endSession = async (req, res) => {
       await user.save();
 
       // Record transaction
-      if (totalCoins > 0) {
+      if (afterStreak > 0) {
         await CoinTransaction.create({
           userId,
           type: 'earned',
-          amount: totalCoins,
-          balanceAfter: user.focusCoins,
-          description: `Completed ${session.duration}-min focus session (base: ${baseCoins}, streak: x${streakMultiplier}, penalty: -${Math.round(distractionPenalty * 100)}%)`,
+          amount: afterStreak,
+          balanceAfter: user.focusCoins + lostCoins, // Pre-penalty balance
+          description: `Completed ${session.duration}-min focus session (base: ${baseCoins}, streak: x${streakMultiplier})`,
           sessionId: session._id,
         });
+
+        if (lostCoins > 0) {
+          await CoinTransaction.create({
+            userId,
+            type: 'penalty',
+            amount: -lostCoins,
+            balanceAfter: user.focusCoins,
+            description: `Distraction penalty (-${Math.round(distractionPenalty * 100)}%)`,
+            sessionId: session._id,
+          });
+        }
+      }
 
         // Notification: session complete
         await createNotification(
@@ -113,7 +127,6 @@ exports.endSession = async (req, res) => {
           `Great work! You focused for ${session.duration} minutes and earned ${totalCoins} Focus Coins.`,
           { duration: session.duration, coins: totalCoins }
         );
-      }
 
       // Streak milestone notifications
       const streakMilestones = [3, 7, 14, 21, 30, 50, 100];
@@ -424,7 +437,7 @@ exports.getLeaderboard = async (req, res) => {
           totalSessions: { $sum: 1 },
         },
       },
-      { $sort: { totalMinutes: -1, totalCoins: -1 } },
+      { $sort: { totalMinutes: -1, totalCoins: -1, _id: 1 } },
       { $limit: 50 },
     ]);
 

@@ -267,7 +267,7 @@ const LoginPage = () => {
 
           {/* Floating Element 1 - Timer */}
           <motion.div 
-            className="absolute z-30 top-[12%] right-[-5%] w-64 rounded-2xl bg-[#1A1D24]/95 backdrop-blur-2xl border border-white/[0.1] p-5 shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+            className="absolute z-30 top-[3%] right-[2%] w-56 rounded-2xl bg-[#1A1D24]/95 backdrop-blur-2xl border border-white/[0.1] p-4 shadow-[0_20px_40px_rgba(0,0,0,0.5)] scale-[0.85]"
             initial={{ opacity: 0, x: 40, rotate: 5 }}
             animate={{ opacity: 1, x: 0, rotate: 0 }}
             transition={{ type: "spring", damping: 20, stiffness: 100, delay: 0.5 }}
@@ -291,7 +291,7 @@ const LoginPage = () => {
 
           {/* Floating Element 2 - Notification */}
           <motion.div 
-            className="absolute z-30 bottom-[15%] left-[-8%] w-72 rounded-2xl bg-[#1A1D24]/95 backdrop-blur-2xl border border-white/[0.1] p-4 shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+            className="absolute z-30 bottom-[5%] left-[2%] w-64 rounded-2xl bg-[#1A1D24]/95 backdrop-blur-2xl border border-white/[0.1] p-3.5 shadow-[0_20px_40px_rgba(0,0,0,0.5)] scale-[0.85]"
             initial={{ opacity: 0, x: -40, y: 20 }}
             animate={{ opacity: 1, x: 0, y: 0 }}
             transition={{ type: "spring", damping: 20, stiffness: 100, delay: 0.7 }}

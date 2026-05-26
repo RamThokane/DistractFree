@@ -36,7 +36,7 @@ const CustomTooltip = memo(({ active, payload, label }) => {
 CustomTooltip.displayName = 'CustomTooltip';
 
 /* ── Metric Card Component ── */
-const MetricCard = memo(({ icon: Icon, iconBg, iconColor, label, value, suffix, delay }) => (
+const MetricCard = memo(({ icon: Icon, iconBg, iconColor, label, sublabel, value, suffix, delay }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -49,6 +49,7 @@ const MetricCard = memo(({ icon: Icon, iconBg, iconColor, label, value, suffix, 
       </div>
       <div>
         <p className="text-sm text-gray-500 mb-0.5">{label}</p>
+        {sublabel && <p className="text-[10px] text-gray-400 -mt-1 mb-1">{sublabel}</p>}
         <div className="flex items-baseline gap-1">
           <AnimatedCounter value={value} className="text-2xl font-bold text-gray-900" />
           {suffix && <span className="text-gray-400 text-sm font-medium">{suffix}</span>}
@@ -312,6 +313,7 @@ const DashboardHome = () => {
             iconBg="bg-indigo-50"
             iconColor="text-indigo-500"
             label="AI Focus Score"
+            sublabel="(Based on last session)"
             value={aiFocusScore}
             suffix="/100"
             delay={0.24}

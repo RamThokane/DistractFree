@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import GlassNavbar from '../components/GlassNavbar';
+import HowItWorksWalkthrough from '../components/HowItWorksWalkthrough';
 import '../styles/landing.css';
 
 /* ── 6-Layer Background System ── */
@@ -201,7 +202,7 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen landing-bg text-white antialiased relative overflow-hidden" style={{ background: 'var(--bg-void, #03040a)' }}>
+    <div className="min-h-screen landing-bg text-white antialiased relative overflow-clip" style={{ background: 'var(--bg-void, #03040a)' }}>
       {/* 6-Layer Background System */}
       <BackgroundSystem />
       <BackgroundVisuals />
@@ -229,6 +230,20 @@ const LandingPage = () => {
           />
 
           <div className="flex items-center gap-3">
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); }}
+              className="hidden sm:flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-200"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M21.17 8H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M3.95 6.06L8.54 14.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M10.88 21.94L15.46 13.88" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              Add to Chrome
+            </a>
             <Link
               to="/login"
               className="text-sm font-medium text-gray-400 hover:text-white transition-colors duration-200"
@@ -347,7 +362,7 @@ const LandingPage = () => {
       <section className="relative z-10 py-[72px] px-6 problem-section">
         <div className="max-w-6xl mx-auto">
           <motion.h2
-            className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-16 max-w-2xl section-headline-upgrade"
+            className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-16 max-w-2xl mx-auto text-center section-headline-upgrade"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
@@ -359,7 +374,7 @@ const LandingPage = () => {
           </motion.h2>
 
           <motion.div
-            className="grid md:grid-cols-2 gap-6 max-w-4xl"
+            className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
@@ -420,159 +435,10 @@ const LandingPage = () => {
 
 
       {/* ═══════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3 — HOW IT WORKS                               */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="relative z-10 py-24 px-6 how-it-works-section">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            className="mb-16"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={fadeUp}
-          >
-            <p className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade" style={{letterSpacing:'2px'}}>How it works</p>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white max-w-lg section-headline-upgrade">
-              Three steps to sustainable focus.
-            </h2>
-          </motion.div>
-
-          <motion.div
-            className="grid md:grid-cols-3 gap-8"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-40px' }}
-            variants={stagger}
-            style={{ position: 'relative' }}
-          >
-            {/* Step 1 */}
-            <motion.div variants={fadeUp} className="how-it-works-step">
-              <div className="land-card land-card-upgrade mocklet-upgrade rounded-2xl p-6 mb-5 h-48 flex items-end">
-                {/* Mini timer mockup */}
-                <div className="w-full">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-land-muted font-medium">Focus Session</span>
-                    <span className="text-xs text-sage font-medium" style={{fontFamily:'monospace'}}>25:00</span>
-                  </div>
-                  <div className="w-full h-2 bg-white/[0.04] rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-sage rounded-full progress-fill-shimmer"
-                      initial={{ width: 0 }}
-                      whileInView={{ width: '65%' }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1.5, ease: 'easeOut', delay: 0.3 }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 mt-4">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center step-number-badge" style={{border: '1px solid var(--bd-brand, rgba(123,111,238,0.28))'}}>
-                      <svg className="w-3.5 h-3.5 text-sage" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center" style={{background:'var(--bg-overlay, #191d38)',border:'1px solid var(--bd-1, rgba(255,255,255,0.042))'}}>
-                      <svg className="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-baseline gap-3 mb-2">
-                <span className="text-sm font-medium" style={{color:'var(--brand, #7b6fee)'}}>
-                  <span className="step-number-badge inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold" style={{background:'var(--brand-subtle)',border:'1px solid var(--bd-brand)'}}>1</span>
-                </span>
-                <h3 className="text-lg font-semibold text-white">Start a Focus Session</h3>
-              </div>
-              <p className="text-gray-400 text-[15px] leading-relaxed pl-9">
-                Choose your duration, hit start, and enter a distraction-aware focus state.
-              </p>
-            </motion.div>
-
-            {/* Step 2 — Featured */}
-            <motion.div variants={fadeUp} className="how-it-works-step">
-              <div className="land-card land-card-upgrade mocklet-upgrade rounded-2xl p-6 mb-5 h-48 flex items-end">
-                {/* Mini coins mockup */}
-                <div className="w-full">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-land-muted font-medium">Session Complete</span>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-xl p-3" style={{background:'rgba(123,111,238,0.06)'}}>
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg" style={{background:'linear-gradient(135deg,#f0c040,#e8a020)'}}>
-                      <span style={{fontSize:18}}>$</span>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-base" style={{color:'var(--gold, #f0c040)'}}>+20 Focus Coins</p>
-                      <p className="text-xs" style={{color:'var(--teal, #00d4c8)'}}>25 min focused session</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{background:'rgba(240,192,64,0.15)'}}>
-                      <div className="h-full w-3/4 rounded-full progress-fill-shimmer" style={{background:'linear-gradient(90deg, #e8a020, #f0c040)'}} />
-                    </div>
-                    <span className="text-[10px] text-land-muted">340 total</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-baseline gap-3 mb-2">
-                <span className="text-sm font-medium" style={{color:'var(--brand, #7b6fee)'}}>
-                  <span className="step-number-badge inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold" style={{background:'var(--brand-subtle)',border:'1px solid var(--bd-brand)'}}>2</span>
-                </span>
-                <h3 className="text-lg font-semibold text-white">Earn Focus Coins</h3>
-              </div>
-              <p className="text-gray-400 text-[15px] leading-relaxed pl-9">
-                Every focused minute earns coins. Longer sessions are worth more — consistency is rewarded.
-              </p>
-            </motion.div>
-
-            {/* Step 3 */}
-            <motion.div variants={fadeUp} className="how-it-works-step">
-              <div className="land-card land-card-upgrade mocklet-upgrade rounded-2xl p-6 mb-5 h-48 flex items-end">
-                {/* Mini unlock mockup */}
-                <div className="w-full">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-land-muted font-medium">Unlock Break</span>
-                  </div>
-                  <div className="space-y-2">
-                    {[
-                      { mins: '5 min', cost: 10, active: true },
-                      { mins: '15 min', cost: 25, active: false },
-                      { mins: '30 min', cost: 50, active: false },
-                    ].map((opt1, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs ${
-                          opt1.active ? '' : ''
-                        }`}
-                        style={{
-                          background: opt1.active ? 'var(--brand-subtle, rgba(123,111,238,0.07))' : 'var(--bg-float, #13162c)',
-                          border: opt1.active ? '1px solid var(--bd-brand, rgba(123,111,238,0.28))' : '1px solid var(--bd-1, rgba(255,255,255,0.042))',
-                          borderLeft: opt1.active ? '3px solid var(--brand, #7b6fee)' : undefined,
-                        }}
-                      >
-                        <span className={opt1.active ? 'font-medium' : ''} style={{color: opt1.active ? 'var(--tx-1, #eeeef5)' : 'var(--tx-2, #8f8faa)'}}>
-                          {opt1.mins} break
-                        </span>
-                        <span className="flex items-center gap-1" style={{color: opt1.active ? 'var(--gold, #f0c040)' : 'var(--tx-3, #55556e)'}}>
-                          <span style={{width:8,height:8,borderRadius:'50%',background:'#f0c040',display:'inline-block'}} /> {opt1.cost}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-baseline gap-3 mb-2">
-                <span className="text-sm font-medium" style={{color:'var(--brand, #7b6fee)'}}>
-                  <span className="step-number-badge inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold" style={{background:'var(--brand-subtle)',border:'1px solid var(--bd-brand)'}}>3</span>
-                </span>
-                <h3 className="text-lg font-semibold text-white">Unlock breaks intentionally</h3>
-              </div>
-              <p className="text-gray-400 text-[15px] leading-relaxed pl-9">
-                Spend coins on controlled break time. You choose when — it's always your decision.
-              </p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
+      <HowItWorksWalkthrough />
 
       <SectionDivider />
 
@@ -861,7 +727,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       <section className="relative z-10 py-24 px-6 ai-transparency-section">
         <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-16 items-stretch">
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -927,7 +793,7 @@ const LandingPage = () => {
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <div className="land-card land-card-upgrade rounded-2xl p-6">
+              <div className="land-card land-card-upgrade rounded-2xl p-6 h-full flex flex-col justify-center">
                 <p className="text-sm font-medium text-white mb-1">Distraction Risk by Time</p>
                 <p className="text-xs text-gray-400 mb-4">AI-generated from your last 30 days</p>
                 <ResponsiveContainer width="100%" height={200}>
@@ -1041,6 +907,14 @@ const LandingPage = () => {
         {/* Floating particles */}
         <CTAParticles />
 
+        {/* Animated floating shapes */}
+        <div className="cta-floating-shapes">
+          <div className="cta-shape cta-shape-1" />
+          <div className="cta-shape cta-shape-2" />
+          <div className="cta-shape cta-shape-3" />
+          <div className="cta-shape cta-shape-4" />
+        </div>
+
         <motion.div
           className="max-w-2xl mx-auto text-center relative z-10"
           initial="hidden"
@@ -1092,6 +966,7 @@ const LandingPage = () => {
       </section>
 
 
+
       {/* ────────────── FOOTER ────────────── */}
       <footer className="py-8 px-6 footer-upgrade">
         {/* Footer top divider */}
@@ -1107,7 +982,7 @@ const LandingPage = () => {
           <div className="flex gap-6 text-sm" style={{color:'var(--tx-3, #55556e)'}}>
             <a href="#privacy" className="hover:text-white transition-colors duration-200">Privacy</a>
             <a href="#terms" className="hover:text-white transition-colors duration-200">Terms</a>
-            <a href="#contact" className="hover:text-white transition-colors duration-200">Contact</a>
+            <a href="mailto:thokaneram@gmail.com?subject=DistractFree%20Query" className="hover:text-white transition-colors duration-200">Contact</a>
           </div>
         </div>
       </footer>

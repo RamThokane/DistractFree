@@ -153,7 +153,7 @@ const TopNavbar = () => {
             {/* Streak Badge */}
             <div className="hidden sm:flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full px-3 py-1.5">
               <HiOutlineFire className="w-3.5 h-3.5 text-orange-400" />
-              <span className="text-orange-400 text-xs font-semibold">{user?.streak || 0}</span>
+              <span className="text-orange-400 text-xs font-semibold">{user?.currentStreak || 0}</span>
             </div>
 
             {/* Coins Badge */}
@@ -310,7 +310,7 @@ const TopNavbar = () => {
                 <div className="flex items-center gap-3 mt-2">
                   <div className="flex items-center gap-1 text-xs">
                     <HiOutlineFire className="w-3.5 h-3.5 text-orange-400" />
-                    <span className="text-orange-400 font-medium">{user?.streak || 0}</span>
+                    <span className="text-orange-400 font-medium">{user?.currentStreak || 0}</span>
                   </div>
                   <div className="flex items-center gap-1 text-xs">
                     <span>🪙</span>

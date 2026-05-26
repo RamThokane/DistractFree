@@ -44,7 +44,7 @@ function formatHourRange(startHour) {
  * Analyse which hours of the day yield the best and worst focus performance.
  * Uses real session data: completion rate, distraction rate, average duration.
  */
-async function getProductivityWindows(userId, days = 30) {
+async function getProductivityWindows(userId, days = 30, tz = 'UTC') {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
@@ -58,7 +58,7 @@ async function getProductivityWindows(userId, days = 30) {
     },
     {
       $group: {
-        _id: { $hour: '$startTime' },
+        _id: { $hour: { date: '$startTime', timezone: tz } },
         totalSessions: { $sum: 1 },
         completedSessions: {
           $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] },
@@ -158,7 +158,7 @@ async function getProductivityWindows(userId, days = 30) {
 /**
  * Identify time windows with the highest distraction risk based on real data.
  */
-async function getHighDistractionHours(userId, days = 30) {
+async function getHighDistractionHours(userId, days = 30, tz = 'UTC') {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
@@ -173,7 +173,7 @@ async function getHighDistractionHours(userId, days = 30) {
     },
     {
       $group: {
-        _id: { $hour: '$timestamp' },
+        _id: { $hour: { date: '$timestamp', timezone: tz } },
         blockedAttempts: { $sum: 1 },
         unlockAttempts: { $sum: { $cond: ['$wasUnlocked', 1, 0] } },
       },
@@ -192,7 +192,7 @@ async function getHighDistractionHours(userId, days = 30) {
     },
     {
       $group: {
-        _id: { $hour: '$startTime' },
+        _id: { $hour: { date: '$startTime', timezone: tz } },
         totalDistractions: { $sum: '$distractionAttempts' },
         totalTabSwitches: { $sum: '$tabSwitches' },
         cancelledSessions: {
@@ -260,7 +260,7 @@ async function getHighDistractionHours(userId, days = 30) {
 // ═══════════════════════════════════════════════════
 // 7-DAY TREND ANALYTICS
 // ═══════════════════════════════════════════════════
-async function getTrendAnalytics(userId, days = 7) {
+async function getTrendAnalytics(userId, days = 7, tz = 'UTC') {
   const since = new Date();
   since.setDate(since.getDate() - days);
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -275,7 +275,7 @@ async function getTrendAnalytics(userId, days = 7) {
     },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime' } },
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime', timezone: tz } },
         completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
         cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
         totalMinutes: { $sum: '$duration' },
@@ -298,7 +298,7 @@ async function getTrendAnalytics(userId, days = 7) {
     },
     {
       $group: {
-        _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp', timezone: tz } },
         attempts: { $sum: 1 },
         unlocks: { $sum: { $cond: ['$wasUnlocked', 1, 0] } },
       },
@@ -313,8 +313,9 @@ async function getTrendAnalytics(userId, days = 7) {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    const dayName = dayNames[d.getDay()];
+    // Format date in user's timezone to match the $dateToString output
+    const dateStr = d.toLocaleDateString('en-CA', { timeZone: tz }); // en-CA gives YYYY-MM-DD
+    const dayName = dayNames[new Date(d.toLocaleString('en-US', { timeZone: tz })).getDay()];
     const sessionDay = sessionTrend.find((r) => r._id === dateStr);
     const distractionDay = distractionTrend.find((r) => r._id === dateStr);
 

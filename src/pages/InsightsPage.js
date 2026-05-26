@@ -72,7 +72,8 @@ const InsightsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get('/insights/full');
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const res = await api.get(`/insights/full?tz=${encodeURIComponent(tz)}`);
       if (res.data?.success) setData(res.data);
       else setError('Failed to load insights');
     } catch (err) {
@@ -96,7 +97,7 @@ const InsightsPage = () => {
   );
   if (!data || !data.dataStatus?.hasSessions) return <PageTransition><EmptyInsights /></PageTransition>;
 
-  const { prediction, features, breakdown, productivityWindows, distractionHours, recommendations, sessionRecommendation, trends, topSites, modelPerformance, dataStatus } = data;
+  const { prediction, features, breakdown, productivityWindows, distractionHours, recommendations, sessionRecommendation, trends, topSites, dataStatus } = data;
   const riskColor = riskColors[prediction?.riskLevel] || '#9CA3AF';
 
   return (
@@ -123,6 +124,7 @@ const InsightsPage = () => {
             <GlassCard className="text-center">
               <p className="text-[#8B8AA8] text-xs mb-1">Focus Score</p>
               <p className="text-[#3FAE6A] font-bold text-2xl">{prediction?.focusScore || 0}<span className="text-sm text-[#8B8AA8]">/100</span></p>
+              <p className="text-[#8B8AA8] text-[10px] mt-0.5">(Based on 7-day avg)</p>
             </GlassCard>
             <GlassCard className="text-center col-span-2 lg:col-span-1">
               <p className="text-[#8B8AA8] text-xs mb-1">Sessions</p>
@@ -392,40 +394,7 @@ const InsightsPage = () => {
           </motion.div>
         )}
 
-        {/* ═══ H. MODEL PERFORMANCE ═══ */}
-        {modelPerformance && (
-          <motion.div variants={itemV}>
-            <h2 className="text-[#F0EEFF] font-semibold text-xl mb-4 flex items-center gap-2">⚙️ Model Performance</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              {[
-                { label: 'Accuracy', val: modelPerformance.accuracy, color: '#3FAE6A' },
-                { label: 'Precision', val: modelPerformance.precision, color: '#60A5FA' },
-                { label: 'Recall', val: modelPerformance.recall, color: '#F5B638' },
-                { label: 'F1 Score', val: modelPerformance.f1Score, color: '#7C5CFC' },
-              ].map((m, i) => (
-                <GlassCard key={i} className="text-center">
-                  <p className="text-[#8B8AA8] text-xs mb-1">{m.label}</p>
-                  <p className="font-bold text-2xl" style={{ color: m.color }}>{m.val != null ? `${m.val}%` : 'N/A'}</p>
-                </GlassCard>
-              ))}
-            </div>
-            <GlassCard padding="p-4" className="border-[rgba(124,92,252,0.15)]">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl flex-shrink-0">🤖</span>
-                <div>
-                  <h3 className="text-[#F0EEFF] font-semibold mb-1">How our AI works</h3>
-                  <p className="text-[#8B8AA8] text-sm leading-relaxed">
-                    DistractFree uses a <strong className="text-[#C4C1E0]">{modelPerformance.modelType}</strong> trained on session behavior data.
-                    It analyzes your session duration, tab switches, interruptions, and blocked site attempts
-                    to predict distraction risk. All predictions are computed in real-time.
-                    {modelPerformance.trainingSamples && ` Trained on ${modelPerformance.trainingSamples} samples.`}
-                    {!dataStatus?.hasEnoughData && ' Predictions will become more accurate as you complete more sessions.'}
-                  </p>
-                </div>
-              </div>
-            </GlassCard>
-          </motion.div>
-        )}
+
 
       </motion.div>
     </PageTransition>
