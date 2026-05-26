@@ -27,6 +27,7 @@ exports.startSession = async (req, res) => {
       return res.status(409).json({
         success: false,
         message: 'You already have an active focus session',
+        serverTime: new Date().toISOString(),
         session: activeSession,
       });
     }
@@ -44,6 +45,7 @@ exports.startSession = async (req, res) => {
 
     res.status(201).json({
       success: true,
+      serverTime: new Date().toISOString(),
       session,
     });
   } catch (error) {
@@ -218,6 +220,7 @@ exports.getActiveSession = async (req, res) => {
 
     res.json({
       success: true,
+      serverTime: new Date().toISOString(),
       session: session || null,
     });
   } catch (error) {

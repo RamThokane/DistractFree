@@ -320,9 +320,12 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
       body: JSON.stringify({ plannedDuration }),
     });
 
+    const serverTime = data.serverTime ? new Date(data.serverTime).getTime() : Date.now();
+    const elapsedSecs = Math.max(0, Math.floor((serverTime - new Date(data.session.startTime).getTime()) / 1000));
+
     activeSession = {
       sessionId: data.session._id,
-      startTime: Date.now(),
+      startTime: Date.now() - (elapsedSecs * 1000),
       plannedDuration,
       blockedSites: selectedSiteIds || data.session.blockedSitesUsed,
     };
@@ -350,9 +353,12 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
       try {
         const activeData = await apiRequest('/session/active');
         if (activeData && activeData.session) {
+          const serverTime = activeData.serverTime ? new Date(activeData.serverTime).getTime() : Date.now();
+          const elapsedSecs = Math.max(0, Math.floor((serverTime - new Date(activeData.session.startTime).getTime()) / 1000));
+
           activeSession = {
             sessionId: activeData.session._id,
-            startTime: new Date(activeData.session.startTime).getTime(),
+            startTime: Date.now() - (elapsedSecs * 1000),
             plannedDuration: activeData.session.plannedDuration,
             blockedSites: activeData.session.blockedSitesUsed || [],
           };

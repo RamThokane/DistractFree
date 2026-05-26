@@ -69,8 +69,9 @@ const FocusSession = () => {
       // If session already exists, try to resume
       if (err.response?.status === 409 && err.response?.data?.session) {
         const existingSession = err.response.data.session;
+        const serverTime = err.response.data.serverTime ? new Date(err.response.data.serverTime).getTime() : Date.now();
         setActiveSessionId(existingSession._id);
-        const elapsedSecs = Math.floor((Date.now() - new Date(existingSession.startTime).getTime()) / 1000);
+        const elapsedSecs = Math.floor((serverTime - new Date(existingSession.startTime).getTime()) / 1000);
         const totalSecs = existingSession.plannedDuration * 60;
         const remaining = totalSecs - elapsedSecs;
         if (remaining > 0) {
@@ -147,7 +148,8 @@ const FocusSession = () => {
           setActiveSessionId(session._id);
           if (session.mlStatus) setMlStatus(session.mlStatus);
 
-          const elapsedSecs = Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000);
+          const serverTime = res.data.serverTime ? new Date(res.data.serverTime).getTime() : Date.now();
+          const elapsedSecs = Math.floor((serverTime - new Date(session.startTime).getTime()) / 1000);
           const totalSecs = session.plannedDuration * 60;
           const remaining = totalSecs - elapsedSecs;
 
