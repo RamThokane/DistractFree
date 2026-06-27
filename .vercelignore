@@ -1,0 +1,7 @@
+backend/
+extension/
+model/
+node_modules/
+build/
+.env
+*.log

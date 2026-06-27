@@ -19,8 +19,12 @@ import ProductivityHeatmapPage from './pages/ProductivityHeatmapPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import SettingsPage from './pages/SettingsPage';
 
-// Replace with your actual Google OAuth Client ID
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || (() => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[DistractFree] REACT_APP_GOOGLE_CLIENT_ID is not set. Google Sign-In will not work.');
+  }
+  return '';
+})();
 
 function App() {
   React.useEffect(() => {

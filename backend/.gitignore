@@ -4,3 +4,5 @@ ml/model/*.pkl
 ml/model/*.joblib
 ml/__pycache__/
 *.pyc
+
+.vercel

@@ -93,18 +93,19 @@ exports.endSession = async (req, res) => {
 
       session.coinsEarned = totalCoins;
 
-      // Credit coins
+      // Credit coins — add total (after penalty) to user balance
+      const preEarnBalance = user.focusCoins;
       user.focusCoins += totalCoins;
       user.updateStreak();
       await user.save();
 
-      // Record transaction
+      // Record transaction — one entry for gross earned, one for penalty deducted
       if (afterStreak > 0) {
         await CoinTransaction.create({
           userId,
           type: 'earned',
           amount: afterStreak,
-          balanceAfter: user.focusCoins + lostCoins, // Pre-penalty balance
+          balanceAfter: preEarnBalance + afterStreak, // Balance after earning (before penalty)
           description: `Completed ${session.duration}-min focus session (base: ${baseCoins}, streak: x${streakMultiplier})`,
           sessionId: session._id,
         });
@@ -114,7 +115,7 @@ exports.endSession = async (req, res) => {
             userId,
             type: 'penalty',
             amount: -lostCoins,
-            balanceAfter: user.focusCoins,
+            balanceAfter: user.focusCoins, // Final balance after penalty
             description: `Distraction penalty (-${Math.round(distractionPenalty * 100)}%)`,
             sessionId: session._id,
           });
@@ -173,26 +174,30 @@ exports.updateLiveSession = async (req, res) => {
     if (interruptions !== undefined) session.interruptions = interruptions;
     if (blockAttempts !== undefined) session.distractionAttempts = blockAttempts;
 
-    // Call Python Flask ML API
+    // Call Python Flask ML API (optional — only if ML_SERVICE_URL is configured)
     let mlPrediction = 'Focused';
-    try {
-      // dynamic import for fetch since we are in node 18+
-      const response = await fetch('http://127.0.0.1:5001/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          duration: duration || 0,
-          tab_switches: tabSwitches || 0,
-          interruptions: interruptions || 0,
-          block_attempts: blockAttempts || 0,
-        }),
-      });
-      const data = await response.json();
-      if (data.prediction) {
-        mlPrediction = data.prediction;
+    const mlServiceUrl = process.env.ML_SERVICE_URL;
+    if (mlServiceUrl) {
+      try {
+        const response = await fetch(`${mlServiceUrl}/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            duration: duration || 0,
+            tab_switches: tabSwitches || 0,
+            interruptions: interruptions || 0,
+            block_attempts: blockAttempts || 0,
+          }),
+          signal: AbortSignal.timeout(3000), // 3-second timeout
+        });
+        const data = await response.json();
+        if (data.prediction) {
+          mlPrediction = data.prediction;
+        }
+      } catch (mlError) {
+        // Non-fatal — JS decision tree is the primary model
+        console.warn('[ML API] External service unavailable:', mlError.message);
       }
-    } catch (mlError) {
-      console.error('[ML API Error]:', mlError.message);
     }
 
     session.mlStatus = mlPrediction;

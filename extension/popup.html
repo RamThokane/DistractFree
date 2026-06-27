@@ -98,6 +98,14 @@
           <button id="end-session-btn" class="btn btn-success btn-sm">✓ Complete</button>
           <button id="cancel-session-btn" class="btn btn-ghost-danger btn-sm">Cancel</button>
         </div>
+        <!-- Inline cancel confirm (replaces browser confirm()) -->
+        <div id="confirm-cancel-section" class="hidden" style="display:none;flex-direction:column;align-items:center;gap:6px;padding:8px 0;">
+          <p style="font-size:12px;color:#a0a0b8;text-align:center;">Cancel session? You won't earn any coins.</p>
+          <div style="display:flex;gap:8px;">
+            <button id="confirm-cancel-yes" class="btn btn-ghost-danger btn-sm" style="font-size:11px;padding:4px 12px;">Yes, Cancel</button>
+            <button id="confirm-cancel-no" class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 12px;">Keep Going</button>
+          </div>
+        </div>
       </div>
 
       <!-- Start Session -->

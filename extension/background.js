@@ -11,7 +11,21 @@
  *  6. Sync blocked-sites list from the backend on login and periodically.
  */
 
-const API_BASE = 'http://localhost:5000/api';
+// ── Configuration ─────────────────────────────────
+// API_BASE is read from storage (set via popup settings or default).
+// In development: http://localhost:5000/api
+// In production:  set EXTENSION_API_URL in chrome.storage.sync or hardcode below.
+const DEFAULT_API_BASE = 'https://distractfree-backend.vercel.app/api';
+const DEFAULT_DASHBOARD_ORIGIN = 'https://distractfree.vercel.app';
+
+let API_BASE = DEFAULT_API_BASE;
+let DASHBOARD_ORIGIN = DEFAULT_DASHBOARD_ORIGIN;
+
+// High-distraction site patterns (used for ML telemetry interruption detection)
+const DISTRACTION_DOMAINS = [
+  'youtube.com', 'twitter.com', 'x.com', 'instagram.com',
+  'tiktok.com', 'reddit.com', 'facebook.com', 'snapchat.com',
+];
 
 // ── State ──────────────────────────────────────────
 let blockedSites = [];
@@ -48,16 +62,23 @@ async function loadFromStorage() {
     'authToken',
     'blockedSites',
     'activeSession',
+    'apiBase',
+    'dashboardOrigin',
   ]);
 
   authToken = data.authToken || null;
   blockedSites = data.blockedSites || [];
   activeSession = data.activeSession || null;
 
+  // Allow overriding API base from storage (set by popup)
+  if (data.apiBase) API_BASE = data.apiBase;
+  if (data.dashboardOrigin) DASHBOARD_ORIGIN = data.dashboardOrigin;
+
   console.log('[DistractFree] Loaded from storage:', {
     authenticated: !!authToken,
     blockedCount: blockedSites.length,
     hasSession: !!activeSession,
+    apiBase: API_BASE,
   });
 
   if (activeSession) {
@@ -130,6 +151,34 @@ function extractHostname(url) {
 }
 
 /**
+ * Returns true if the URL is an internal browser/extension page or our own dashboard.
+ */
+function isInternalUrl(url) {
+  if (
+    url.startsWith('chrome://') ||
+    url.startsWith('chrome-extension://') ||
+    url.startsWith('about:') ||
+    url.startsWith('edge://') ||
+    url.startsWith('brave://')
+  ) {
+    return true;
+  }
+
+  // Skip our own dashboard (handles both dev and prod)
+  try {
+    const parsed = new URL(url);
+    const dashboardParsed = new URL(DASHBOARD_ORIGIN);
+    if (parsed.hostname === dashboardParsed.hostname) return true;
+    // Also skip localhost during development
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
+  } catch {
+    // ignore parse errors
+  }
+
+  return false;
+}
+
+/**
  * Check if a URL is blocked.
  * Sites are blocked ALWAYS when in the blocked list (not just during sessions).
  * The user must be authenticated and have blocked sites configured.
@@ -176,21 +225,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
   const url = details.url;
 
-  // Skip internal pages
-  if (
-    url.startsWith('chrome://') ||
-    url.startsWith('chrome-extension://') ||
-    url.startsWith('about:') ||
-    url.startsWith('edge://') ||
-    url.startsWith('brave://')
-  ) {
-    return;
-  }
-
-  // Skip localhost (our own dashboard)
-  if (url.includes('localhost:3000') || url.includes('localhost:5000')) {
-    return;
-  }
+  // Skip internal pages and our own dashboard
+  if (isInternalUrl(url)) return;
 
   if (isBlocked(url)) {
     const siteInfo = getBlockedSiteInfo(url);
@@ -225,7 +261,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.url && changeInfo.url.startsWith('http')) {
     // Don't re-block if already on block page
     if (changeInfo.url.includes('block.html')) return;
-    if (changeInfo.url.includes('localhost:3000') || changeInfo.url.includes('localhost:5000')) return;
+    if (isInternalUrl(changeInfo.url)) return;
 
     if (isBlocked(changeInfo.url)) {
       const siteInfo = getBlockedSiteInfo(changeInfo.url);
@@ -266,13 +302,14 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     activeTabUrl = tab.url || '';
     activeTabStartTime = Date.now();
-    
+
     // ML Tracking
     if (activeSession) {
       sessionTelemetry.tabSwitches += 1;
-      // If navigating to non-work sites, consider it an interruption
-      if (activeTabUrl.includes('youtube.com') || activeTabUrl.includes('twitter.com') || activeTabUrl.includes('instagram.com')) {
-         sessionTelemetry.interruptions += 1;
+      // Check against configured distraction domains
+      const hostname = extractHostname(activeTabUrl);
+      if (DISTRACTION_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) {
+        sessionTelemetry.interruptions += 1;
       }
     }
   } catch {
@@ -330,14 +367,9 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
       blockedSites: selectedSiteIds || data.session.blockedSitesUsed,
     };
 
-    // If there were explicit site selections, we filter our global blockedSites 
-    // down to ONLY what was selected for this session, UNLESS global setting overrides.
-    // However, the user simply requested it asks what to block.
-    // For now we store it.
-
     await chrome.storage.local.set({ activeSession });
     temporarilyUnlocked.clear();
-    
+
     // ML Tracking Reset & Start
     sessionTelemetry = { tabSwitches: 0, interruptions: 0, blockAttempts: 0 };
     startLiveSync();
@@ -421,8 +453,7 @@ function startLiveSync() {
           blockAttempts: sessionTelemetry.blockAttempts
         })
       });
-      console.log('[ML Sync] Sent live data:', sessionTelemetry);
-    } catch(e) {
+    } catch (e) {
       console.warn('[ML Sync] Failed:', e.message);
     }
   }, 10000);
@@ -430,6 +461,7 @@ function startLiveSync() {
 
 function stopLiveSync() {
   if (liveSyncInterval) clearInterval(liveSyncInterval);
+  liveSyncInterval = null;
 }
 
 function startSessionTimer() {
@@ -576,6 +608,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, focusCoins: data.focusCoins });
       } catch (err) {
         sendResponse({ success: false, message: err.message });
+      }
+    },
+
+    SET_API_BASE: async () => {
+      // Allow popup to configure the API base URL (e.g., for self-hosted deployments)
+      if (message.apiBase) {
+        API_BASE = message.apiBase;
+        DASHBOARD_ORIGIN = message.dashboardOrigin || DEFAULT_DASHBOARD_ORIGIN;
+        await chrome.storage.local.set({
+          apiBase: API_BASE,
+          dashboardOrigin: DASHBOARD_ORIGIN,
+        });
+        sendResponse({ success: true });
+      } else {
+        sendResponse({ success: false, message: 'apiBase is required' });
       }
     },
   };

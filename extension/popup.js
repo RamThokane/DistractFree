@@ -4,14 +4,21 @@
  * 
  * Auth flow:
  *  1. Check chrome.storage for saved token → validate → show dashboard
- *  2. Check if dashboard tab (localhost:3000) has a token → sync → show dashboard  
+ *  2. Check if dashboard tab has a token → sync → show dashboard  
  *  3. Otherwise show login form
  *
  * For Google OAuth users: use "Sync from Dashboard" button
  * For email/password users: use the login form
  */
 
-const API_BASE = 'http://localhost:5000/api';
+// ── Configuration ──────────────────────────────────
+// These match the defaults in background.js.
+// To use a custom backend, update DEFAULT_API_BASE.
+const DEFAULT_API_BASE = 'https://distractfree-backend.vercel.app/api';
+const DEFAULT_DASHBOARD_URL = 'https://distractfree.vercel.app';
+
+let API_BASE = DEFAULT_API_BASE;
+let DASHBOARD_URL = DEFAULT_DASHBOARD_URL;
 
 // ── DOM Elements ───────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -45,6 +52,11 @@ const customDurationInput = $('custom-duration-input');
 const startSessionBtn = $('start-session-btn');
 const endSessionBtn = $('end-session-btn');
 const cancelSessionBtn = $('cancel-session-btn');
+
+// Inline confirm UI elements (if they exist in HTML)
+const confirmCancelSection = $('confirm-cancel-section');
+const confirmCancelYes = $('confirm-cancel-yes');
+const confirmCancelNo = $('confirm-cancel-no');
 
 const syncBtn = $('sync-btn');
 const dashboardBtn = $('dashboard-btn');
@@ -82,27 +94,28 @@ function sendMessage(message) {
 }
 
 function showError(msg) {
+  if (!authError) return;
   authError.textContent = msg;
   authError.classList.remove('hidden');
   setTimeout(() => authError.classList.add('hidden'), 10000);
 }
 
 function hideError() {
-  authError.classList.add('hidden');
+  if (authError) authError.classList.add('hidden');
 }
 
 function setLoginLoading(loading) {
   const btnText = loginBtn.querySelector('.btn-text');
   const btnLoader = loginBtn.querySelector('.btn-loader');
   loginBtn.disabled = loading;
-  loginEmail.disabled = loading;
-  loginPassword.disabled = loading;
+  if (loginEmail) loginEmail.disabled = loading;
+  if (loginPassword) loginPassword.disabled = loading;
   if (loading) {
-    btnText.textContent = 'Signing in…';
-    btnLoader.classList.remove('hidden');
+    if (btnText) btnText.textContent = 'Signing in…';
+    if (btnLoader) btnLoader.classList.remove('hidden');
   } else {
-    btnText.textContent = 'Sign In';
-    btnLoader.classList.add('hidden');
+    if (btnText) btnText.textContent = 'Sign In';
+    if (btnLoader) btnLoader.classList.add('hidden');
   }
 }
 
@@ -134,9 +147,11 @@ async function validateToken(token) {
 async function tryGetDashboardToken() {
   return new Promise((resolve) => {
     try {
-      chrome.tabs.query({ url: 'http://localhost:3000/*' }, (tabs) => {
+      // Query tabs matching the dashboard URL pattern
+      const dashboardPattern = `${DASHBOARD_URL}/*`;
+      chrome.tabs.query({ url: dashboardPattern }, (tabs) => {
         if (chrome.runtime.lastError || !tabs || tabs.length === 0) {
-          console.log('[Popup] No dashboard tabs found');
+          console.log('[Popup] No dashboard tabs found at', dashboardPattern);
           resolve(null);
           return;
         }
@@ -191,12 +206,22 @@ async function authenticateWithToken(token, source) {
   return true;
 }
 
+// ── Load API base from storage ──────────────────────
+async function loadApiConfig() {
+  const stored = await chrome.storage.local.get(['apiBase', 'dashboardOrigin']);
+  if (stored.apiBase) API_BASE = stored.apiBase;
+  if (stored.dashboardOrigin) DASHBOARD_URL = stored.dashboardOrigin;
+}
+
 // ══════════════════════════════════════════════════
 // INITIALISATION
 // ══════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('[Popup] Initialising…');
+
+  // Load API config first
+  await loadApiConfig();
 
   // Step 1: Check chrome.storage for existing token
   const stored = await chrome.storage.local.get(['authToken']);
@@ -229,7 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // LOGIN (email/password)
 // ══════════════════════════════════════════════════
 
-loginBtn.addEventListener('click', handleLogin);
+if (loginBtn) loginBtn.addEventListener('click', handleLogin);
 
 async function handleLogin() {
   const email = loginEmail.value.trim();
@@ -258,7 +283,6 @@ async function handleLogin() {
     const data = await response.json();
 
     if (!response.ok || !data.success) {
-      // Parse error
       let errorMsg = 'Login failed.';
 
       if (data.errors && Array.isArray(data.errors)) {
@@ -267,7 +291,7 @@ async function handleLogin() {
         errorMsg = data.message;
       }
 
-      // If "Invalid email or password" — hint about Google signup
+      // Hint about Google signup
       if (errorMsg.includes('Invalid email or password')) {
         errorMsg += '\n\nSigned up with Google? Use the green "Sync from Dashboard" button below instead.';
       }
@@ -295,7 +319,7 @@ async function handleLogin() {
   } catch (err) {
     console.error('[Popup] Login error:', err);
     if (err.message && err.message.includes('Failed to fetch')) {
-      showError('Cannot connect to server. Is the backend running on port 5000?');
+      showError('Cannot connect to server. Please check your internet connection.');
     } else {
       showError('Connection error: ' + (err.message || 'Unknown'));
     }
@@ -305,72 +329,82 @@ async function handleLogin() {
 }
 
 // Enter key support
-loginPassword.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') handleLogin();
-});
-loginEmail.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') loginPassword.focus();
-});
+if (loginPassword) {
+  loginPassword.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+}
+if (loginEmail) {
+  loginEmail.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && loginPassword) loginPassword.focus();
+  });
+}
 
 // ══════════════════════════════════════════════════
 // SYNC FROM DASHBOARD (for Google OAuth users)
 // ══════════════════════════════════════════════════
 
-syncDashboardBtn.addEventListener('click', async () => {
-  syncDashboardBtn.disabled = true;
-  syncDashboardBtn.textContent = '⚡ Checking…';
-  hideError();
+if (syncDashboardBtn) {
+  syncDashboardBtn.addEventListener('click', async () => {
+    syncDashboardBtn.disabled = true;
+    syncDashboardBtn.textContent = '⚡ Checking…';
+    hideError();
 
-  try {
-    // Method 1: Read from dashboard tab via scripting API
-    let token = await tryGetDashboardToken();
+    try {
+      // Method 1: Read from dashboard tab via scripting API
+      let token = await tryGetDashboardToken();
 
-    // Method 2: Fallback — check chrome.storage (content.js may have synced it)
-    if (!token) {
-      const stored = await chrome.storage.local.get(['authToken']);
-      token = stored.authToken || null;
+      // Method 2: Fallback — check chrome.storage (content.js may have synced it)
+      if (!token) {
+        const stored = await chrome.storage.local.get(['authToken']);
+        token = stored.authToken || null;
+      }
+
+      if (token) {
+        const ok = await authenticateWithToken(token, 'dashboard sync');
+        if (ok) return;
+      }
+
+      // No token found
+      showError(`No active dashboard session found.\n\n1. Open ${DASHBOARD_URL} in a tab\n2. Sign in on the dashboard\n3. Come back and click this button again`);
+    } catch (err) {
+      console.error('[Popup] Sync error:', err);
+      showError('Sync failed. Make sure the dashboard is open and you are signed in.');
+    } finally {
+      syncDashboardBtn.disabled = false;
+      syncDashboardBtn.textContent = '⚡ Sync from Dashboard';
     }
+  });
+}
 
-    if (token) {
-      const ok = await authenticateWithToken(token, 'dashboard sync');
-      if (ok) return;
-    }
-
-    // No token found
-    showError('No active dashboard session found.\n\n1. Open localhost:3000 in a tab\n2. Sign in on the dashboard\n3. Come back and click this button again');
-  } catch (err) {
-    console.error('[Popup] Sync error:', err);
-    showError('Sync failed. Make sure the dashboard is open and you are signed in.');
-  } finally {
-    syncDashboardBtn.disabled = false;
-    syncDashboardBtn.textContent = '⚡ Sync from Dashboard';
-  }
-});
-
-loginLink.addEventListener('click', () => {
-  chrome.tabs.create({ url: 'http://localhost:3000/register' });
-});
+if (loginLink) {
+  loginLink.addEventListener('click', () => {
+    chrome.tabs.create({ url: `${DASHBOARD_URL}/register` });
+  });
+}
 
 // ══════════════════════════════════════════════════
 // LOGOUT
 // ══════════════════════════════════════════════════
 
-logoutBtn.addEventListener('click', async () => {
-  await chrome.storage.local.clear();
-  try { await sendMessage({ type: 'LOGOUT' }); } catch (e) { /* ok */ }
-  clearTimerInterval();
-  showAuth();
-});
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    await chrome.storage.local.clear();
+    try { await sendMessage({ type: 'LOGOUT' }); } catch (e) { /* ok */ }
+    clearTimerInterval();
+    showAuth();
+  });
+}
 
 // ══════════════════════════════════════════════════
 // DASHBOARD VIEW
 // ══════════════════════════════════════════════════
 
 async function showDashboard(status, name) {
-  authSection.classList.add('hidden');
-  dashboardSection.classList.remove('hidden');
+  if (authSection) authSection.classList.add('hidden');
+  if (dashboardSection) dashboardSection.classList.remove('hidden');
 
-  greetingText.textContent = getGreeting();
+  if (greetingText) greetingText.textContent = getGreeting();
 
   // Fetch user data
   try {
@@ -378,53 +412,57 @@ async function showDashboard(status, name) {
     if (token) {
       const user = await validateToken(token);
       if (user) {
-        userName.textContent = user.name || name || 'User';
-        coinBalance.textContent = user.focusCoins || 0;
-        streakCount.textContent = user.currentStreak || 0;
+        if (userName) userName.textContent = user.name || name || 'User';
+        if (coinBalance) coinBalance.textContent = user.focusCoins || 0;
+        if (streakCount) streakCount.textContent = user.currentStreak || 0;
       } else {
-        userName.textContent = name || 'User';
+        if (userName) userName.textContent = name || 'User';
       }
     } else {
-      userName.textContent = name || 'User';
+      if (userName) userName.textContent = name || 'User';
     }
   } catch (e) {
-    userName.textContent = name || 'User';
+    if (userName) userName.textContent = name || 'User';
   }
 
-  blockedCount.textContent = (status && status.blockedSitesCount) || 0;
+  if (blockedCount) blockedCount.textContent = (status && status.blockedSitesCount) || 0;
 
   if (status && status.activeSession) {
     showActiveSession(status.activeSession);
   } else {
-    showStartSection(status.blockedSites || []);
+    showStartSection(status && status.blockedSites ? status.blockedSites : []);
   }
 }
 
 function showAuth() {
-  authSection.classList.remove('hidden');
-  dashboardSection.classList.add('hidden');
+  if (authSection) authSection.classList.remove('hidden');
+  if (dashboardSection) dashboardSection.classList.add('hidden');
   hideError();
-  loginEmail.value = '';
-  loginPassword.value = '';
+  if (loginEmail) loginEmail.value = '';
+  if (loginPassword) loginPassword.value = '';
 }
 
 function showActiveSession(session) {
-  startSection.classList.add('hidden');
-  timerSection.classList.remove('hidden');
-  sessionStatus.textContent = 'Focusing';
-  sessionStatus.className = 'status-badge active';
-  statusCard.classList.add('active');
+  if (startSection) startSection.classList.add('hidden');
+  if (timerSection) timerSection.classList.remove('hidden');
+  if (sessionStatus) {
+    sessionStatus.textContent = 'Focusing';
+    sessionStatus.className = 'status-badge active';
+  }
+  if (statusCard) statusCard.classList.add('active');
   totalSessionSeconds = (session.plannedDuration || 25) * 60;
   updateTimerDisplay(session.remainingTime);
   startTimerInterval();
 }
 
 function showStartSection(blockedSites = []) {
-  startSection.classList.remove('hidden');
-  timerSection.classList.add('hidden');
-  sessionStatus.textContent = 'Idle';
-  sessionStatus.className = 'status-badge';
-  statusCard.classList.remove('active');
+  if (startSection) startSection.classList.remove('hidden');
+  if (timerSection) timerSection.classList.add('hidden');
+  if (sessionStatus) {
+    sessionStatus.textContent = 'Idle';
+    sessionStatus.className = 'status-badge';
+  }
+  if (statusCard) statusCard.classList.remove('active');
   clearTimerInterval();
 
   const listContainer = $('site-selection-list');
@@ -446,66 +484,94 @@ function showStartSection(blockedSites = []) {
 // SESSION CONTROLS
 // ══════════════════════════════════════════════════
 
-durationSelect.addEventListener('change', (e) => {
-  if (e.target.value === 'custom') {
-    customDurationContainer.classList.remove('hidden');
-  } else {
-    customDurationContainer.classList.add('hidden');
-  }
-});
+if (durationSelect) {
+  durationSelect.addEventListener('change', (e) => {
+    if (e.target.value === 'custom') {
+      if (customDurationContainer) customDurationContainer.classList.remove('hidden');
+    } else {
+      if (customDurationContainer) customDurationContainer.classList.add('hidden');
+    }
+  });
+}
 
-startSessionBtn.addEventListener('click', async () => {
-  let duration;
-  if (durationSelect.value === 'custom') {
-    duration = parseInt(customDurationInput.value);
-  } else {
-    duration = parseInt(durationSelect.value);
-  }
+if (startSessionBtn) {
+  startSessionBtn.addEventListener('click', async () => {
+    let duration;
+    if (durationSelect && durationSelect.value === 'custom') {
+      duration = parseInt(customDurationInput ? customDurationInput.value : '25');
+    } else {
+      duration = parseInt(durationSelect ? durationSelect.value : '25');
+    }
 
-  if (!duration || duration < 25 || duration > 180) {
-    alert('Please enter a valid duration (25-180 minutes)');
-    return;
-  }
+    if (!duration || duration < 1 || duration > 480) {
+      showError('Please enter a valid duration (1-480 minutes)');
+      return;
+    }
 
-  const siteElements = document.querySelectorAll('.site-value');
-  const selectedSites = Array.from(siteElements).map(el => el.getAttribute('data-url'));
+    const siteElements = document.querySelectorAll('.site-value');
+    const selectedSites = Array.from(siteElements).map(el => el.getAttribute('data-url'));
 
-  startSessionBtn.disabled = true;
-  startSessionBtn.textContent = 'Starting…';
+    startSessionBtn.disabled = true;
+    startSessionBtn.textContent = 'Starting…';
 
-  console.log('[Popup] Starting session:', duration, 'minutes', 'sites:', selectedSites);
-  const result = await sendMessage({ type: 'START_SESSION', plannedDuration: duration, selectedSites: selectedSites });
-  console.log('[Popup] Session start result:', result);
+    const result = await sendMessage({ type: 'START_SESSION', plannedDuration: duration, selectedSites: selectedSites });
 
-  startSessionBtn.disabled = false;
-  startSessionBtn.textContent = '🎯 Start Focus Session';
+    startSessionBtn.disabled = false;
+    startSessionBtn.textContent = '🎯 Start Focus Session';
 
-  if (result && result.success) {
-    const status = await sendMessage({ type: 'GET_STATUS' });
-    if (status && status.activeSession) showActiveSession(status.activeSession);
-  } else {
-    // Show the error to the user
-    const errorMsg = (result && result.message) || 'Failed to start session. Is the backend running?';
-    alert('⚠️ ' + errorMsg);
-  }
-});
+    if (result && result.success) {
+      const status = await sendMessage({ type: 'GET_STATUS' });
+      if (status && status.activeSession) showActiveSession(status.activeSession);
+    } else {
+      const errorMsg = (result && result.message) || 'Failed to start session. Please check your connection.';
+      showError('⚠️ ' + errorMsg);
+    }
+  });
+}
 
-endSessionBtn.addEventListener('click', async () => {
-  endSessionBtn.disabled = true;
-  const result = await sendMessage({ type: 'END_SESSION', cancelled: false });
-  if (result && result.success) {
-    showStartSection();
-    const status = await sendMessage({ type: 'GET_STATUS' });
-    showDashboard(status);
-  }
-  endSessionBtn.disabled = false;
-});
+if (endSessionBtn) {
+  endSessionBtn.addEventListener('click', async () => {
+    endSessionBtn.disabled = true;
+    const result = await sendMessage({ type: 'END_SESSION', cancelled: false });
+    if (result && result.success) {
+      const status = await sendMessage({ type: 'GET_STATUS' });
+      showDashboard(status);
+    }
+    endSessionBtn.disabled = false;
+  });
+}
 
-cancelSessionBtn.addEventListener('click', async () => {
-  if (!confirm('Cancel session? You won\'t earn any coins.')) return;
-  const result = await sendMessage({ type: 'END_SESSION', cancelled: true });
-  if (result && result.success) showStartSection();
-});
+if (cancelSessionBtn) {
+  cancelSessionBtn.addEventListener('click', () => {
+    // Show inline confirm UI if it exists, otherwise use inline text approach
+    if (confirmCancelSection) {
+      confirmCancelSection.classList.remove('hidden');
+      cancelSessionBtn.classList.add('hidden');
+    } else {
+      // Fallback — set button to confirm state
+      cancelSessionBtn.textContent = 'Confirm Cancel? (click again)';
+      cancelSessionBtn.dataset.confirming = 'true';
+    }
+  });
+}
+
+// Inline confirm buttons (in HTML)
+if (confirmCancelYes) {
+  confirmCancelYes.addEventListener('click', async () => {
+    if (confirmCancelSection) confirmCancelSection.classList.add('hidden');
+    if (cancelSessionBtn) cancelSessionBtn.classList.remove('hidden');
+    const result = await sendMessage({ type: 'END_SESSION', cancelled: true });
+    if (result && result.success) showStartSection();
+  });
+}
+
+if (confirmCancelNo) {
+  confirmCancelNo.addEventListener('click', () => {
+    if (confirmCancelSection) confirmCancelSection.classList.add('hidden');
+    if (cancelSessionBtn) cancelSessionBtn.classList.remove('hidden');
+    if (cancelSessionBtn) delete cancelSessionBtn.dataset.confirming;
+  });
+}
 
 // ══════════════════════════════════════════════════
 // TIMER
@@ -532,7 +598,7 @@ function clearTimerInterval() {
 }
 
 function updateTimerDisplay(time) {
-  timerDisplay.textContent = time || '00:00';
+  if (timerDisplay) timerDisplay.textContent = time || '00:00';
   if (time && totalSessionSeconds > 0) {
     const parts = time.split(':');
     const remaining = parseInt(parts[0]) * 60 + parseInt(parts[1]);
@@ -544,28 +610,32 @@ function updateTimerDisplay(time) {
 // QUICK ACTIONS
 // ══════════════════════════════════════════════════
 
-syncBtn.addEventListener('click', async () => {
-  syncBtn.disabled = true;
-  syncBtn.textContent = '↻ Syncing…';
+if (syncBtn) {
+  syncBtn.addEventListener('click', async () => {
+    syncBtn.disabled = true;
+    syncBtn.textContent = '↻ Syncing…';
 
-  // Also try sync from dashboard
-  try {
-    const dashToken = await tryGetDashboardToken();
-    if (dashToken) {
-      const stored = await chrome.storage.local.get('authToken');
-      if (!stored.authToken || stored.authToken !== dashToken) {
-        await authenticateWithToken(dashToken, 'quick sync');
+    // Also try sync from dashboard
+    try {
+      const dashToken = await tryGetDashboardToken();
+      if (dashToken) {
+        const stored = await chrome.storage.local.get('authToken');
+        if (!stored.authToken || stored.authToken !== dashToken) {
+          await authenticateWithToken(dashToken, 'quick sync');
+        }
       }
-    }
-  } catch (e) { /* ok */ }
+    } catch (e) { /* ok */ }
 
-  const result = await sendMessage({ type: 'SYNC_BLOCKED_SITES' });
-  blockedCount.textContent = (result && result.count) || 0;
+    const result = await sendMessage({ type: 'SYNC_BLOCKED_SITES' });
+    if (blockedCount) blockedCount.textContent = (result && result.count) || 0;
 
-  syncBtn.disabled = false;
-  syncBtn.textContent = '↻ Sync';
-});
+    syncBtn.disabled = false;
+    syncBtn.textContent = '↻ Sync';
+  });
+}
 
-dashboardBtn.addEventListener('click', () => {
-  chrome.tabs.create({ url: 'http://localhost:3000/dashboard' });
-});
+if (dashboardBtn) {
+  dashboardBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: `${DASHBOARD_URL}/dashboard` });
+  });
+}

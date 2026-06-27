@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
 
 const connectDB = require('./config/db');
 
@@ -22,22 +23,44 @@ const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // ── Security ───────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // React handles its own CSP
+  crossOriginEmbedderPolicy: false,
+}));
+
+// ── NoSQL Injection Sanitization ───────────────────
+app.use(mongoSanitize());
 
 // ── CORS ───────────────────────────────────────────
+const buildAllowedOrigins = () => {
+  const origins = [];
+
+  // Always allow the configured CLIENT_URL
+  if (process.env.CLIENT_URL) {
+    origins.push(process.env.CLIENT_URL);
+  }
+
+  // Allow localhost ONLY in non-production environments
+  if (!isProduction) {
+    origins.push('http://localhost:3000');
+    origins.push('http://127.0.0.1:3000');
+  }
+
+  return origins;
+};
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      const allowedOrigins = [
-        process.env.CLIENT_URL || 'http://localhost:3000',
-        'http://localhost:3000',
-      ];
+      const allowedOrigins = buildAllowedOrigins();
 
-      // Allow requests with no origin (mobile apps, curl, extensions)
+      // Allow requests with no origin (mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
 
-      // Allow any chrome-extension:// origin
+      // Allow any chrome-extension:// origin (our extension)
       if (origin.startsWith('chrome-extension://')) return callback(null, true);
 
       // Allow configured origins
@@ -57,24 +80,25 @@ app.use(express.urlencoded({ extended: true }));
 
 // ── Logging ────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
+  app.use(morgan(isProduction ? 'combined' : 'dev'));
 }
 
 // ── Rate limiting ──────────────────────────────────
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Increased to avoid blocking during testing
+  max: isProduction ? 300 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests. Try again later.' },
 });
 app.use('/api/', apiLimiter);
 
-// Stricter limiter for auth endpoints
+// Stricter limiter for auth endpoints (prevents brute-force)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000, // Increased to avoid blocking during testing
+  max: isProduction ? 20 : 100,
   message: { success: false, message: 'Too many auth attempts. Try again later.' },
+  skipSuccessfulRequests: true, // Don't count successful logins
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
@@ -136,4 +160,3 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 module.exports = app; // Vercel uses this export
-

@@ -202,7 +202,7 @@ exports.googleAuth = async (req, res) => {
 // ────────────────────────────────────────────────────
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).populate('blockedWebsites');
+    const user = await User.findById(req.user._id);
 
     res.json({
       success: true,
