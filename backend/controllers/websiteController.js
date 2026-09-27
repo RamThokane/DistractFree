@@ -3,6 +3,25 @@ const User = require('../models/User');
 const CoinTransaction = require('../models/CoinTransaction');
 const FocusSession = require('../models/FocusSession');
 const { UNLOCK_COST } = require('../utils/coinCalculator');
+const { createNotification } = require('./notificationController');
+
+// Known distracting domains → category (feeds analytics and the ML model)
+const KNOWN_CATEGORIES = {
+  social_media: ['facebook.com', 'instagram.com', 'x.com', 'twitter.com', 'tiktok.com', 'snapchat.com', 'linkedin.com', 'pinterest.com', 'reddit.com', 'threads.net'],
+  streaming: ['youtube.com', 'netflix.com', 'primevideo.com', 'hotstar.com', 'twitch.tv', 'disneyplus.com', 'hulu.com', 'jiocinema.com'],
+  entertainment: ['9gag.com', 'imgur.com', 'buzzfeed.com', 'spotify.com'],
+  news: ['cnn.com', 'bbc.com', 'news.google.com', 'ndtv.com', 'timesofindia.indiatimes.com', 'nytimes.com'],
+  shopping: ['amazon.com', 'amazon.in', 'flipkart.com', 'myntra.com', 'ebay.com', 'meesho.com'],
+  gaming: ['steampowered.com', 'epicgames.com', 'roblox.com', 'chess.com', 'miniclip.com'],
+  messaging: ['web.whatsapp.com', 'whatsapp.com', 'discord.com', 'telegram.org', 'messenger.com'],
+};
+
+function guessCategory(domain) {
+  for (const [category, domains] of Object.entries(KNOWN_CATEGORIES)) {
+    if (domains.some((d) => domain === d || domain.endsWith('.' + d))) return category;
+  }
+  return 'other';
+}
 
 // ────────────────────────────────────────────────────
 // POST /api/websites/add
@@ -39,7 +58,7 @@ exports.addWebsite = async (req, res) => {
       userId,
       websiteUrl: normalised,
       displayName: displayName || normalised,
-      category: category || 'other',
+      category: category && category !== 'other' ? category : guessCategory(normalised),
     });
 
     // Push ref to user's blockedWebsites array
@@ -143,14 +162,15 @@ exports.unlockWebsite = async (req, res) => {
 
     const user = await User.findById(userId);
 
-    // Check strict mode
-    const activeSession = await FocusSession.findOne({ userId, status: 'active' });
-    if (activeSession && user.settings?.strictMode) {
+    // Strict mode: no coin unlocks at all, in or out of a session
+    if (user.settings?.strictMode) {
       return res.status(403).json({
         success: false,
-        message: 'Strict Mode is enabled. You cannot unlock sites during an active session.',
+        message: 'Strict Mode is enabled. Blocked sites cannot be unlocked with coins.',
       });
     }
+
+    const activeSession = await FocusSession.findOne({ userId, status: 'active' });
 
     if (user.focusCoins < UNLOCK_COST) {
       return res.status(403).json({
@@ -174,8 +194,17 @@ exports.unlockWebsite = async (req, res) => {
       type: 'spent',
       amount: -UNLOCK_COST,
       balanceAfter: user.focusCoins,
-      description: `Unlocked ${website.websiteUrl} during focus session`,
+      description: `Unlocked ${website.websiteUrl}${activeSession ? ' during focus session' : ''}`,
+      sessionId: activeSession ? activeSession._id : null,
     });
+
+    await createNotification(
+      userId,
+      'coins_spent',
+      '🪙 Coins Spent',
+      `You spent ${UNLOCK_COST} coins to unlock ${website.websiteUrl} for 2 minutes. Balance: ${user.focusCoins}.`,
+      { website: website.websiteUrl, amount: UNLOCK_COST }
+    );
 
     // Record spending on active session
     if (activeSession) {

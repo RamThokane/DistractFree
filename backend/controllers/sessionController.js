@@ -5,6 +5,8 @@ const BlockedWebsite = require('../models/BlockedWebsite');
 const CoinTransaction = require('../models/CoinTransaction');
 const { calculateCoins } = require('../utils/coinCalculator');
 const { createNotification } = require('./notificationController');
+const BrowsingLog = require('../models/BrowsingLog');
+const { predict } = require('../ml/decisionTreeModel');
 
 // ────────────────────────────────────────────────────
 // POST /api/session/start
@@ -131,6 +133,27 @@ exports.endSession = async (req, res) => {
           { duration: session.duration, coins: totalCoins }
         );
 
+      // Daily goal reached — only on the session that crosses the goal
+      const goal = user.settings?.dailyGoalMinutes || 0;
+      if (goal > 0) {
+        const dayStart = new Date(session.endTime);
+        dayStart.setHours(0, 0, 0, 0);
+        const [todayAgg] = await FocusSession.aggregate([
+          { $match: { userId: session.userId, status: 'completed', startTime: { $gte: dayStart }, _id: { $ne: session._id } } },
+          { $group: { _id: null, minutes: { $sum: '$duration' } } },
+        ]);
+        const before = todayAgg?.minutes || 0;
+        if (before < goal && before + session.duration >= goal) {
+          await createNotification(
+            userId,
+            'daily_goal',
+            '🎯 Daily Goal Reached!',
+            `You hit your ${goal}-minute focus goal for today. Excellent work!`,
+            { goal, minutes: before + session.duration }
+          );
+        }
+      }
+
       // Streak milestone notifications
       const streakMilestones = [3, 7, 14, 21, 30, 50, 100];
       if (streakMilestones.includes(user.currentStreak)) {
@@ -174,33 +197,35 @@ exports.updateLiveSession = async (req, res) => {
     if (interruptions !== undefined) session.interruptions = interruptions;
     if (blockAttempts !== undefined) session.distractionAttempts = blockAttempts;
 
-    // Call Python Flask ML API (optional — only if ML_SERVICE_URL is configured)
-    let mlPrediction = 'Focused';
-    const mlServiceUrl = process.env.ML_SERVICE_URL;
-    if (mlServiceUrl) {
-      try {
-        const response = await fetch(`${mlServiceUrl}/predict`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            duration: duration || 0,
-            tab_switches: tabSwitches || 0,
-            interruptions: interruptions || 0,
-            block_attempts: blockAttempts || 0,
-          }),
-          signal: AbortSignal.timeout(3000), // 3-second timeout
-        });
-        const data = await response.json();
-        if (data.prediction) {
-          mlPrediction = data.prediction;
-        }
-      } catch (mlError) {
-        // Non-fatal — JS decision tree is the primary model
-        console.warn('[ML API] External service unavailable:', mlError.message);
-      }
-    }
+    // Predict distraction risk with the JS decision tree model
+    const hour = new Date(session.startTime).getHours();
+    let timeOfDay;
+    if (hour >= 5 && hour < 12) timeOfDay = 'morning';
+    else if (hour >= 12 && hour < 17) timeOfDay = 'afternoon';
+    else if (hour >= 17 && hour < 21) timeOfDay = 'evening';
+    else timeOfDay = 'night';
 
-    session.mlStatus = mlPrediction;
+    // Dominant category of this session's browsing so far
+    const [topCategory] = await BrowsingLog.aggregate([
+      { $match: { sessionId: session._id } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 },
+    ]);
+
+    const mlFeatures = {
+      timeOfDay,
+      websiteCategory: topCategory?._id || 'other',
+      sessionDuration: duration || 0,
+      previousDistractions: blockAttempts || 0,
+      focusScore: Math.round(Math.max(0, Math.min(100,
+        Math.max(0, (1 - (blockAttempts || 0) / 5)) * 40 +
+        Math.max(0, (1 - (tabSwitches || 0) / 10)) * 30 +
+        Math.max(0, (1 - (interruptions || 0) / 8)) * 30
+      ))),
+    };
+    const prediction = predict(mlFeatures);
+    session.mlStatus = prediction.riskLevel;
     await session.save();
 
     res.json({

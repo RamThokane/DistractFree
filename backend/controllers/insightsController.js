@@ -16,6 +16,7 @@ const BrowsingLog = require('../models/BrowsingLog');
 const FocusSession = require('../models/FocusSession');
 const { predict } = require('../ml/decisionTreeModel');
 const {
+  getHourlyActivity,
   getProductivityWindows,
   getHighDistractionHours,
   getTrendAnalytics,
@@ -41,13 +42,17 @@ exports.getFullInsights = async (req, res) => {
     const tz = req.query.tz || 'UTC'; // User's IANA timezone (e.g. 'Asia/Kolkata')
 
     // Run all analytics in parallel for performance
-    const [features, productivity, distraction, trends, breakdown, topSites] = await Promise.all([
+    const [features, hourly, trends, breakdown, topSites] = await Promise.all([
       computeUserFeatures(userId, 7),
-      getProductivityWindows(userId, 30, tz),
-      getHighDistractionHours(userId, 30, tz),
+      getHourlyActivity(userId, 30, tz),
       getTrendAnalytics(userId, 7, tz),
       getDistractionBreakdown(userId, 7),
       getTopSites(userId, 7),
+    ]);
+    // Focus windows and risk hours share the same hourly data so they stay consistent
+    const [productivity, distraction] = await Promise.all([
+      getProductivityWindows(userId, 30, tz, hourly),
+      getHighDistractionHours(userId, 30, tz, hourly),
     ]);
 
     // ── ML Prediction ──────────────────────────────
@@ -61,20 +66,6 @@ exports.getFullInsights = async (req, res) => {
     };
 
     const mlPrediction = predict(mlFeatures);
-
-    // ── Confidence calibration ─────────────────────
-    // Adjust confidence based on data volume
-    let dataConfidenceModifier = 1.0;
-    if (features.totalSessions < 3) dataConfidenceModifier = 0.5;
-    else if (features.totalSessions < 10) dataConfidenceModifier = 0.75;
-    else if (features.totalSessions < 20) dataConfidenceModifier = 0.9;
-
-    const calibratedConfidence = Math.round(mlPrediction.confidence * dataConfidenceModifier);
-
-    let confidenceLabel;
-    if (calibratedConfidence >= 75) confidenceLabel = 'High Confidence';
-    else if (calibratedConfidence >= 50) confidenceLabel = 'Moderate Confidence';
-    else confidenceLabel = 'Low Confidence';
 
     // ── Top contributing features (Explainable AI) ─
     const topFeatures = _explainPrediction(features, mlPrediction.riskLevel);
@@ -97,8 +88,6 @@ exports.getFullInsights = async (req, res) => {
       // Prediction
       prediction: {
         riskLevel: mlPrediction.riskLevel,
-        confidence: calibratedConfidence,
-        confidenceLabel,
         distractionScore: features.distractionScore,
         focusScore: features.focusScore,
         classProbabilities: mlPrediction.classProbabilities,
@@ -176,7 +165,6 @@ exports.predictDistraction = async (req, res) => {
       success: true,
       prediction: {
         distractionRisk: prediction.riskLevel,
-        confidence: prediction.confidence,
         distractionScore: features.distractionScore,
         breakdown,
         topFeatures,
@@ -276,7 +264,7 @@ exports.downloadWeeklyReport = async (req, res) => {
 
     sessions.forEach((session) => {
       const date = session.startTime.toISOString().split('T')[0];
-      csv += `${date},${session.duration || 0},${session.coinsEarned || 0},${session.distractionAttempts || 0},${session.tabSwitches || 0},${session.interruptions || 0},${session.mlStatus || 'Focused'}\n`;
+      csv += `${date},${session.duration || 0},${session.coinsEarned || 0},${session.distractionAttempts || 0},${session.tabSwitches || 0},${session.interruptions || 0},${session.mlStatus || 'low'}\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv');

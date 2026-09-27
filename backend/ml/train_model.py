@@ -28,7 +28,6 @@ from sklearn.metrics import (
     confusion_matrix,
     accuracy_score,
 )
-from sklearn.preprocessing import LabelEncoder
 import joblib
 
 # ── Paths ───────────────────────────────────────────
@@ -51,81 +50,7 @@ CATEGORY_MAP = {
     "other": 7,
 }
 RISK_LABELS = ["low", "medium", "high"]
-
-
-def generate_synthetic_dataset(n_samples: int = 2000) -> pd.DataFrame:
-    """
-    Generate a realistic synthetic dataset for training.
-
-    Features:
-        - timeOfDay (categorical → encoded)
-        - websiteCategory (categorical → encoded)
-        - sessionDuration (minutes, 5–120)
-        - previousDistractions (0–10)
-        - focusScore (0–100)
-
-    Label:
-        - distractionRisk: low / medium / high
-    """
-    rng = np.random.default_rng(42)
-
-    time_of_day = rng.choice(list(TIME_OF_DAY_MAP.keys()), n_samples)
-    website_category = rng.choice(list(CATEGORY_MAP.keys()), n_samples)
-    session_duration = rng.integers(5, 121, n_samples)
-    previous_distractions = rng.integers(0, 11, n_samples)
-    focus_score = rng.integers(10, 101, n_samples)
-
-    # Derive labels using domain logic
-    labels = []
-    for i in range(n_samples):
-        risk = 0.0
-
-        # Time influence
-        if time_of_day[i] in ("evening", "night"):
-            risk += rng.uniform(20, 35)
-        elif time_of_day[i] == "afternoon":
-            risk += rng.uniform(5, 15)
-
-        # Category influence
-        if website_category[i] in ("social_media", "gaming", "streaming", "entertainment"):
-            risk += rng.uniform(15, 30)
-        elif website_category[i] in ("news", "shopping"):
-            risk += rng.uniform(5, 15)
-
-        # Short sessions are harder to maintain focus
-        if session_duration[i] < 15:
-            risk += rng.uniform(10, 20)
-        elif session_duration[i] > 60:
-            risk += rng.uniform(0, 10)
-
-        # Past distractions
-        risk += previous_distractions[i] * rng.uniform(2, 5)
-
-        # Focus score (inverse)
-        risk += (100 - focus_score[i]) * rng.uniform(0.2, 0.5)
-
-        # Add noise
-        risk += rng.normal(0, 5)
-
-        if risk >= 55:
-            labels.append("high")
-        elif risk >= 30:
-            labels.append("medium")
-        else:
-            labels.append("low")
-
-    df = pd.DataFrame(
-        {
-            "timeOfDay": [TIME_OF_DAY_MAP[t] for t in time_of_day],
-            "websiteCategory": [CATEGORY_MAP[c] for c in website_category],
-            "sessionDuration": session_duration,
-            "previousDistractions": previous_distractions,
-            "focusScore": focus_score,
-            "distractionRisk": labels,
-        }
-    )
-
-    return df
+REAL_SAMPLE_WEIGHT = 3.0  # real sessions count more than synthetic padding
 
 
 def export_tree_to_json(tree: DecisionTreeClassifier, output_path: Path):
@@ -150,8 +75,11 @@ def export_tree_to_json(tree: DecisionTreeClassifier, output_path: Path):
         "children_right": [int(x) for x in tree.tree_.children_right],
         "feature": [int(x) for x in tree.tree_.feature],
         "threshold": [round(float(t), 6) for t in tree.tree_.threshold],
+        # Per-node class distribution as integers (per-mille). sklearn >= 1.4
+        # stores fractions in tree_.value, so int() alone would zero them out;
+        # normalising also keeps class weights/sample weights consistent.
         "value": [
-            [[int(c) for c in classes] for classes in node]
+            [[int(round(c / max(sum(classes), 1e-12) * 1000)) for c in classes] for classes in node]
             for node in tree.tree_.value
         ],
     }
@@ -167,34 +95,39 @@ def main():
     print("DistractFree — Decision Tree Training Pipeline")
     print("=" * 60)
 
-    # ── 1. Load or generate data ────────────────────
+    # ── 1. Load data ────────────────────────────────
     csv_path = DATA_DIR / "training_data.csv"
 
-    if csv_path.exists():
-        print(f"\n[1/5] Loading dataset from {csv_path}")
-        df = pd.read_csv(csv_path)
-        # Encode categorical columns if present as strings
-        if df["timeOfDay"].dtype == object:
-            df["timeOfDay"] = df["timeOfDay"].map(TIME_OF_DAY_MAP)
-        if df["websiteCategory"].dtype == object:
-            df["websiteCategory"] = df["websiteCategory"].map(CATEGORY_MAP)
-    else:
-        print(f"\n[1/5] No CSV found — generating synthetic dataset (2000 samples)")
-        df = generate_synthetic_dataset(2000)
-        df.to_csv(csv_path, index=False)
-        print(f"      Saved to {csv_path}")
+    if not csv_path.exists():
+        print(f"\n[ERROR] {csv_path} not found.")
+        print("        Run `node backend/ml/extractTrainingData.js` first to build it from MongoDB.")
+        sys.exit(1)
+
+    print(f"\n[1/5] Loading dataset from {csv_path}")
+    df = pd.read_csv(csv_path)
+    # Encode categorical columns if present as strings
+    if df["timeOfDay"].dtype == object:
+        df["timeOfDay"] = df["timeOfDay"].map(TIME_OF_DAY_MAP)
+    if df["websiteCategory"].dtype == object:
+        df["websiteCategory"] = df["websiteCategory"].map(CATEGORY_MAP)
+
+    # Real rows get more weight than synthetic padding
+    if "source" not in df.columns:
+        df["source"] = "real"
+    weights = np.where(df["source"] == "real", REAL_SAMPLE_WEIGHT, 1.0)
+    print(f"      Real rows: {(df['source'] == 'real').sum()}, synthetic rows: {(df['source'] != 'real').sum()}")
 
     print(f"      Dataset shape: {df.shape}")
     print(f"      Class distribution:\n{df['distractionRisk'].value_counts().to_string()}")
 
     # ── 2. Prepare features & labels ────────────────
     X = df[["timeOfDay", "websiteCategory", "sessionDuration", "previousDistractions", "focusScore"]]
-    y_encoder = LabelEncoder()
-    y_encoder.fit(RISK_LABELS)
-    y = y_encoder.transform(df["distractionRisk"])
+    # Explicit encoding (LabelEncoder sorts alphabetically, which would break the
+    # low=0 / medium=1 / high=2 order that class_names and decisionTreeModel.js rely on)
+    y = df["distractionRisk"].map({label: i for i, label in enumerate(RISK_LABELS)}).to_numpy()
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+    X_train, X_test, y_train, y_test, w_train, _ = train_test_split(
+        X, y, weights, test_size=0.2, random_state=42, stratify=y
     )
     print(f"\n[2/5] Train/test split: {len(X_train)} / {len(X_test)}")
 
@@ -208,14 +141,14 @@ def main():
     }
 
     grid = GridSearchCV(
-        DecisionTreeClassifier(random_state=42),
+        DecisionTreeClassifier(random_state=42, class_weight="balanced"),
         param_grid,
         cv=5,
         scoring="accuracy",
         n_jobs=-1,
         verbose=0,
     )
-    grid.fit(X_train, y_train)
+    grid.fit(X_train, y_train, sample_weight=w_train)
 
     best_params = grid.best_params_
     print(f"      Best params: {best_params}")
@@ -223,8 +156,8 @@ def main():
 
     # ── 4. Train final model ────────────────────────
     print("\n[4/5] Training final model with best parameters…")
-    model = DecisionTreeClassifier(random_state=42, **best_params)
-    model.fit(X_train, y_train)
+    model = DecisionTreeClassifier(random_state=42, class_weight="balanced", **best_params)
+    model.fit(X_train, y_train, sample_weight=w_train)
 
     # Evaluate
     y_pred = model.predict(X_test)
@@ -253,6 +186,8 @@ def main():
         "accuracy": round(accuracy, 4),
         "cv_mean": round(float(cv_scores.mean()), 4),
         "cv_std": round(float(cv_scores.std()), 4),
+        "n_real": int((df["source"] == "real").sum()),
+        "n_synthetic": int((df["source"] != "real").sum()),
         "best_params": best_params,
         "classification_report": report,
         "confusion_matrix": cm.tolist(),

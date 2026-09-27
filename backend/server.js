@@ -18,6 +18,7 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const websiteRoutes = require('./routes/websiteRoutes');
 const coinRoutes = require('./routes/coinRoutes');
 const insightsRoutes = require('./routes/insightsRoutes');
+const mlRoutes = require('./routes/mlRoutes');
 const browsingRoutes = require('./routes/browsingRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
@@ -109,6 +110,7 @@ app.use('/api/session', sessionRoutes);
 app.use('/api/websites', websiteRoutes);
 app.use('/api/coins', coinRoutes);
 app.use('/api/insights', insightsRoutes);
+app.use('/api/ml', mlRoutes);
 app.use('/api/browsing', browsingRoutes);
 app.use('/api/notifications', notificationRoutes);
 

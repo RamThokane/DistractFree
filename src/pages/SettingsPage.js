@@ -124,6 +124,7 @@ const SettingsPage = () => {
         if (typeof siteToAdd !== 'string') {
           setNewSite('');
         }
+        notifyExtension();
       }
     } catch (err) {
       const msg =
@@ -134,12 +135,16 @@ const SettingsPage = () => {
     }
   };
 
+  // Tell the browser extension to re-sync right away (content script listens for this)
+  const notifyExtension = () => window.dispatchEvent(new CustomEvent('DF_SETTINGS_CHANGED'));
+
   // ── Remove site from backend ──
   const removeSite = async (siteId) => {
     try {
       setAddingState(`removing-${siteId}`);
       await api.delete('/websites/remove', { data: { websiteId: siteId } });
       setBlockedSites((prev) => prev.filter((s) => s.id !== siteId));
+      notifyExtension();
     } catch (err) {
       console.error('[Settings] Failed to remove site:', err);
       setSiteError('Failed to remove website');
@@ -180,6 +185,7 @@ const SettingsPage = () => {
       });
       if (res.data.success) {
         updateUser(res.data.user);
+        notifyExtension();
       }
     } catch (err) {
       console.error('Failed to auto-save strict mode:', err);
@@ -301,7 +307,7 @@ const SettingsPage = () => {
                 <HiOutlineShieldCheck className="w-5 h-5 text-dash-muted" />
                 <div>
                   <p className="text-dash-text text-sm font-medium">Strict Mode</p>
-                  <p className="text-dash-muted text-xs">Prevent unlocking blocked sites during sessions</p>
+                  <p className="text-dash-muted text-xs">Blocked sites can't be unlocked with coins — at any time</p>
                 </div>
               </div>
               <button

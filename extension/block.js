@@ -22,7 +22,7 @@ try {
   const quoteEl = document.getElementById('quote-text');
 
   // ── State ───────────────────────────────────────
-  let isStrictMode = false;
+  let isStrictMode = params.get('strict') === '1';
   let hasActiveSession = false;
 
   // ── Motivational Quotes ─────────────────────────
@@ -80,7 +80,8 @@ try {
 
   // ── UI State Manager ────────────────────────────
   const updateUI = () => {
-    if (isStrictMode && hasActiveSession) {
+    // Strict Mode disables coin unlocks at all times, not only during sessions
+    if (isStrictMode) {
       // Hide unlock button, show strict mode banner
       unlockBtn.style.display = 'none';
       if (strictModeMsg) strictModeMsg.style.display = 'flex';
@@ -92,7 +93,7 @@ try {
       // Don't re-enable if currently processing
       if (unlockBtn.textContent.indexOf('Unlocking') === -1) {
         unlockBtn.disabled = false;
-        unlockBtn.textContent = '🪙 Unlock for 5 Coins';
+        unlockBtn.textContent = 'Unlock for 5 coins · 2 min';
         unlockBtn.style.opacity = '1';
         unlockBtn.style.cursor = 'pointer';
       }
@@ -122,13 +123,20 @@ try {
         chrome.runtime.sendMessage({ type: 'GET_STATUS' }, resolve);
       });
 
+      const timerLabel = document.getElementById('timer-label');
+      const subtitle = document.getElementById('subtitle');
+      if (response && typeof response.strictMode === 'boolean') isStrictMode = response.strictMode;
       if (response && response.activeSession) {
         timerRow.style.display = 'flex';
+        if (timerLabel) timerLabel.textContent = 'Session time left';
         timeDisplay.textContent = response.activeSession.remainingTime;
+        if (subtitle) subtitle.textContent = 'This site is paused during your focus session.';
         hasActiveSession = true;
       } else {
         timerRow.style.display = 'flex';
-        timeDisplay.textContent = 'Always Blocked';
+        if (timerLabel) timerLabel.textContent = 'Status';
+        timeDisplay.textContent = 'Always blocked';
+        if (subtitle) subtitle.textContent = 'This site is on your block list.';
         hasActiveSession = false;
       }
       updateUI();
@@ -154,7 +162,7 @@ try {
       });
 
       if (response && response.success) {
-        unlockBtn.textContent = '✓ Unlocked! Redirecting…';
+        unlockBtn.textContent = 'Unlocked! Redirecting…';
         unlockBtn.classList.add('btn-success');
         setTimeout(() => {
           try {
@@ -170,7 +178,6 @@ try {
         // If backend rejected due to strict mode, force lock the UI
         if (errorMsg.includes('Strict Mode')) {
           isStrictMode = true;
-          hasActiveSession = true;
         }
 
         setTimeout(() => {

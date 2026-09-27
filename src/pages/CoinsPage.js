@@ -14,6 +14,9 @@ const CoinsPage = () => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -25,6 +28,8 @@ const CoinsPage = () => {
 
       if (historyRes.data.success) {
         setTransactions(historyRes.data.transactions);
+        setPage(1);
+        setHasMore(historyRes.data.pagination?.pages > 1);
       }
       if (summaryRes.data.success) {
         setSummary(summaryRes.data.summary);
@@ -42,6 +47,24 @@ const CoinsPage = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Older transactions are paginated (30 per page) — load them on demand
+  const loadMore = async () => {
+    try {
+      setLoadingMore(true);
+      const next = page + 1;
+      const res = await api.get(`/coins/history?page=${next}`);
+      if (res.data.success) {
+        setTransactions((prev) => [...prev, ...res.data.transactions]);
+        setPage(next);
+        setHasMore(next < res.data.pagination.pages);
+      }
+    } catch (err) {
+      console.error('[Coins] Load more error:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const getTypeIcon = (type) => {
     switch (type) {
@@ -174,6 +197,15 @@ const CoinsPage = () => {
                     </span>
                   </motion.div>
                 ))}
+                {hasMore && (
+                  <button
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium text-dash-muted hover:bg-dash-hover transition-colors disabled:opacity-50"
+                  >
+                    {loadingMore ? 'Loading…' : 'Load older transactions'}
+                  </button>
+                )}
               </div>
             )}
           </GlassCard>

@@ -1,110 +1,439 @@
-import React, { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
+import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
-import {
-  BarChart, Bar, AreaChart, Area, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, ResponsiveContainer
-} from 'recharts';
 import api from '../services/api';
-import { formatMinutesToHours } from '../utils/helpers';
 import { HiOutlineDownload } from 'react-icons/hi';
 
-// We render a hidden container with a fixed width (A4 size approx 794px width)
-// so the layout is consistent and perfect for printing.
-const A4_WIDTH = 794;
+/*
+ * Weekly Productivity Report — built as a native, print-friendly PDF
+ * (real text + vector tables/charts, proper page breaks) from live data.
+ */
+
+const COLORS = {
+  ink: [17, 24, 39],
+  muted: [107, 114, 128],
+  line: [229, 231, 235],
+  soft: [247, 248, 252],
+  accent: [124, 92, 252],
+  green: [63, 174, 106],
+  amber: [245, 182, 56],
+  red: [239, 107, 107],
+};
+const RISK_COLOR = { low: COLORS.green, medium: COLORS.amber, high: COLORS.red };
+const RISK_MEANING = {
+  low: 'You usually stay on task.',
+  medium: 'Some distractions are likely.',
+  high: 'Distractions are very likely next session.',
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const fmtMin = (m) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`);
+const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+const fmtTime = (d) => new Date(d).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+const localDay = (d) => new Date(d).toLocaleDateString('en-CA');
+
+async function fetchAll(path, key, maxPages = 5) {
+  const items = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const res = await api.get(path, { params: { page, limit: 50 } }).catch(() => null);
+    const batch = res?.data?.[key] || [];
+    items.push(...batch);
+    if (!res?.data?.pagination || page >= res.data.pagination.pages) break;
+  }
+  return items;
+}
+
+/** Small layout engine: tracks the cursor and adds pages as needed. */
+function createDoc() {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const W = pdf.internal.pageSize.getWidth();
+  const H = pdf.internal.pageSize.getHeight();
+  const M = 16; // margin
+  let y = M;
+
+  const setColor = (c) => pdf.setTextColor(...c);
+  const ensure = (h) => {
+    if (y + h > H - 18) {
+      pdf.addPage();
+      y = M;
+    }
+  };
+
+  const heading = (text) => {
+    ensure(16);
+    y += 4;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(13);
+    setColor(COLORS.ink);
+    pdf.text(text, M, y);
+    pdf.setDrawColor(...COLORS.accent);
+    pdf.setLineWidth(0.6);
+    pdf.line(M, y + 2, M + 14, y + 2);
+    y += 8;
+  };
+
+  const paragraph = (text, size = 9.5, color = COLORS.muted) => {
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(size);
+    setColor(color);
+    const lines = pdf.splitTextToSize(text, W - 2 * M);
+    ensure(lines.length * 4.6);
+    pdf.text(lines, M, y);
+    y += lines.length * 4.6 + 1.5;
+  };
+
+  const kpis = (items) => {
+    const cols = 4;
+    const gap = 4;
+    const w = (W - 2 * M - gap * (cols - 1)) / cols;
+    const h = 20;
+    for (let i = 0; i < items.length; i += cols) {
+      ensure(h + gap);
+      items.slice(i, i + cols).forEach((k, j) => {
+        const x = M + j * (w + gap);
+        pdf.setFillColor(...COLORS.soft);
+        pdf.setDrawColor(...COLORS.line);
+        pdf.roundedRect(x, y, w, h, 2.5, 2.5, 'FD');
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(7.5);
+        setColor(COLORS.muted);
+        pdf.text(k.label.toUpperCase(), x + 3.5, y + 6);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(13);
+        setColor(k.color || COLORS.ink);
+        pdf.text(String(k.value), x + 3.5, y + 13.5);
+        if (k.sub) {
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(6.8);
+          setColor(COLORS.muted);
+          pdf.text(k.sub, x + 3.5, y + 17.5);
+        }
+      });
+      y += h + gap;
+    }
+  };
+
+  const keyValues = (rows) => {
+    rows.forEach(([k, v, color]) => {
+      ensure(7);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9.5);
+      setColor(COLORS.muted);
+      pdf.text(k, M, y);
+      pdf.setFont('helvetica', 'bold');
+      setColor(color || COLORS.ink);
+      pdf.text(String(v), W - M, y, { align: 'right' });
+      pdf.setDrawColor(...COLORS.line);
+      pdf.setLineWidth(0.2);
+      pdf.line(M, y + 2.2, W - M, y + 2.2);
+      y += 7;
+    });
+    y += 2;
+  };
+
+  /** columns: [{ title, width (fraction), align }] */
+  const table = (columns, rows, emptyText = 'No data for this period.') => {
+    const totalW = W - 2 * M;
+    const rowH = 7;
+    const drawHeader = () => {
+      pdf.setFillColor(...COLORS.soft);
+      pdf.rect(M, y, totalW, rowH, 'F');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      setColor(COLORS.muted);
+      let x = M;
+      columns.forEach((c) => {
+        const w = c.width * totalW;
+        const tx = c.align === 'right' ? x + w - 2 : x + 2;
+        pdf.text(c.title.toUpperCase(), tx, y + 4.7, { align: c.align === 'right' ? 'right' : 'left' });
+        x += w;
+      });
+      y += rowH;
+    };
+
+    ensure(rowH * 2);
+    drawHeader();
+    if (rows.length === 0) {
+      paragraph(emptyText, 9);
+      return;
+    }
+    rows.forEach((row) => {
+      if (y + rowH > pdf.internal.pageSize.getHeight() - 18) {
+        pdf.addPage();
+        y = M;
+        drawHeader();
+      }
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8.5);
+      let x = M;
+      columns.forEach((c, i) => {
+        const w = c.width * totalW;
+        const cell = row[i];
+        const text = cell && typeof cell === 'object' ? cell.text : String(cell ?? '');
+        setColor(cell && typeof cell === 'object' && cell.color ? cell.color : COLORS.ink);
+        const clipped = pdf.splitTextToSize(text, w - 4)[0] || '';
+        const tx = c.align === 'right' ? x + w - 2 : x + 2;
+        pdf.text(clipped, tx, y + 4.7, { align: c.align === 'right' ? 'right' : 'left' });
+        x += w;
+      });
+      pdf.setDrawColor(...COLORS.line);
+      pdf.setLineWidth(0.15);
+      pdf.line(M, y + rowH, M + totalW, y + rowH);
+      y += rowH;
+    });
+    y += 3;
+  };
+
+  const barChart = (data, valueKey, labelKey, color = COLORS.accent) => {
+    const h = 48;
+    ensure(h + 10);
+    const chartW = W - 2 * M;
+    const max = Math.max(1, ...data.map((d) => d[valueKey]));
+    const slot = chartW / data.length;
+    const barW = Math.min(14, slot * 0.55);
+    pdf.setDrawColor(...COLORS.line);
+    pdf.setLineWidth(0.2);
+    pdf.line(M, y + h, M + chartW, y + h);
+    data.forEach((d, i) => {
+      const v = d[valueKey];
+      const bh = (v / max) * (h - 8);
+      const x = M + i * slot + (slot - barW) / 2;
+      pdf.setFillColor(...color);
+      if (bh > 0) pdf.roundedRect(x, y + h - bh, barW, bh, 1, 1, 'F');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(7.5);
+      setColor(COLORS.ink);
+      pdf.text(String(v), x + barW / 2, y + h - bh - 1.5, { align: 'center' });
+      pdf.setFont('helvetica', 'normal');
+      setColor(COLORS.muted);
+      pdf.text(d[labelKey], x + barW / 2, y + h + 4.5, { align: 'center' });
+    });
+    y += h + 9;
+  };
+
+  const footer = (name) => {
+    const pages = pdf.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+      pdf.setPage(p);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7.5);
+      setColor(COLORS.muted);
+      pdf.text(`DistractFree Weekly Report - ${name}`, M, H - 8);
+      pdf.text(`Page ${p} of ${pages}`, W - M, H - 8, { align: 'right' });
+    }
+  };
+
+  return {
+    pdf, W, M, heading, paragraph, kpis, keyValues, table, barChart, footer,
+    get y() { return y; },
+    set y(v) { y = v; },
+  };
+}
 
 const PDFReportGenerator = ({ user }) => {
   const [loading, setLoading] = useState(false);
-  const reportRef = useRef(null);
-  
-  const [reportData, setReportData] = useState(null);
+  const [error, setError] = useState('');
 
   const generatePDF = async () => {
     try {
       setLoading(true);
-      
-      // 1. Fetch live data
-      const [dashRes, predictRes, analyticsRes, leaderboardRes, coinSummaryRes] = await Promise.all([
-        api.get('/session/dashboard').catch(() => null),
-        api.get('/insights/predict').catch(() => null),
-        api.get('/insights/analytics', { params: { days: 7 } }).catch(() => null),
-        api.get('/session/leaderboard').catch(() => null),
-        api.get('/coins/summary').catch(() => null)
+      setError('');
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const since = new Date(Date.now() - 7 * DAY_MS);
+
+      const [insightsRes, balanceRes, sessions, transactions] = await Promise.all([
+        api.get(`/insights/full?tz=${encodeURIComponent(tz)}`).catch(() => null),
+        api.get('/coins/balance').catch(() => null),
+        fetchAll('/session/history', 'sessions'),
+        fetchAll('/coins/history', 'transactions'),
       ]);
 
-      const data = {
-        dashboard: dashRes?.data || {},
-        prediction: predictRes?.data?.prediction || null,
-        features: predictRes?.data?.features || null,
-        recommendations: predictRes?.data?.recommendations || null,
-        analytics: analyticsRes?.data?.analytics || {},
-        leaderboard: leaderboardRes?.data || {},
-        coins: coinSummaryRes?.data || {}
-      };
-      
-      setReportData(data);
-      
-      // 2. Wait for state to render (small timeout)
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const ins = insightsRes?.data || {};
+      const f = ins.features || {};
+      const pred = ins.prediction || {};
+      const prod = ins.productivityWindows || {};
+      const dist = ins.distractionHours || {};
+      const trends = ins.trends || {};
+      const bal = balanceRes?.data || {};
 
-      // 3. Generate PDF
-      if (!reportRef.current) return;
-      
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2, // High resolution
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#0F1115'
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      
-      // A4 paper size in mm
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      // If the report is longer than 1 page, we might need multiple pages.
-      // But for a continuous scroll report, we can just let it scale or add pages.
-      let heightLeft = pdfHeight;
-      let position = 0;
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
+      const weekSessions = sessions.filter((s) => new Date(s.startTime) >= since && s.status !== 'active');
+      const completed = weekSessions.filter((s) => s.status === 'completed');
+      const weekTx = transactions.filter((t) => new Date(t.createdAt) >= since);
+      const coinsEarned = weekTx.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+      const coinsSpent = weekTx.filter((t) => t.amount < 0).reduce((s, t) => s - t.amount, 0);
+      const focusMinutes = completed.reduce((s, x) => s + (x.duration || 0), 0);
+      const avgSession = completed.length ? Math.round(focusMinutes / completed.length) : 0;
+      const completionRate = weekSessions.length ? Math.round((completed.length / weekSessions.length) * 100) : 0;
+      const distractions = weekSessions.reduce((s, x) => s + (x.distractionAttempts || 0), 0);
+
+      // Per-day breakdown (local dates)
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(Date.now() - i * DAY_MS);
+        const key = localDay(d);
+        const daySessions = weekSessions.filter((s) => localDay(s.startTime) === key);
+        const dayDone = daySessions.filter((s) => s.status === 'completed');
+        days.push({
+          label: d.toLocaleDateString(undefined, { weekday: 'short' }),
+          date: fmtDate(d),
+          sessions: daySessions.length,
+          completed: dayDone.length,
+          minutes: dayDone.reduce((s, x) => s + (x.duration || 0), 0),
+          distractions: daySessions.reduce((s, x) => s + (x.distractionAttempts || 0), 0),
+          coins: dayDone.reduce((s, x) => s + (x.coinsEarned || 0), 0),
+        });
       }
-      
-      pdf.save(`DistractFree_Report_Week_${new Date().getWeek()}.pdf`);
-      
+
+      const doc = createDoc();
+      const { pdf, W, M } = doc;
+      const name = user?.name || 'User';
+
+      // ── Title block ──
+      pdf.setFillColor(...COLORS.accent);
+      pdf.rect(0, 0, W, 34, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(19);
+      pdf.text('Weekly Productivity Report', M, 16);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(`${name}  |  ${fmtDate(since)} - ${fmtDate(new Date())}`, M, 24);
+      pdf.setFontSize(8);
+      pdf.text(`Generated ${new Date().toLocaleString()}`, M, 29.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(22);
+      pdf.text(`${pred.focusScore ?? 0}`, W - M - 14, 18, { align: 'right' });
+      pdf.setFontSize(9);
+      pdf.text('/100', W - M, 18, { align: 'right' });
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7.5);
+      pdf.text('FOCUS SCORE', W - M, 24, { align: 'right' });
+      doc.y = 44;
+
+      // ── 1. Summary ──
+      doc.heading('1. Weekly Summary');
+      doc.kpis([
+        { label: 'Focus time', value: fmtMin(focusMinutes), sub: `${completed.length} completed sessions` },
+        { label: 'Completion rate', value: `${completionRate}%`, sub: `${weekSessions.length} sessions started`, color: completionRate >= 70 ? COLORS.green : COLORS.amber },
+        { label: 'Avg session', value: `${avgSession} min`, sub: `Optimal: ${prod.optimalSessionLength || 25} min` },
+        { label: 'Blocked attempts', value: distractions, sub: 'During focus sessions', color: distractions > 0 ? COLORS.red : COLORS.green },
+        { label: 'Current streak', value: `${bal.currentStreak ?? user?.currentStreak ?? 0} days`, sub: `Longest: ${bal.longestStreak ?? 0} days` },
+        { label: 'Coins earned', value: `+${coinsEarned}`, sub: 'This week', color: COLORS.green },
+        { label: 'Coins spent', value: `-${coinsSpent}`, sub: 'Unlocks & penalties', color: coinsSpent > 0 ? COLORS.red : COLORS.ink },
+        { label: 'Coin balance', value: bal.focusCoins ?? user?.focusCoins ?? 0, sub: 'Available now' },
+      ]);
+
+      // ── 2. Daily breakdown ──
+      doc.heading('2. Daily Focus Minutes');
+      doc.barChart(days, 'minutes', 'label');
+      doc.table(
+        [
+          { title: 'Day', width: 0.28 },
+          { title: 'Sessions', width: 0.14, align: 'right' },
+          { title: 'Completed', width: 0.14, align: 'right' },
+          { title: 'Focus time', width: 0.16, align: 'right' },
+          { title: 'Blocked', width: 0.14, align: 'right' },
+          { title: 'Coins', width: 0.14, align: 'right' },
+        ],
+        days.map((d) => [d.date, d.sessions, d.completed, fmtMin(d.minutes), { text: String(d.distractions), color: d.distractions ? COLORS.red : COLORS.ink }, d.coins])
+      );
+
+      // ── 3. AI insights ──
+      doc.heading('3. AI Focus Analysis');
+      const risk = pred.riskLevel || 'n/a';
+      doc.keyValues([
+        ['Predicted distraction risk', `${risk.toUpperCase()}${RISK_MEANING[risk] ? ` - ${RISK_MEANING[risk]}` : ''}`, RISK_COLOR[risk]],
+        ['Focus score (7-day)', `${pred.focusScore ?? 0} / 100`, COLORS.green],
+        ['Distraction score (100 - focus)', `${pred.distractionScore ?? 0} / 100`, COLORS.red],
+        ['Best focus window', prod.bestFocusHours || 'Not enough data'],
+        ['Weakest window', prod.weakestHours || 'Not enough data'],
+        ['Peak distraction window', dist.peakDistractionWindow || 'None detected'],
+        ['Tab switches per session', f.tabSwitchCount ?? 0],
+        ['Blocked visit ratio', `${f.blockedVisitRatio ?? 0}%`],
+      ]);
+      if (pred.explanation) doc.paragraph(pred.explanation);
+
+      if (dist.topRiskHours?.length) {
+        doc.table(
+          [
+            { title: 'High-risk hour', width: 0.4 },
+            { title: 'Risk', width: 0.2, align: 'right' },
+            { title: 'Blocked attempts', width: 0.2, align: 'right' },
+            { title: 'Sessions', width: 0.2, align: 'right' },
+          ],
+          dist.topRiskHours.map((h) => [h.window || h.label, { text: `${h.riskPercent}%`, color: h.riskPercent > 60 ? COLORS.red : COLORS.amber }, h.blockedAttempts, h.sessions ?? 0])
+        );
+      }
+
+      // ── 4. Sites ──
+      doc.heading('4. Most Visited Sites');
+      doc.table(
+        [
+          { title: 'Website', width: 0.46 },
+          { title: 'Visits', width: 0.18, align: 'right' },
+          { title: 'Blocked', width: 0.18, align: 'right' },
+          { title: 'Time', width: 0.18, align: 'right' },
+        ],
+        (ins.topSites || []).slice(0, 10).map((s) => [s._id, s.visits, { text: String(s.blockedVisits), color: s.blockedVisits ? COLORS.red : COLORS.ink }, fmtMin(Math.round((s.totalDuration || 0) / 60))])
+      );
+
+      // ── 5. Session log ──
+      doc.heading('5. Session Log');
+      doc.table(
+        [
+          { title: 'Date', width: 0.2 },
+          { title: 'Start', width: 0.12 },
+          { title: 'Planned', width: 0.11, align: 'right' },
+          { title: 'Actual', width: 0.11, align: 'right' },
+          { title: 'Status', width: 0.14 },
+          { title: 'Blocked', width: 0.1, align: 'right' },
+          { title: 'Tabs', width: 0.08, align: 'right' },
+          { title: 'Coins', width: 0.14, align: 'right' },
+        ],
+        weekSessions.map((s) => [
+          fmtDate(s.startTime),
+          fmtTime(s.startTime),
+          `${s.plannedDuration}m`,
+          `${s.duration || 0}m`,
+          { text: s.status, color: s.status === 'completed' ? COLORS.green : COLORS.red },
+          s.distractionAttempts || 0,
+          s.tabSwitches || 0,
+          s.coinsEarned || 0,
+        ]),
+        'No sessions in the last 7 days.'
+      );
+
+      // ── 6. Recommendations ──
+      doc.heading('6. Recommendations');
+      if (ins.sessionRecommendation) {
+        doc.paragraph(
+          `Session plan: ${ins.sessionRecommendation.recommendedSessionTime}-minute focus blocks followed by ${ins.sessionRecommendation.suggestedBreakTime}-minute breaks.`,
+          10,
+          COLORS.ink
+        );
+      }
+      const recs = ins.recommendations || [];
+      if (recs.length === 0) doc.paragraph('Keep completing sessions to unlock personalised recommendations.');
+      recs.slice(0, 6).forEach((r, i) => {
+        doc.paragraph(`${i + 1}. ${r.title} (${r.priority} priority)`, 10, COLORS.ink);
+        doc.paragraph(r.description);
+      });
+
+      doc.footer(name);
+      pdf.save(`DistractFree_Weekly_Report_${localDay(new Date())}.pdf`);
     } catch (err) {
       console.error('PDF Generation Failed:', err);
+      setError('Could not generate the report. Please try again.');
     } finally {
       setLoading(false);
-      setReportData(null);
     }
   };
 
-  // Helper prototype to get week number
-  Date.prototype.getWeek = function() {
-    var date = new Date(this.getTime());
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-    var week1 = new Date(date.getFullYear(), 0, 4);
-    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
-  };
-
   return (
-    <>
-      <button 
-        onClick={generatePDF} 
+    <div className="ml-4 flex flex-col items-end">
+      <button
+        onClick={generatePDF}
         disabled={loading}
-        className="ml-4 text-xs text-white bg-indigo-500 hover:bg-indigo-600 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50"
+        className="text-xs text-white bg-indigo-500 hover:bg-indigo-600 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50"
       >
         {loading ? (
           <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -113,140 +442,8 @@ const PDFReportGenerator = ({ user }) => {
         )}
         {loading ? 'Generating...' : 'Download PDF Report'}
       </button>
-
-      {/* Hidden Render Container */}
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-        {reportData && (
-          <div 
-            ref={reportRef} 
-            style={{ width: `${A4_WIDTH}px`, backgroundColor: '#0F1115', color: '#F0EEFF' }}
-            className="p-10 font-sans"
-          >
-            {/* 1. Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8">
-              <div className="flex items-center gap-4">
-                <img src="/favicon.svg" alt="DistractFree Logo" className="w-12 h-12 rounded-xl shadow-lg" />
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">DistractFree Productivity Report</h1>
-                  <p className="text-gray-400 text-sm">Generated for {user?.name || 'User'} • {new Date().toLocaleDateString()}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-indigo-400">
-                  {reportData.features?.focusScore || reportData.dashboard?.aiFocusScore || 0}<span className="text-lg text-gray-500">/100</span>
-                </div>
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Overall Productivity</p>
-              </div>
-            </div>
-
-            {/* 2. Productivity Summary & 6. Goals */}
-            <div className="grid grid-cols-4 gap-4 mb-8">
-              <div className="bg-[#14171C] border border-white/[0.05] p-5 rounded-2xl">
-                <p className="text-xs text-gray-400 uppercase mb-1">Focus Time</p>
-                <p className="text-2xl font-bold">{formatMinutesToHours(reportData.dashboard?.todayFocusMinutes || 0)}</p>
-              </div>
-              <div className="bg-[#14171C] border border-white/[0.05] p-5 rounded-2xl">
-                <p className="text-xs text-gray-400 uppercase mb-1">Current Streak</p>
-                <p className="text-2xl font-bold text-orange-400">{reportData.dashboard?.currentStreak || user?.currentStreak || 0} days</p>
-              </div>
-              <div className="bg-[#14171C] border border-white/[0.05] p-5 rounded-2xl">
-                <p className="text-xs text-gray-400 uppercase mb-1">Daily Goal</p>
-                <p className="text-2xl font-bold text-indigo-400">{reportData.dashboard?.dailyGoal?.focusMinutes || 120}m</p>
-              </div>
-              <div className="bg-[#14171C] border border-white/[0.05] p-5 rounded-2xl">
-                <p className="text-xs text-gray-400 uppercase mb-1">Coins Earned</p>
-                <p className="text-2xl font-bold text-yellow-500">{reportData.coins?.balance || 0} 🪙</p>
-              </div>
-            </div>
-
-            {/* 3. Analytics Chart */}
-            {reportData.dashboard?.weeklyFocusData && (
-              <div className="mb-8 bg-[#14171C] border border-white/[0.05] p-6 rounded-2xl">
-                <h3 className="text-sm font-semibold mb-4 uppercase tracking-wider text-gray-400">Weekly Focus Time (Minutes)</h3>
-                <div style={{ height: '200px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={reportData.dashboard.weeklyFocusData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} />
-                      <XAxis dataKey="day" stroke="#718096" fontSize={10} tickLine={false} axisLine={false} />
-                      <Bar dataKey="minutes" fill="#6366F1" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-
-            {/* 4 & 5. AI Insights & Distractions */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="bg-[#14171C] border border-white/[0.05] p-6 rounded-2xl">
-                <h3 className="text-sm font-semibold mb-4 uppercase tracking-wider text-gray-400">AI Distraction Analysis</h3>
-                {reportData.prediction ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-3">
-                      <span className="text-gray-400 text-sm">Risk Level</span>
-                      <span className="font-bold uppercase text-red-400">{reportData.prediction.distractionRisk}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-white/[0.05] pb-3">
-                      <span className="text-gray-400 text-sm">Distraction Score</span>
-                      <span className="font-bold">{reportData.prediction.distractionScore}/100</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2">
-                      <span className="text-gray-400 text-sm">Blocked Site Attempts</span>
-                      <span className="font-bold">{reportData.analytics?.topSites?.reduce((acc, s) => acc + s.blockedVisits, 0) || 0}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">Not enough data for AI insights.</p>
-                )}
-              </div>
-              
-              <div className="bg-[#14171C] border border-white/[0.05] p-6 rounded-2xl">
-                <h3 className="text-sm font-semibold mb-4 uppercase tracking-wider text-gray-400">Personalized Recommendations</h3>
-                {reportData.recommendations ? (
-                  <div className="space-y-3">
-                    <div className="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-xl">
-                      <p className="text-xs text-indigo-300 font-medium mb-1">Session Strategy</p>
-                      <p className="text-sm text-indigo-100">Try {reportData.recommendations.recommendedSessionTime}m focus / {reportData.recommendations.suggestedBreakTime}m break.</p>
-                    </div>
-                    {reportData.recommendations.tips?.slice(0, 2).map((tip, i) => (
-                      <div key={i} className="bg-white/[0.02] border border-white/[0.05] p-3 rounded-xl">
-                        <p className="text-sm text-gray-300 leading-snug">{tip}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">Continue focusing to get AI recommendations.</p>
-                )}
-              </div>
-            </div>
-
-            {/* 8. Leaderboard & 9. Motivation */}
-            <div className="bg-gradient-to-r from-[#1A1D24] to-[#14171C] border border-white/[0.05] p-6 rounded-2xl mb-8 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold mb-1 uppercase tracking-wider text-gray-400">Leaderboard Standing</h3>
-                <p className="text-xl font-bold text-white">
-                  {reportData.leaderboard?.currentUserRank ? `Rank #${reportData.leaderboard.currentUserRank}` : "Unranked"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-400 mb-1">Performance Note</p>
-                <p className="text-base text-indigo-300 font-medium italic">
-                  {reportData.dashboard?.todayFocusMinutes > 60 
-                    ? "Great job maintaining focus today! Consistency is key."
-                    : "Every minute counts. Keep building your focus habits!"}
-                </p>
-              </div>
-            </div>
-
-            {/* 10. Footer */}
-            <div className="text-center pt-6 border-t border-white/10">
-              <p className="text-xs text-gray-500">
-                Generated securely by DistractFree • {new Date().toLocaleString()}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-    </>
+      {error && <p className="text-[11px] text-red-400 mt-1">{error}</p>}
+    </div>
   );
 };
 

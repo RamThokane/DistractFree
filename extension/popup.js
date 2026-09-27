@@ -96,14 +96,36 @@ function sendMessage(message) {
 }
 
 function showError(msg) {
-  if (!authError) return;
-  authError.textContent = msg;
-  authError.classList.remove('hidden');
-  setTimeout(() => authError.classList.add('hidden'), 10000);
+  // Show the error in whichever view is visible
+  const target = dashboardSection && !dashboardSection.classList.contains('hidden') ? $('dash-error') : authError;
+  if (!target) return;
+  target.textContent = msg;
+  target.classList.remove('hidden');
+  setTimeout(() => target.classList.add('hidden'), 10000);
 }
 
 function hideError() {
   if (authError) authError.classList.add('hidden');
+  const dashError = $('dash-error');
+  if (dashError) dashError.classList.add('hidden');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Reflect the user's profile (name, avatar, coins, streak, strict mode)
+function renderUser(user, fallbackName) {
+  const name = (user && user.name) || fallbackName || 'User';
+  if (userName) userName.textContent = name;
+  const avatar = $('user-avatar');
+  if (avatar) avatar.textContent = name.charAt(0).toUpperCase();
+  if (user) {
+    if (coinBalance) coinBalance.textContent = user.focusCoins || 0;
+    if (streakCount) streakCount.textContent = user.currentStreak || 0;
+    const strictBadge = $('strict-badge');
+    if (strictBadge) strictBadge.classList.toggle('hidden', !(user.settings && user.settings.strictMode));
+  }
 }
 
 function setLoginLoading(loading) {
@@ -225,6 +247,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load API config first
   await loadApiConfig();
 
+  // Make sure the session state matches the server (e.g. cancelled on the website)
+  await sendMessage({ type: 'RECONCILE_SESSION' });
+
   // Step 1: Check chrome.storage for existing token
   const stored = await chrome.storage.local.get(['authToken']);
   if (stored.authToken) {
@@ -295,7 +320,7 @@ async function handleLogin() {
 
       // Hint about Google signup
       if (errorMsg.includes('Invalid email or password')) {
-        errorMsg += '\n\nSigned up with Google? Use the green "Sync from Dashboard" button below instead.';
+        errorMsg += '\n\nSigned up with Google? Use "Sync from Dashboard" below instead.';
       }
 
       showError(errorMsg);
@@ -349,7 +374,7 @@ if (loginEmail) {
 if (syncDashboardBtn) {
   syncDashboardBtn.addEventListener('click', async () => {
     syncDashboardBtn.disabled = true;
-    syncDashboardBtn.textContent = '⚡ Checking…';
+    syncDashboardBtn.textContent = 'Checking…';
     hideError();
 
     try {
@@ -374,7 +399,7 @@ if (syncDashboardBtn) {
       showError('Sync failed. Make sure the dashboard is open and you are signed in.');
     } finally {
       syncDashboardBtn.disabled = false;
-      syncDashboardBtn.textContent = '⚡ Sync from Dashboard';
+      syncDashboardBtn.textContent = 'Sync from Dashboard';
     }
   });
 }
@@ -411,20 +436,10 @@ async function showDashboard(status, name) {
   // Fetch user data
   try {
     const token = (await chrome.storage.local.get('authToken')).authToken;
-    if (token) {
-      const user = await validateToken(token);
-      if (user) {
-        if (userName) userName.textContent = user.name || name || 'User';
-        if (coinBalance) coinBalance.textContent = user.focusCoins || 0;
-        if (streakCount) streakCount.textContent = user.currentStreak || 0;
-      } else {
-        if (userName) userName.textContent = name || 'User';
-      }
-    } else {
-      if (userName) userName.textContent = name || 'User';
-    }
+    const user = token ? await validateToken(token) : null;
+    renderUser(user, name);
   } catch (e) {
-    if (userName) userName.textContent = name || 'User';
+    renderUser(null, name);
   }
 
   if (blockedCount) blockedCount.textContent = (status && status.blockedSitesCount) || 0;
@@ -449,7 +464,7 @@ function showActiveSession(session) {
   if (timerSection) timerSection.classList.remove('hidden');
   if (sessionStatus) {
     sessionStatus.textContent = 'Focusing';
-    sessionStatus.className = 'status-badge active';
+    sessionStatus.className = 'pill active';
   }
   if (statusCard) statusCard.classList.add('active');
   totalSessionSeconds = (session.plannedDuration || 25) * 60;
@@ -462,7 +477,7 @@ function showStartSection(blockedSites = []) {
   if (timerSection) timerSection.classList.add('hidden');
   if (sessionStatus) {
     sessionStatus.textContent = 'Idle';
-    sessionStatus.className = 'status-badge';
+    sessionStatus.className = 'pill';
   }
   if (statusCard) statusCard.classList.remove('active');
   clearTimerInterval();
@@ -470,14 +485,11 @@ function showStartSection(blockedSites = []) {
   const listContainer = $('site-selection-list');
   if (listContainer) {
     if (blockedSites.length === 0) {
-      listContainer.innerHTML = '<div class="text-xs text-gray-500">No websites to block. Add them in dashboard settings.</div>';
+      listContainer.innerHTML = '<span class="muted">No blocked sites yet. Add them in Settings on the website.</span>';
     } else {
-      listContainer.innerHTML = blockedSites.map(site => `
-        <div class="flex items-center" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px;">
-          <span style="color: var(--danger); font-size: 10px;">🔴</span>
-          <span class="site-value" data-url="${site.url}">${site.displayName || site.url}</span>
-        </div>
-      `).join('');
+      listContainer.innerHTML = blockedSites.map((site) =>
+        `<span class="site-chip site-value" data-url="${escapeHtml(site.url)}">${escapeHtml(site.url)}</span>`
+      ).join('');
     }
   }
 }
@@ -485,6 +497,17 @@ function showStartSection(blockedSites = []) {
 // ══════════════════════════════════════════════════
 // SESSION CONTROLS
 // ══════════════════════════════════════════════════
+
+// Duration chips drive the (hidden) select
+document.querySelectorAll('#duration-chips .chip').forEach((chip) => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('#duration-chips .chip').forEach((c) => c.classList.toggle('active', c === chip));
+    if (durationSelect) {
+      durationSelect.value = chip.dataset.value;
+      durationSelect.dispatchEvent(new Event('change'));
+    }
+  });
+});
 
 if (durationSelect) {
   durationSelect.addEventListener('change', (e) => {
@@ -519,14 +542,14 @@ if (startSessionBtn) {
     const result = await sendMessage({ type: 'START_SESSION', plannedDuration: duration, selectedSites: selectedSites });
 
     startSessionBtn.disabled = false;
-    startSessionBtn.textContent = '🎯 Start Focus Session';
+    startSessionBtn.textContent = 'Start Focus Session';
 
     if (result && result.success) {
       const status = await sendMessage({ type: 'GET_STATUS' });
       if (status && status.activeSession) showActiveSession(status.activeSession);
     } else {
       const errorMsg = (result && result.message) || 'Failed to start session. Please check your connection.';
-      showError('⚠️ ' + errorMsg);
+      showError(errorMsg);
     }
   });
 }
@@ -538,6 +561,8 @@ if (endSessionBtn) {
     if (result && result.success) {
       const status = await sendMessage({ type: 'GET_STATUS' });
       showDashboard(status);
+    } else {
+      showError((result && result.message) || 'Could not complete the session. Please try again.');
     }
     endSessionBtn.disabled = false;
   });
@@ -562,8 +587,15 @@ if (confirmCancelYes) {
   confirmCancelYes.addEventListener('click', async () => {
     if (confirmCancelSection) confirmCancelSection.classList.add('hidden');
     if (cancelSessionBtn) cancelSessionBtn.classList.remove('hidden');
+    confirmCancelYes.disabled = true;
     const result = await sendMessage({ type: 'END_SESSION', cancelled: true });
-    if (result && result.success) showStartSection();
+    confirmCancelYes.disabled = false;
+    if (result && result.success) {
+      const status = await sendMessage({ type: 'GET_STATUS' });
+      showDashboard(status);
+    } else {
+      showError((result && result.message) || 'Could not cancel the session. Please try again.');
+    }
   });
 }
 
@@ -586,8 +618,9 @@ function startTimerInterval() {
     if (status && status.activeSession) {
       updateTimerDisplay(status.activeSession.remainingTime);
     } else {
-      showStartSection();
+      // Session ended (here, on the website, or by the timer)
       clearTimerInterval();
+      showDashboard(status);
     }
   }, 1000);
 }
@@ -614,8 +647,9 @@ function updateTimerDisplay(time) {
 
 if (syncBtn) {
   syncBtn.addEventListener('click', async () => {
+    const syncLabel = syncBtn.querySelector('span');
     syncBtn.disabled = true;
-    syncBtn.textContent = '↻ Syncing…';
+    if (syncLabel) syncLabel.textContent = 'Syncing…';
 
     // Also try sync from dashboard
     try {
@@ -631,8 +665,14 @@ if (syncBtn) {
     const result = await sendMessage({ type: 'SYNC_BLOCKED_SITES' });
     if (blockedCount) blockedCount.textContent = (result && result.count) || 0;
 
+    // Refresh coins / streak / strict mode too
+    try {
+      const token = (await chrome.storage.local.get('authToken')).authToken;
+      if (token) renderUser(await validateToken(token));
+    } catch (e) { /* ok */ }
+
     syncBtn.disabled = false;
-    syncBtn.textContent = '↻ Sync';
+    if (syncLabel) syncLabel.textContent = 'Sync';
   });
 }
 

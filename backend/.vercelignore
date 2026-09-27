@@ -3,5 +3,4 @@ node_modules
 *.log
 test_db
 ml/train_model.py
-ml/ml_pipeline_api.py
 ml/data/

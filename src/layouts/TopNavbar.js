@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -39,10 +39,37 @@ const TopNavbar = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showProfile, setShowProfile] = useState(false);
+  const notifRef = useRef(null);
+  const profileRef = useRef(null);
+
+  // Close dropdowns on click outside or Escape
+  useEffect(() => {
+    if (!showNotifications && !showProfile) return undefined;
+    const onPointerDown = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifications(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setShowProfile(false);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setShowNotifications(false);
+        setShowProfile(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showNotifications, showProfile]);
 
   const fetchNotifications = async () => {
     try {
-      const res = await api.get('/notifications');
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const res = await api.get(`/notifications?tz=${encodeURIComponent(tz)}`);
       if (res.data.success) {
         setNotifications(res.data.notifications);
         setUnreadCount(res.data.unreadCount);
@@ -166,7 +193,7 @@ const TopNavbar = () => {
             <ThemeToggle />
 
             {/* Notification Bell */}
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
                 className="relative p-2 rounded-xl hover:bg-ink/[0.06] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -210,7 +237,8 @@ const TopNavbar = () => {
                         notifications.map((notif) => (
                           <div
                             key={notif._id}
-                            className={`px-4 py-3 border-b border-ink/[0.04] last:border-0 hover:bg-ink/[0.02] transition-colors ${
+                            onClick={() => !notif.read && handleMarkAsRead(notif._id)}
+                            className={`cursor-pointer px-4 py-3 border-b border-ink/[0.04] last:border-0 hover:bg-ink/[0.02] transition-colors ${
                               !notif.read ? 'bg-indigo-500/[0.03]' : ''
                             }`}
                           >
@@ -243,21 +271,50 @@ const TopNavbar = () => {
               </AnimatePresence>
             </div>
 
-            {/* Profile Avatar */}
-            <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center cursor-pointer hover:bg-indigo-500/30 transition-colors duration-200">
-              <span className="text-indigo-300 text-xs font-semibold">
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </span>
-            </div>
+            {/* Profile Avatar + menu */}
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => setShowProfile((v) => !v)}
+                className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center hover:bg-indigo-500/30 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                aria-label="Profile menu"
+                aria-expanded={showProfile}
+              >
+                <span className="text-indigo-300 text-xs font-semibold">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </span>
+              </button>
 
-            {/* Logout Button */}
-            <button
-              onClick={handleLogout}
-              className="hidden md:flex items-center gap-1.5 px-3 py-2 text-fg-2 hover:text-red-400 hover:bg-red-500/10 rounded-xl text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-              aria-label="Logout"
-            >
-              <HiOutlineArrowRightOnRectangle className="w-4 h-4" />
-            </button>
+              <AnimatePresence>
+                {showProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-60 bg-surface-2 border border-ink/[0.08] rounded-2xl shadow-2xl overflow-hidden z-50"
+                  >
+                    <div className="px-4 py-3 border-b border-ink/[0.06]">
+                      <p className="text-sm font-semibold text-hi truncate">{user?.name || 'User'}</p>
+                      {user?.email && <p className="text-xs text-fg-2 truncate mt-0.5">{user.email}</p>}
+                    </div>
+                    <button
+                      onClick={() => { setShowProfile(false); navigate('/dashboard/settings'); }}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-fg-soft hover:bg-ink/[0.04] transition-colors"
+                    >
+                      <HiOutlineCog6Tooth className="w-4 h-4" />
+                      Settings
+                    </button>
+                    <button
+                      onClick={() => { setShowProfile(false); handleLogout(); }}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <HiOutlineArrowRightOnRectangle className="w-4 h-4" />
+                      Log out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Mobile Hamburger */}
             <button

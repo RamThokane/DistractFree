@@ -11,6 +11,8 @@ import { formatTime, getRandomQuote, motivationalQuotes } from '../utils/helpers
 import { SESSION_PRESETS } from '../utils/coinRules';
 import { HiOutlinePlay, HiOutlineStop, HiOutlineLockClosed } from 'react-icons/hi2';
 
+const ML_STATUS_LABELS = { low: 'Focused', medium: 'Drifting', high: 'Distracted' };
+
 const FocusSession = () => {
   const { refreshCoins } = useCoins();
   const { user } = useAuth();
@@ -21,10 +23,12 @@ const FocusSession = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [quote, setQuote] = useState(() => getRandomQuote(motivationalQuotes));
   const [isInitializing, setIsInitializing] = useState(true);
-  const [mlStatus, setMlStatus] = useState('Focused');
+  const [mlStatus, setMlStatus] = useState('low');
   const [activeSessionId, setActiveSessionId] = useState(null);
   const intervalRef = useRef(null);
   const pollIntervalRef = useRef(null);
+
+  const isDistracted = mlStatus === 'high' || mlStatus === 'Distracted';
 
   const isCustomPreset = SESSION_PRESETS[selectedPreset]?.isCustom;
   const parsedCustomMinutes = parseInt(customMinutes);
@@ -174,14 +178,23 @@ const FocusSession = () => {
     pollIntervalRef.current = setInterval(async () => {
       try {
         const res = await api.get('/session/active');
-        if (res.data.success && res.data.session?.mlStatus) {
+        if (!res.data.success) return;
+        if (!res.data.session || res.data.session._id !== activeSessionId) {
+          // Ended elsewhere (e.g. cancelled from the extension) — reset locally
+          setIsRunning(false);
+          setActiveSessionId(null);
+          setIsComplete(false);
+          setTimeLeft(isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds);
+          return;
+        }
+        if (res.data.session.mlStatus) {
           setMlStatus(res.data.session.mlStatus);
         }
       } catch (e) { /* ignore */ }
     }, 5000);
 
     return () => clearInterval(pollIntervalRef.current);
-  }, [isRunning, activeSessionId]);
+  }, [isRunning, activeSessionId, isCustomPreset, effectiveCustomMinutes, selectedPreset]);
 
   // ── Countdown timer ──
   useEffect(() => {
@@ -349,17 +362,18 @@ const FocusSession = () => {
                 transition={{ delay: 0.2 }}
               >
                 <GlassCard>
-                  <h3 className="text-fg font-semibold mb-3">Live ML State</h3>
+                  <h3 className="text-fg font-semibold mb-3">Live State</h3>
                   <div className="flex items-center gap-4">
-                    <div className={`p-4 rounded-full ${mlStatus === 'Distracted' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                      <span className="text-3xl font-bold">{mlStatus === 'Distracted' ? '⚠️' : '🎯'}</span>
+                    {/* mlStatus is the model's risk level (low/medium/high); legacy sessions may hold Focused/Distracted */}
+                    <div className={`p-4 rounded-full ${isDistracted ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                      <span className="text-3xl font-bold">{isDistracted ? '⚠️' : '🎯'}</span>
                     </div>
                     <div>
-                      <h4 className={`text-xl font-bold ${mlStatus === 'Distracted' ? 'text-red-600' : 'text-green-600'}`}>
-                        {mlStatus}
+                      <h4 className={`text-xl font-bold ${isDistracted ? 'text-red-600' : 'text-green-600'}`}>
+                        {ML_STATUS_LABELS[mlStatus] || mlStatus}
                       </h4>
                       <p className="text-dash-muted text-sm leading-relaxed mt-1">
-                        {mlStatus === 'Distracted'
+                        {isDistracted
                           ? 'You seem distracted! Too many tab switches. Focus up!'
                           : 'You are perfectly in the zone. Keep going!'}
                       </p>

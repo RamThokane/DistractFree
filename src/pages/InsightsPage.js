@@ -31,6 +31,11 @@ const containerV = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: 
 const itemV = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45 } } };
 
 const riskColors = { low: '#3FAE6A', medium: '#F5B638', high: '#EF6B6B' };
+const riskMeaning = {
+  low: 'Low: you usually stay on task',
+  medium: 'Medium: some distractions likely',
+  high: 'High: distractions very likely next session',
+};
 const priorityColors = { high: '#EF6B6B', medium: '#F5B638', low: '#3FAE6A' };
 const impactColors = { high: '#EF6B6B', medium: '#F5B638', low: '#60A5FA', positive: '#3FAE6A' };
 
@@ -109,26 +114,23 @@ const InsightsPage = () => {
         {/* ═══ A. AI DISTRACTION PREDICTION ═══ */}
         <motion.div variants={itemV}>
           <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">🤖 AI Distraction Prediction</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <GlassCard className="text-center">
               <p className="text-fg-lav text-xs mb-1">Risk Level</p>
               <p className="font-bold text-2xl capitalize" style={{ color: riskColor }}>{prediction?.riskLevel || 'N/A'}</p>
-            </GlassCard>
-            <GlassCard className="text-center">
-              <p className="text-fg-lav text-xs mb-1">Confidence</p>
-              <p className="text-fg font-bold text-2xl">{prediction?.confidence || 0}%</p>
-              <p className="text-fg-lav text-[10px] mt-0.5">{prediction?.confidenceLabel}</p>
-            </GlassCard>
-            <GlassCard className="text-center">
-              <p className="text-fg-lav text-xs mb-1">Distraction Score</p>
-              <p className="text-[#EF6B6B] font-bold text-2xl">{prediction?.distractionScore || 0}<span className="text-sm text-fg-lav">/100</span></p>
+              <p className="text-fg-lav text-[10px] mt-0.5 leading-snug">{riskMeaning[prediction?.riskLevel] || 'Chance of getting distracted next session'}</p>
             </GlassCard>
             <GlassCard className="text-center">
               <p className="text-fg-lav text-xs mb-1">Focus Score</p>
               <p className="text-[#3FAE6A] font-bold text-2xl">{prediction?.focusScore || 0}<span className="text-sm text-fg-lav">/100</span></p>
-              <p className="text-fg-lav text-[10px] mt-0.5">(Based on 7-day avg)</p>
+              <p className="text-fg-lav text-[10px] mt-0.5">Higher is better · 7-day avg</p>
             </GlassCard>
-            <GlassCard className="text-center col-span-2 lg:col-span-1">
+            <GlassCard className="text-center">
+              <p className="text-fg-lav text-xs mb-1">Distraction Score</p>
+              <p className="text-[#EF6B6B] font-bold text-2xl">{prediction?.distractionScore || 0}<span className="text-sm text-fg-lav">/100</span></p>
+              <p className="text-fg-lav text-[10px] mt-0.5">100 − Focus Score · lower is better</p>
+            </GlassCard>
+            <GlassCard className="text-center">
               <p className="text-fg-lav text-xs mb-1">Sessions</p>
               <p className="text-fg font-bold text-2xl">{features?.completedSessions || 0}<span className="text-sm text-fg-lav">/{features?.totalSessions || 0}</span></p>
               <p className="text-fg-lav text-[10px] mt-0.5">Completed</p>
@@ -175,15 +177,15 @@ const InsightsPage = () => {
         <motion.div variants={itemV}>
           <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">📊 Distraction Breakdown</h2>
           <GlassCard>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
-                { label: 'Blocked Visit Ratio', val: breakdown?.visitRatio || 0, color: (breakdown?.visitRatio || 0) > 30 ? '#EF6B6B' : '#3FAE6A' },
-                { label: 'Time on Blocked Sites', val: breakdown?.timeRatio || 0, color: (breakdown?.timeRatio || 0) > 30 ? '#EF6B6B' : '#3FAE6A' },
-                { label: 'Context Switch Rate', val: breakdown?.switchRate || 0, color: (breakdown?.switchRate || 0) > 40 ? '#EF6B6B' : '#F5B638' },
+                { label: 'Blocked Visit Ratio', hint: 'Share of your visits that hit a blocked site', val: breakdown?.visitRatio || 0, color: (breakdown?.visitRatio || 0) > 30 ? '#EF6B6B' : '#3FAE6A' },
+                { label: 'Context Switch Rate', hint: 'How often you jump between work and blocked sites', val: breakdown?.switchRate || 0, color: (breakdown?.switchRate || 0) > 40 ? '#EF6B6B' : '#F5B638' },
               ].map((item, i) => (
-                <div key={i} className="flex flex-col items-center">
+                <div key={i} className="flex flex-col items-center text-center">
                   <CircularProgress value={item.val} max={100} size={100} strokeWidth={8} color={item.color} label={`${item.val}%`} />
                   <p className="text-fg-lav text-sm mt-3">{item.label}</p>
+                  <p className="text-fg-4 text-[11px] mt-0.5">{item.hint}</p>
                 </div>
               ))}
             </div>
@@ -216,11 +218,12 @@ const InsightsPage = () => {
             {/* Hourly focus score chart */}
             {productivityWindows.hourlyData?.length > 0 && (
               <GlassCard>
-                <p className="text-fg-lav text-xs mb-3 font-medium uppercase tracking-wider">Hourly Focus Score</p>
+                <p className="text-fg-lav text-xs mb-1 font-medium uppercase tracking-wider">Hourly Focus Score</p>
+                <p className="text-fg-4 text-[11px] mb-3">Sessions grouped by start hour · last 30 days</p>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={productivityWindows.hourlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                    <XAxis dataKey="label" stroke={chart.axis} fontSize={10} tickLine={false} interval={1} />
+                    <XAxis dataKey="label" stroke={chart.axis} fontSize={10} tickLine={false} interval={0} />
                     <YAxis stroke={chart.axis} fontSize={10} tickLine={false} axisLine={false} domain={[0, 100]} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
                     <Bar dataKey="focusScore" radius={[4, 4, 0, 0]} barSize={20}>
@@ -238,7 +241,8 @@ const InsightsPage = () => {
         {/* ═══ D. HIGH DISTRACTION HOURS ═══ */}
         {distractionHours?.hasSufficientData && distractionHours.topRiskHours?.length > 0 && (
           <motion.div variants={itemV}>
-            <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">📉 High Risk Distraction Hours</h2>
+            <h2 className="text-fg font-semibold text-xl mb-1 flex items-center gap-2">📉 High Risk Distraction Hours</h2>
+            <p className="text-fg-lav text-xs mb-4">Risk % = 100 − that hour's focus score (hours with only blocked attempts: 10% per attempt)</p>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
               {distractionHours.topRiskHours.map((h, i) => (
                 <GlassCard key={i} className="text-center">
@@ -247,8 +251,8 @@ const InsightsPage = () => {
                     color={h.riskPercent > 60 ? '#EF6B6B' : h.riskPercent > 30 ? '#F5B638' : '#3FAE6A'}
                     label={`${h.riskPercent}%`}
                   />
-                  <p className="text-fg text-sm font-medium mt-2">{h.label}</p>
-                  <p className="text-fg-lav text-[10px]">{h.blockedAttempts} blocked attempts</p>
+                  <p className="text-fg text-sm font-medium mt-2">{h.window || h.label}</p>
+                  <p className="text-fg-lav text-[10px]">{h.blockedAttempts} blocked attempts{h.sessions > 0 ? ` · ${h.sessions} session${h.sessions > 1 ? 's' : ''}` : ''}</p>
                 </GlassCard>
               ))}
             </div>

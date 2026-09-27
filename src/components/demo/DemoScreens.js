@@ -183,7 +183,7 @@ export function FocusScreen({ t, compact }) {
         {!compact && (
           <div className="flex flex-col gap-4 min-h-0">
             <GlassCard padding="p-4">
-              <h3 className="text-fg text-[13px] font-semibold mb-3">Live ML State</h3>
+              <h3 className="text-fg text-[13px] font-semibold mb-3">Live State</h3>
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-full bg-green-500/10 text-green-400 text-xl">🎯</div>
                 <div>

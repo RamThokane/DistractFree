@@ -1,10 +1,16 @@
 const Notification = require('../models/Notification');
+const User = require('../models/User');
+const { runScheduledChecks } = require('../services/notificationScheduler');
 
 // ────────────────────────────────────────────────────
 // GET /api/notifications
 // ────────────────────────────────────────────────────
 exports.getNotifications = async (req, res) => {
   try {
+    // Time-based reminders (focus reminder, streak alert, weekly report) are
+    // generated lazily here, so they work without a cron job on serverless.
+    await runScheduledChecks(req.user._id, req.query.tz);
+
     const { limit = 20, page = 1 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -92,8 +98,23 @@ exports.markAllAsRead = async (req, res) => {
 // ────────────────────────────────────────────────────
 // Helper: Create a notification (used by other controllers)
 // ────────────────────────────────────────────────────
+// Notification type → the user's preference toggle that controls it (Settings page)
+const PREFERENCE_FOR_TYPE = {
+  coins_earned: 'coinEarned',
+  coins_spent: 'coinEarned',
+  streak_milestone: 'streakAlert',
+  streak_alert: 'streakAlert',
+  focus_reminder: 'focusReminder',
+  weekly_report: 'weeklyReport',
+};
+
 exports.createNotification = async (userId, type, title, message, metadata = {}) => {
   try {
+    const pref = PREFERENCE_FOR_TYPE[type];
+    if (pref) {
+      const user = await User.findById(userId).select('settings.notifications');
+      if (user?.settings?.notifications?.[pref] === false) return null; // user opted out
+    }
     return await Notification.create({ userId, type, title, message, metadata });
   } catch (error) {
     console.error('[Notifications] Create error:', error.message);

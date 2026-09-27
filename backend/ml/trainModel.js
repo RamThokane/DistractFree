@@ -6,8 +6,11 @@
  * scikit-learn training pipeline and verify the exported model.
  *
  * Usage:
- *   node ml/trainModel.js            — train from CLI
+ *   node ml/trainModel.js            — extract + train from CLI
  *   require('./ml/trainModel')       — use programmatically
+ *
+ * Full pipeline (retrainFromRealData): extract real sessions from MongoDB
+ * (extractTrainingData.js) → write CSV → train in Python → validate JSON.
  *
  * The Python script (train_model.py) handles the actual training.
  * This wrapper handles process spawning, output streaming, and
@@ -23,6 +26,8 @@ const MODEL_DIR = path.join(ML_DIR, 'model');
 const MODEL_JSON_PATH = path.join(MODEL_DIR, 'decision_tree_model.json');
 const TRAINING_REPORT_PATH = path.join(MODEL_DIR, 'training_report.json');
 const PYTHON_SCRIPT = path.join(ML_DIR, 'train_model.py');
+const { extractTrainingData } = require('./extractTrainingData');
+const { loadModel } = require('./decisionTreeModel');
 
 /**
  * Locate the Python executable — tries python3, python, py in order.
@@ -224,9 +229,23 @@ function getModelStatus() {
   }
 }
 
+/**
+ * Full pipeline: extract real data from MongoDB → write CSV → train → validate,
+ * then hot-reload the model used by predict().
+ *
+ * @param {object} [options] — passed through to trainModel()
+ * @returns {Promise<{ success: boolean, report?: object, dataset?: object, error?: string }>}
+ */
+async function retrainFromRealData(options = {}) {
+  const dataset = await extractTrainingData();
+  const result = await trainModel(options);
+  if (result.success) loadModel();
+  return { ...result, dataset };
+}
+
 // ── CLI entry point ───────────────────────────────
 if (require.main === module) {
-  trainModel({ verbose: true })
+  retrainFromRealData({ verbose: true })
     .then((result) => {
       if (!result.success) {
         console.error('\n❌ Training failed:', result.error);
@@ -239,4 +258,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { trainModel, getModelStatus };
+module.exports = { trainModel, retrainFromRealData, getModelStatus };

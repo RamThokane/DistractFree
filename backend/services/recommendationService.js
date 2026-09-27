@@ -80,7 +80,9 @@ function generateRecommendations(features, productivity, distraction, prediction
   // ── Productivity Strategy ────────────────────────
   if (productivity.hasSufficientData) {
     // 3. Morning power hours
-    if (productivity.bestFocusBucket === 'morning' && productivity.bestCompletionRate >= 70) {
+    if (productivity.bestFocusHour === distraction.peakDistractionHour) {
+      // A peak-focus claim would contradict the distraction hotspot below — skip it
+    } else if (productivity.bestFocusBucket === 'morning' && productivity.bestCompletionRate >= 70) {
       recs.push({
         id: 'morning_power',
         category: 'Productivity Strategy',
@@ -91,7 +93,7 @@ function generateRecommendations(features, productivity, distraction, prediction
         metric: productivity.bestFocusHours,
         metricLabel: 'Peak window',
       });
-    } else if (productivity.bestFocusHours) {
+    } else if (productivity.bestFocusHours && productivity.bestFocusHour !== distraction.peakDistractionHour) {
       recs.push({
         id: 'peak_window',
         category: 'Productivity Strategy',
@@ -129,7 +131,7 @@ function generateRecommendations(features, productivity, distraction, prediction
         category: 'Distraction Control',
         icon: '🛡️',
         title: 'Distraction Hotspot',
-        description: `Your distraction risk peaks at ${peak.label} with ${peak.blockedAttempts} blocked-site attempts. Consider enabling strict mode during this window.`,
+        description: `Your distraction risk peaks during ${peak.window} with ${peak.blockedAttempts} blocked-site attempts. Consider enabling strict mode during this window.`,
         priority: 'high',
         metric: `${peak.riskPercent}%`,
         metricLabel: 'Risk level',

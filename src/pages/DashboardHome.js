@@ -375,17 +375,18 @@ const DashboardHome = () => {
 
         {/* ── Secondary Analytics: Distraction Trend + Coins Earned ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartCard title="Distraction Trend" subtitle="Lower is better — stay consistent" delay={0.4}>
+          <ChartCard title="Distraction Trend" subtitle="Score = blocked-site attempts during your focus sessions each day. Lower is better." delay={0.4}>
             {distractionTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={distractionTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
                   <Line
                     type="monotone"
                     dataKey="score"
+                    name="Blocked attempts"
                     stroke="#EF4444"
                     strokeWidth={2.5}
                     dot={{ fill: '#EF4444', r: 4, strokeWidth: 0 }}

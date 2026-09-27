@@ -186,6 +186,13 @@
       syncSessionAction({ action: 'end' });
     });
 
+    // Blocked sites or strict mode changed on the website — re-sync immediately
+    window.addEventListener('DF_SETTINGS_CHANGED', () => {
+      chrome.runtime.sendMessage({ type: 'SYNC_BLOCKED_SITES' }, () => {
+        if (chrome.runtime.lastError) return;
+      });
+    });
+
     // Keep localStorage watcher as a fallback
     window.addEventListener('storage', (event) => {
       if (event.key === 'df_session_action' && event.newValue) {
@@ -224,11 +231,10 @@
         if (chrome.runtime.lastError) return;
       });
     } else if (actionData.action === 'end') {
-      console.log('[DistractFree] Ending session from dashboard');
-      chrome.runtime.sendMessage({ 
-        type: 'END_SESSION', 
-        cancelled: false 
-      }, () => {
+      // The dashboard has already ended the session on the server (completed or
+      // cancelled) — the extension only needs to drop its local timer.
+      console.log('[DistractFree] Session ended on dashboard');
+      chrome.runtime.sendMessage({ type: 'SESSION_ENDED_EXTERNALLY' }, () => {
         if (chrome.runtime.lastError) return;
       });
     }

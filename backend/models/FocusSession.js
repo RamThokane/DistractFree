@@ -45,7 +45,7 @@ const focusSessionSchema = new mongoose.Schema(
     },
     mlStatus: {
       type: String,
-      default: 'Focused',
+      default: 'low',
     },
     tabSwitches: {
       type: Number,

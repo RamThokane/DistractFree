@@ -89,15 +89,13 @@ const traverseTree = (tree, features) => {
     }
   }
 
-  // Leaf node — value is [[count_class_0, count_class_1, count_class_2]]
+  // Leaf node — value is [[weight_class_0, weight_class_1, weight_class_2]] (only ratios matter)
   const classCounts = tree.value[nodeIdx][0];
   const total = classCounts.reduce((a, b) => a + b, 0);
   const predictedClass = classCounts.indexOf(Math.max(...classCounts));
-  const confidence = total > 0 ? Math.round((classCounts[predictedClass] / total) * 100) : 0;
 
   return {
     riskLevel: RISK_LABELS[predictedClass] || 'medium',
-    confidence,
     classProbabilities: {
       low: total > 0 ? Math.round((classCounts[0] / total) * 100) : 33,
       medium: total > 0 ? Math.round((classCounts[1] / total) * 100) : 34,
@@ -138,7 +136,6 @@ const heuristicPredict = (features) => {
 
   return {
     riskLevel,
-    confidence: Math.min(95, 60 + Math.abs(riskScore - 37)),
     classProbabilities: {
       low: riskLevel === 'low' ? 70 : 15,
       medium: riskLevel === 'medium' ? 70 : 15,
@@ -151,7 +148,7 @@ const heuristicPredict = (features) => {
  * Predict distraction risk for the given features.
  *
  * @param {object} features — { timeOfDay, websiteCategory, sessionDuration, previousDistractions, focusScore }
- * @returns {{ riskLevel: string, confidence: number, classProbabilities: object }}
+ * @returns {{ riskLevel: string, classProbabilities: object }}
  */
 const predict = (features) => {
   if (treeModel) {

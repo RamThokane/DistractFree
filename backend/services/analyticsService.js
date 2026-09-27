@@ -33,48 +33,105 @@ function hourToTimeBucket(hour) {
 }
 
 function formatHourRange(startHour) {
-  const end = (startHour + 2) % 24;
+  const end = (startHour + 1) % 24;
   return `${HOUR_LABELS[startHour]} - ${HOUR_LABELS[end]}`;
+}
+
+// ═══════════════════════════════════════════════════
+// HOURLY ACTIVITY (shared by productivity + distraction analysis)
+// ═══════════════════════════════════════════════════
+/**
+ * Per-hour stats from sessions (by start hour) and blocked-site attempts.
+ * Focus windows, risk hours and recommendations all derive from this one
+ * source so they can never contradict each other.
+ *
+ * Per hour with sessions:
+ *   focusScore  = completion rate × 40
+ *               + (1 − min(distractions per session / 5, 1)) × 35
+ *               + (1 − min(tab switches per session / 10, 1)) × 15
+ *               + min(avg session minutes / 60, 1) × 10
+ *   riskPercent = 100 − focusScore
+ * Hours with blocked attempts but no session: riskPercent = min(100, attempts × 10).
+ */
+async function getHourlyActivity(userId, days = 30, tz = 'UTC') {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const uid = new mongoose.Types.ObjectId(userId);
+
+  const [sessionAgg, blockedAgg] = await Promise.all([
+    FocusSession.aggregate([
+      { $match: { userId: uid, startTime: { $gte: since }, status: { $in: ['completed', 'cancelled'] } } },
+      {
+        $group: {
+          _id: { $hour: { date: '$startTime', timezone: tz } },
+          sessions: { $sum: 1 },
+          completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+          minutes: { $sum: '$duration' },
+          distractions: { $sum: '$distractionAttempts' },
+          tabSwitches: { $sum: '$tabSwitches' },
+        },
+      },
+    ]),
+    BrowsingLog.aggregate([
+      { $match: { userId: uid, timestamp: { $gte: since }, wasBlocked: true } },
+      { $group: { _id: { $hour: { date: '$timestamp', timezone: tz } }, blocked: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const hours = {};
+  const get = (h) => (hours[h] ||= { sessions: 0, completed: 0, minutes: 0, distractions: 0, tabSwitches: 0, blocked: 0 });
+  sessionAgg.forEach(({ _id, ...rest }) => Object.assign(get(_id), rest));
+  blockedAgg.forEach((r) => { get(r._id).blocked = r.blocked; });
+
+  return Object.entries(hours).map(([h, d]) => {
+    const hour = parseInt(h);
+    // Blocked attempts during a session are also counted in distractionAttempts,
+    // so take the larger of the two instead of adding them.
+    const attempts = Math.max(d.distractions, d.blocked);
+    let focusScore = null;
+    let riskPercent;
+
+    if (d.sessions > 0) {
+      const completionRate = d.completed / d.sessions;
+      focusScore = Math.round(
+        completionRate * 40 +
+        (1 - Math.min(attempts / d.sessions / 5, 1)) * 35 +
+        (1 - Math.min(d.tabSwitches / d.sessions / 10, 1)) * 15 +
+        Math.min(d.minutes / d.sessions / 60, 1) * 10
+      );
+      riskPercent = 100 - focusScore;
+    } else {
+      riskPercent = Math.min(100, attempts * 10);
+    }
+
+    return {
+      hour,
+      label: HOUR_LABELS[hour],
+      window: formatHourRange(hour),
+      timeBucket: hourToTimeBucket(hour),
+      sessions: d.sessions,
+      completionRate: d.sessions > 0 ? Math.round((d.completed / d.sessions) * 100) : 0,
+      avgMinutes: d.sessions > 0 ? Math.round(d.minutes / d.sessions) : 0,
+      totalMinutes: d.minutes,
+      blockedAttempts: attempts,
+      tabSwitches: d.tabSwitches,
+      focusScore,
+      riskPercent,
+    };
+  }).sort((a, b) => a.hour - b.hour);
 }
 
 // ═══════════════════════════════════════════════════
 // PRODUCTIVITY WINDOWS
 // ═══════════════════════════════════════════════════
 /**
- * Analyse which hours of the day yield the best and worst focus performance.
- * Uses real session data: completion rate, distraction rate, average duration.
+ * Best and worst focus hours, from hours that had at least one session.
  */
-async function getProductivityWindows(userId, days = 30, tz = 'UTC') {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+async function getProductivityWindows(userId, days = 30, tz = 'UTC', hourly = null) {
+  hourly = hourly || await getHourlyActivity(userId, days, tz);
+  const sessionHours = hourly.filter((h) => h.sessions > 0);
 
-  const hourlySessionStats = await FocusSession.aggregate([
-    {
-      $match: {
-        userId: new mongoose.Types.ObjectId(userId),
-        startTime: { $gte: since },
-        status: { $in: ['completed', 'cancelled'] },
-      },
-    },
-    {
-      $group: {
-        _id: { $hour: { date: '$startTime', timezone: tz } },
-        totalSessions: { $sum: 1 },
-        completedSessions: {
-          $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] },
-        },
-        totalMinutes: { $sum: '$duration' },
-        totalPlanned: { $sum: '$plannedDuration' },
-        totalDistractions: { $sum: '$distractionAttempts' },
-        totalTabSwitches: { $sum: '$tabSwitches' },
-        totalInterruptions: { $sum: '$interruptions' },
-        avgDuration: { $avg: '$duration' },
-      },
-    },
-    { $sort: { _id: 1 } },
-  ]);
-
-  if (hourlySessionStats.length === 0) {
+  if (sessionHours.length === 0) {
     return {
       bestFocusHours: null,
       weakestHours: null,
@@ -85,70 +142,46 @@ async function getProductivityWindows(userId, days = 30, tz = 'UTC') {
     };
   }
 
-  // Compute a focus score per hour: weighted combination of completion rate,
-  // inverse distraction rate, and average session length.
-  const hourlyScored = hourlySessionStats.map((h) => {
-    const completionRate = h.totalSessions > 0 ? h.completedSessions / h.totalSessions : 0;
-    const avgDistractions = h.totalSessions > 0 ? h.totalDistractions / h.totalSessions : 0;
-    const distractionPenalty = Math.min(avgDistractions / 5, 1); // normalise 0-1
+  // Highest focus score wins; ties go to fewer distractions
+  const ranked = [...sessionHours].sort((a, b) => b.focusScore - a.focusScore || a.blockedAttempts - b.blockedAttempts);
+  const best = ranked[0];
+  const worst = ranked.length > 1 && ranked[ranked.length - 1].focusScore < best.focusScore ? ranked[ranked.length - 1] : null;
 
-    // Focus score: higher = better productivity
-    const focusScore = Math.round(
-      (completionRate * 50 + (1 - distractionPenalty) * 30 + Math.min(h.avgDuration / 60, 1) * 20)
-    );
-
-    return {
-      hour: h._id,
-      label: HOUR_LABELS[h._id],
-      timeBucket: hourToTimeBucket(h._id),
-      focusScore,
-      completionRate: Math.round(completionRate * 100),
-      sessions: h.totalSessions,
-      avgMinutes: Math.round(h.avgDuration || 0),
-      avgDistractions: Math.round(avgDistractions * 10) / 10,
-      totalMinutes: h.totalMinutes,
-    };
-  });
-
-  // Sort by focusScore to find best/worst
-  const sorted = [...hourlyScored].sort((a, b) => b.focusScore - a.focusScore);
-  const best = sorted[0];
-  const worst = sorted[sorted.length - 1];
-
-  // Overall averages
-  const totalCompleted = hourlySessionStats.reduce((s, h) => s + h.completedSessions, 0);
-  const totalMin = hourlySessionStats.reduce((s, h) => s + h.totalMinutes, 0);
-  const avgSessionMinutes = totalCompleted > 0 ? Math.round(totalMin / totalCompleted) : 0;
-
-  // Optimal session length: find the duration range where completion rate is highest
+  const since = new Date();
+  since.setDate(since.getDate() - days);
   const completedSessions = await FocusSession.find({
     userId: new mongoose.Types.ObjectId(userId),
     startTime: { $gte: since },
     status: 'completed',
   }).select('duration distractionAttempts');
 
+  const avgSessionMinutes = completedSessions.length > 0
+    ? Math.round(completedSessions.reduce((s, x) => s + (x.duration || 0), 0) / completedSessions.length)
+    : 0;
+
+  // Optimal session length: average length of low-distraction completed sessions
   let optimalSessionLength = 25;
   if (completedSessions.length >= 3) {
-    // Sessions with low distraction attempts are "successful"
     const successful = completedSessions.filter((s) => s.distractionAttempts <= 1);
     if (successful.length > 0) {
       const avgSuccessful = successful.reduce((s, x) => s + x.duration, 0) / successful.length;
-      optimalSessionLength = Math.round(avgSuccessful / 5) * 5; // round to nearest 5
-      optimalSessionLength = Math.max(10, Math.min(90, optimalSessionLength));
+      optimalSessionLength = Math.max(10, Math.min(90, Math.round(avgSuccessful / 5) * 5));
     }
   }
 
   return {
-    bestFocusHours: best ? formatHourRange(best.hour) : null,
-    bestFocusBucket: best ? best.timeBucket : null,
-    bestCompletionRate: best ? best.completionRate : 0,
-    weakestHours: worst ? formatHourRange(worst.hour) : null,
+    bestFocusHours: best.window,
+    bestFocusHour: best.hour,
+    bestFocusBucket: best.timeBucket,
+    bestCompletionRate: best.completionRate,
+    weakestHours: worst ? worst.window : null,
+    weakestHour: worst ? worst.hour : null,
     weakestBucket: worst ? worst.timeBucket : null,
     weakestCompletionRate: worst ? worst.completionRate : 0,
     avgSessionMinutes,
     optimalSessionLength,
-    hourlyData: hourlyScored,
-    hasSufficientData: hourlySessionStats.length >= 2,
+    hourlyData: sessionHours,
+    hasSufficientData: sessionHours.length >= 2,
   };
 }
 
@@ -156,104 +189,23 @@ async function getProductivityWindows(userId, days = 30, tz = 'UTC') {
 // HIGH DISTRACTION HOURS
 // ═══════════════════════════════════════════════════
 /**
- * Identify time windows with the highest distraction risk based on real data.
+ * Hours with the highest distraction risk (same scale as the focus score).
  */
-async function getHighDistractionHours(userId, days = 30, tz = 'UTC') {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+async function getHighDistractionHours(userId, days = 30, tz = 'UTC', hourly = null) {
+  hourly = hourly || await getHourlyActivity(userId, days, tz);
 
-  // Aggregate blocked-site attempts by hour
-  const hourlyBlocked = await BrowsingLog.aggregate([
-    {
-      $match: {
-        userId: new mongoose.Types.ObjectId(userId),
-        timestamp: { $gte: since },
-        wasBlocked: true,
-      },
-    },
-    {
-      $group: {
-        _id: { $hour: { date: '$timestamp', timezone: tz } },
-        blockedAttempts: { $sum: 1 },
-        unlockAttempts: { $sum: { $cond: ['$wasUnlocked', 1, 0] } },
-      },
-    },
-    { $sort: { blockedAttempts: -1 } },
-  ]);
-
-  // Also check session-level distraction data by hour
-  const hourlySessionDistractions = await FocusSession.aggregate([
-    {
-      $match: {
-        userId: new mongoose.Types.ObjectId(userId),
-        startTime: { $gte: since },
-        status: { $in: ['completed', 'cancelled'] },
-      },
-    },
-    {
-      $group: {
-        _id: { $hour: { date: '$startTime', timezone: tz } },
-        totalDistractions: { $sum: '$distractionAttempts' },
-        totalTabSwitches: { $sum: '$tabSwitches' },
-        cancelledSessions: {
-          $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] },
-        },
-        totalSessions: { $sum: 1 },
-      },
-    },
-  ]);
-
-  // Merge browsing + session data per hour and compute risk score
-  const hourMap = {};
-  for (let i = 0; i < 24; i++) hourMap[i] = { blocked: 0, unlocks: 0, distractions: 0, tabSwitches: 0, cancelled: 0, sessions: 0 };
-
-  hourlyBlocked.forEach((h) => {
-    hourMap[h._id].blocked = h.blockedAttempts;
-    hourMap[h._id].unlocks = h.unlockAttempts;
-  });
-
-  hourlySessionDistractions.forEach((h) => {
-    hourMap[h._id].distractions = h.totalDistractions;
-    hourMap[h._id].tabSwitches = h.totalTabSwitches;
-    hourMap[h._id].cancelled = h.cancelledSessions;
-    hourMap[h._id].sessions = h.totalSessions;
-  });
-
-  // Find max values for normalisation
-  const maxBlocked = Math.max(1, ...Object.values(hourMap).map((h) => h.blocked));
-  const maxDistractions = Math.max(1, ...Object.values(hourMap).map((h) => h.distractions));
-  const maxTabSwitches = Math.max(1, ...Object.values(hourMap).map((h) => h.tabSwitches));
-
-  const hourlyRisk = Object.entries(hourMap)
-    .map(([hour, data]) => {
-      const riskScore = Math.round(
-        (data.blocked / maxBlocked) * 35 +
-        (data.distractions / maxDistractions) * 30 +
-        (data.tabSwitches / maxTabSwitches) * 20 +
-        (data.sessions > 0 ? (data.cancelled / data.sessions) * 15 : 0)
-      );
-
-      return {
-        hour: parseInt(hour),
-        label: HOUR_LABELS[parseInt(hour)],
-        riskPercent: Math.min(100, riskScore),
-        blockedAttempts: data.blocked,
-        distractions: data.distractions,
-        tabSwitches: data.tabSwitches,
-      };
-    })
-    .sort((a, b) => b.riskPercent - a.riskPercent);
-
-  // Top 4 riskiest hours
-  const topRiskHours = hourlyRisk.filter((h) => h.riskPercent > 0).slice(0, 4);
+  // Only hours where something distracting actually happened
+  const topRiskHours = hourly
+    .filter((h) => h.riskPercent > 0 && (h.blockedAttempts > 0 || h.tabSwitches > 0 || h.completionRate < 100))
+    .sort((a, b) => b.riskPercent - a.riskPercent || b.blockedAttempts - a.blockedAttempts)
+    .slice(0, 4);
 
   return {
     topRiskHours,
-    hourlyRisk,
-    peakDistractionWindow: topRiskHours.length > 0
-      ? `${topRiskHours[0].label} - ${HOUR_LABELS[(topRiskHours[0].hour + 2) % 24]}`
-      : null,
-    hasSufficientData: hourlyBlocked.length > 0 || hourlySessionDistractions.length > 0,
+    hourlyRisk: hourly,
+    peakDistractionWindow: topRiskHours.length > 0 ? topRiskHours[0].window : null,
+    peakDistractionHour: topRiskHours.length > 0 ? topRiskHours[0].hour : null,
+    hasSufficientData: hourly.length > 0,
   };
 }
 
@@ -410,15 +362,8 @@ async function computeUserFeatures(userId, days = 7) {
     ))
   );
 
-  // Distraction score: inverse of focus
-  const distractionScore = Math.round(
-    Math.min(100,
-      blockedVisitRatio * 40 +
-      Math.min(avgDistractionAttempts / 5, 1) * 30 +
-      Math.min(avgTabSwitches / 10, 1) * 20 +
-      (1 - completionRate) * 10
-    )
-  );
+  // Distraction score: exact complement of focus, so the two always add up to 100
+  const distractionScore = 100 - focusScore;
 
   // Time-of-day for current context
   const hour = new Date().getHours();
@@ -466,8 +411,6 @@ async function getDistractionBreakdown(userId, days = 7) {
 
   const totalVisits = logs.length;
   const blockedVisits = logs.filter((l) => l.wasBlocked).length;
-  const totalDuration = logs.reduce((s, l) => s + (l.duration || 0), 0);
-  const blockedDuration = logs.filter((l) => l.wasBlocked).reduce((s, l) => s + (l.duration || 0), 0);
 
   // Context switches
   let switches = 0;
@@ -477,7 +420,6 @@ async function getDistractionBreakdown(userId, days = 7) {
 
   return {
     visitRatio: totalVisits > 0 ? Math.round((blockedVisits / totalVisits) * 100) : 0,
-    timeRatio: totalDuration > 0 ? Math.round((blockedDuration / totalDuration) * 100) : 0,
     switchRate: logs.length > 1 ? Math.round((switches / (logs.length - 1)) * 100) : 0,
     totalVisits,
     blockedVisits,
@@ -532,8 +474,8 @@ async function getProductivityHeatmap(userId, days = 28) {
         totalSessions: { $sum: 1 },
         distractions: { $sum: '$distractionAttempts' },
         tabSwitches: { $sum: '$tabSwitches' },
-        focusedCount: { $sum: { $cond: [{ $eq: ['$mlStatus', 'Focused'] }, 1, 0] } },
-        distractedCount: { $sum: { $cond: [{ $eq: ['$mlStatus', 'Distracted'] }, 1, 0] } },
+        focusedCount: { $sum: { $cond: [{ $in: ['$mlStatus', ['low', 'Focused']] }, 1, 0] } },
+        distractedCount: { $sum: { $cond: [{ $in: ['$mlStatus', ['high', 'Distracted']] }, 1, 0] } },
       },
     },
   ]);
@@ -681,9 +623,9 @@ async function getProductivityHeatmap(userId, days = 28) {
     worstDay: worstDay?.day || null,
     worstDayScore: worstDay?.avgScore || 0,
     highestDistractionDay: highestDistractionDay?.day || null,
-    bestHour: bestHour ? `${bestHour.label} - ${HOUR_LABELS[(bestHour.hour + 2) % 24]}` : null,
+    bestHour: bestHour ? formatHourRange(bestHour.hour) : null,
     bestHourScore: bestHour?.avgScore || 0,
-    worstHour: worstHour ? `${worstHour.label} - ${HOUR_LABELS[(worstHour.hour + 2) % 24]}` : null,
+    worstHour: worstHour ? formatHourRange(worstHour.hour) : null,
     worstHourScore: worstHour?.avgScore || 0,
     coverage,
     dateRange: `${since.toISOString().split('T')[0]} to ${new Date().toISOString().split('T')[0]}`,
@@ -736,8 +678,8 @@ async function getYearlyHeatmap(userId, year) {
     dayMap[dStr].distractions += (s.distractionAttempts || 0);
     dayMap[dStr].tabSwitches += (s.tabSwitches || 0);
     
-    if (s.mlStatus === 'Focused') dayMap[dStr].mlScore += 1;
-    else if (s.mlStatus === 'Distracted') dayMap[dStr].mlScore -= 1;
+    if (s.mlStatus === 'low' || s.mlStatus === 'Focused') dayMap[dStr].mlScore += 1;
+    else if (s.mlStatus === 'high' || s.mlStatus === 'Distracted') dayMap[dStr].mlScore -= 1;
   });
 
   logs.forEach(l => {
@@ -895,6 +837,7 @@ function getWeekNumber(d) {
 }
 
 module.exports = {
+  getHourlyActivity,
   getProductivityWindows,
   getHighDistractionHours,
   getTrendAnalytics,
