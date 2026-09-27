@@ -1,9 +1,11 @@
 import React from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 const GoogleAuthButton = ({ onSuccess, onError }) => {
   const { googleLogin } = useAuth();
+  const { isDark } = useTheme();
 
   const handleCredentialResponse = async (credentialResponse) => {
     try {
@@ -19,12 +21,13 @@ const GoogleAuthButton = ({ onSuccess, onError }) => {
   return (
     <div className="w-full [&>div]:w-full [&>div>div]:w-full [&_iframe]:w-full">
       <GoogleLogin
+        key={isDark ? 'dark' : 'light'}
         onSuccess={handleCredentialResponse}
         onError={() => {
           console.error('[GoogleAuth] Login failed');
           if (onError) onError(new Error('Google login failed'));
         }}
-        theme="outline"
+        theme={isDark ? 'filled_black' : 'outline'}
         size="large"
         width="400"
         text="continue_with"

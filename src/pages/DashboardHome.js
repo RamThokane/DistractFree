@@ -1,5 +1,6 @@
 import React, { memo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useChartTheme } from '../context/ThemeContext';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -20,10 +21,10 @@ import {
 const CustomTooltip = memo(({ active, payload, label }) => {
   if (active && payload?.length) {
     return (
-      <div className="bg-[#14171C]/90 backdrop-blur-md border border-white/[0.08] rounded-2xl px-5 py-4 shadow-glass">
-        <p className="text-gray-400 text-xs mb-1.5 uppercase tracking-wide">{label}</p>
+      <div className="bg-surface-2/90 backdrop-blur-md border border-ink/[0.08] rounded-2xl px-5 py-4 shadow-glass">
+        <p className="text-fg-2 text-xs mb-1.5 uppercase tracking-wide">{label}</p>
         {payload.map((p, i) => (
-          <p key={i} className="text-white text-sm font-semibold flex items-center gap-2">
+          <p key={i} className="text-hi text-sm font-semibold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }}></span>
             {p.name}: {p.value}{p.name === 'minutes' ? ' min' : ''}
           </p>
@@ -41,18 +42,18 @@ const MetricCard = memo(({ icon: Icon, iconBg, iconColor, label, sublabel, value
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay, duration: 0.5 }}
-    className="bg-white rounded-2xl p-6 border border-gray-100 shadow-card-soft hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 group"
+    className="df-card-bg rounded-2xl p-6 border border-ink/[0.06] shadow-card-soft hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 group"
   >
     <div className="flex items-center gap-4">
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${iconBg}`}>
         <Icon className={`w-5 h-5 ${iconColor}`} />
       </div>
       <div>
-        <p className="text-sm text-gray-500 mb-0.5">{label}</p>
-        {sublabel && <p className="text-[10px] text-gray-400 -mt-1 mb-1">{sublabel}</p>}
+        <p className="text-sm text-fg-2 mb-0.5">{label}</p>
+        {sublabel && <p className="text-[10px] text-fg-2 -mt-1 mb-1">{sublabel}</p>}
         <div className="flex items-baseline gap-1">
-          <AnimatedCounter value={value} className="text-2xl font-bold text-gray-900" />
-          {suffix && <span className="text-gray-400 text-sm font-medium">{suffix}</span>}
+          <AnimatedCounter value={value} className="text-2xl font-bold text-fg" />
+          {suffix && <span className="text-fg-2 text-sm font-medium">{suffix}</span>}
         </div>
       </div>
     </div>
@@ -68,9 +69,9 @@ const ChartCard = memo(({ title, subtitle, children, className = '', delay = 0 }
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay, duration: 0.5 }}
   >
-    <div className="bg-white rounded-2xl p-7 border border-gray-100 shadow-card-soft hover:shadow-card-hover transition-all duration-300 h-full">
-      {title && <h3 className="text-gray-900 font-bold text-lg mb-1">{title}</h3>}
-      {subtitle && <p className="text-gray-500 text-sm mb-6">{subtitle}</p>}
+    <div className="df-card-bg rounded-2xl p-7 border border-ink/[0.06] shadow-card-soft hover:shadow-card-hover transition-all duration-300 h-full">
+      {title && <h3 className="text-fg font-bold text-lg mb-1">{title}</h3>}
+      {subtitle && <p className="text-fg-2 text-sm mb-6">{subtitle}</p>}
       {children}
     </div>
   </motion.div>
@@ -90,12 +91,12 @@ const GoalModal = ({ onSave, onClose }) => {
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="bg-white rounded-2xl p-8 shadow-2xl w-full max-w-md mx-4 border border-gray-100"
+        className="df-card-bg rounded-2xl p-8 shadow-2xl w-full max-w-md mx-4 border border-ink/[0.06]"
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
       >
-        <h2 className="text-xl font-bold text-gray-900 mb-2">🎯 Set Today's Focus Goal</h2>
-        <p className="text-gray-500 text-sm mb-6">What do you want to achieve today?</p>
+        <h2 className="text-xl font-bold text-fg mb-2">🎯 Set Today's Focus Goal</h2>
+        <p className="text-fg-2 text-sm mb-6">What do you want to achieve today?</p>
 
         <div className="space-y-5">
           <div>
@@ -108,7 +109,7 @@ const GoalModal = ({ onSave, onClose }) => {
               max="480"
               value={goalMinutes}
               onChange={(e) => setGoalMinutes(Number(e.target.value))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
+              className="w-full px-4 py-3 border border-ink/[0.08] rounded-xl text-fg bg-ink/[0.03] focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
             />
           </div>
 
@@ -122,7 +123,7 @@ const GoalModal = ({ onSave, onClose }) => {
               max="20"
               value={goalSessions}
               onChange={(e) => setGoalSessions(Number(e.target.value))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
+              className="w-full px-4 py-3 border border-ink/[0.08] rounded-xl text-fg bg-ink/[0.03] focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
             />
           </div>
         </div>
@@ -130,7 +131,7 @@ const GoalModal = ({ onSave, onClose }) => {
         <div className="flex gap-3 mt-8">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors font-medium"
+            className="flex-1 px-4 py-3 rounded-xl border border-ink/[0.08] text-fg-3 hover:bg-ink/[0.03] transition-colors font-medium"
           >
             Skip for now
           </button>
@@ -150,28 +151,29 @@ const GoalModal = ({ onSave, onClose }) => {
 const DashboardSkeleton = () => (
   <div className="space-y-8 animate-pulse">
     <div>
-      <div className="h-4 w-24 bg-gray-200 rounded mb-2" />
-      <div className="h-7 w-48 bg-gray-200 rounded mb-1" />
-      <div className="h-4 w-64 bg-gray-200 rounded" />
+      <div className="h-4 w-24 bg-ink/[0.08] rounded mb-2" />
+      <div className="h-7 w-48 bg-ink/[0.08] rounded mb-1" />
+      <div className="h-4 w-64 bg-ink/[0.08] rounded" />
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100">
-          <div className="h-11 w-11 bg-gray-200 rounded-xl mb-3" />
-          <div className="h-4 w-20 bg-gray-200 rounded mb-2" />
-          <div className="h-6 w-16 bg-gray-200 rounded" />
+        <div key={i} className="df-card-bg rounded-2xl p-6 border border-ink/[0.06]">
+          <div className="h-11 w-11 bg-ink/[0.08] rounded-xl mb-3" />
+          <div className="h-4 w-20 bg-ink/[0.08] rounded mb-2" />
+          <div className="h-6 w-16 bg-ink/[0.08] rounded" />
         </div>
       ))}
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white rounded-2xl p-7 border border-gray-100 h-[340px]" />
-      <div className="bg-white rounded-2xl p-7 border border-gray-100 h-[340px]" />
+      <div className="df-card-bg rounded-2xl p-7 border border-ink/[0.06] h-[340px]" />
+      <div className="df-card-bg rounded-2xl p-7 border border-ink/[0.06] h-[340px]" />
     </div>
   </div>
 );
 
 /* ════════════ DASHBOARD HOME ════════════ */
 const DashboardHome = () => {
+  const chart = useChartTheme();
   const { user, updateUser } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -225,7 +227,7 @@ const DashboardHome = () => {
     return (
       <PageTransition>
         <div className="flex flex-col items-center justify-center py-20">
-          <p className="text-gray-500 text-lg mb-4">{error}</p>
+          <p className="text-fg-2 text-lg mb-4">{error}</p>
           <button onClick={fetchDashboard} className="px-6 py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors font-medium">
             Retry
           </button>
@@ -266,11 +268,11 @@ const DashboardHome = () => {
           transition={{ duration: 0.4 }}
         >
           <div>
-            <p className="text-sm text-gray-400 mb-1">{getGreeting()}</p>
-            <h1 className="text-2xl md:text-[1.75rem] font-semibold text-gray-900 tracking-tight">
+            <p className="text-sm text-fg-2 mb-1">{getGreeting()}</p>
+            <h1 className="text-2xl md:text-[1.75rem] font-semibold text-fg tracking-tight">
               {user?.name || 'User'}
             </h1>
-            <p className="text-sm text-gray-400 mt-1">Here's your productivity overview today.</p>
+            <p className="text-sm text-fg-2 mt-1">Here's your productivity overview today.</p>
           </div>
           <button
             onClick={() => setShowGoalModal(true)}
@@ -328,7 +330,7 @@ const DashboardHome = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <div className="bg-white rounded-2xl p-7 border border-gray-100 shadow-card-soft hover:shadow-card-hover transition-all duration-300 flex flex-col items-center justify-center h-full min-h-[340px]">
+            <div className="df-card-bg rounded-2xl p-7 border border-ink/[0.06] shadow-card-soft hover:shadow-card-hover transition-all duration-300 flex flex-col items-center justify-center h-full min-h-[340px]">
               <CircularProgress
                 value={todayFocusMinutes}
                 max={goalMinutes}
@@ -338,7 +340,7 @@ const DashboardHome = () => {
                 label={formatMinutesToHours(todayFocusMinutes)}
                 sublabel={`of ${formatMinutesToHours(goalMinutes)} goal`}
               />
-              <p className="text-gray-500 text-sm mt-6 font-medium">Daily Focus Progress</p>
+              <p className="text-fg-2 text-sm mt-6 font-medium">Daily Focus Progress</p>
               <div className="mt-3 bg-indigo-50 border border-indigo-100 rounded-full px-6 py-2">
                 <span className="text-primary font-semibold text-sm">
                   {Math.round(progressPercent)}% Complete
@@ -356,15 +358,15 @@ const DashboardHome = () => {
             {weeklyFocusData.length > 0 ? (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={weeklyFocusData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="day" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                  <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
                   <Bar dataKey="minutes" fill="#6366F1" radius={[8, 8, 0, 0]} barSize={36} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[240px] text-gray-400 text-sm">
+              <div className="flex items-center justify-center h-[240px] text-fg-2 text-sm">
                 Complete your first focus session to see weekly data.
               </div>
             )}
@@ -377,10 +379,10 @@ const DashboardHome = () => {
             {distractionTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={distractionTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="day" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                  <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
                   <Line
                     type="monotone"
                     dataKey="score"
@@ -392,7 +394,7 @@ const DashboardHome = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[220px] text-gray-400 text-sm">
+              <div className="flex items-center justify-center h-[220px] text-fg-2 text-sm">
                 No distraction data yet.
               </div>
             )}
@@ -408,10 +410,10 @@ const DashboardHome = () => {
                       <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="day" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                  <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
                   <Area
                     type="monotone"
                     dataKey="coins"
@@ -424,7 +426,7 @@ const DashboardHome = () => {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[220px] text-gray-400 text-sm">
+              <div className="flex items-center justify-center h-[220px] text-fg-2 text-sm">
                 No coin data yet.
               </div>
             )}

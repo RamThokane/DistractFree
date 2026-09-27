@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../context/ThemeContext';
 import { HiOutlineBars3, HiOutlineXMark } from 'react-icons/hi2';
 
 /**
@@ -14,8 +15,8 @@ const NavItem = ({ label, path, isActive, onClick, isDark }) => {
         transition-all duration-200 ease-in-out
         focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400
         ${isActive
-          ? isDark ? 'text-white' : 'text-gray-900'
-          : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+          ? isDark ? 'text-hi' : 'text-fg'
+          : isDark ? 'text-fg-2 hover:text-hi' : 'text-fg-3 hover:text-fg'
         }
       `}
       style={{
@@ -59,27 +60,7 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
     setActiveItem(activePath);
   }, [activePath]);
 
-  // Initialize from localStorage immediately (same key ThemeToggle uses)
-  // so the correct colour is applied on the very first render — no flash.
-  const [isDark, setIsDark] = useState(() => {
-    try {
-      return (
-        localStorage.getItem('land-theme') === 'dark' ||
-        document.documentElement.classList.contains('dark')
-      );
-    } catch {
-      return false;
-    }
-  });
-
-  // Keep in sync whenever ThemeToggle toggles the class on <html>.
-  React.useEffect(() => {
-    const checkDarkMode = () =>
-      setIsDark(document.documentElement.classList.contains('dark'));
-    const observer = new MutationObserver(checkDarkMode);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
+  const { isDark } = useTheme();
 
   const handleClick = (path) => {
     setActiveItem(path);
@@ -123,7 +104,7 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
         onClick={() => setMobileOpen(true)}
         aria-label="Open navigation menu"
       >
-        <HiOutlineBars3 className={`w-5 h-5 ${isDark ? 'text-gray-300' : 'text-gray-700'}`} />
+        <HiOutlineBars3 className={`w-5 h-5 ${isDark ? 'text-fg-soft' : 'text-gray-700'}`} />
       </button>
 
       <AnimatePresence>
@@ -149,13 +130,13 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-semibold text-sm`}>Navigation</span>
+                <span className={`${isDark ? 'text-hi' : 'text-fg'} font-semibold text-sm`}>Navigation</span>
                 <button
-                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-ink/[0.05] dark:hover:bg-gray-800 transition-colors"
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close menu"
                 >
-                  <HiOutlineXMark className="w-5 h-5 text-gray-500" />
+                  <HiOutlineXMark className="w-5 h-5 text-fg-2" />
                 </button>
               </div>
               <div className="space-y-1">
@@ -170,7 +151,7 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
                       w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150
                       ${activeItem === item.path
                         ? isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-50 text-blue-600'
-                        : isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50'
+                        : isDark ? 'text-fg-2 hover:bg-gray-800' : 'text-fg-3 hover:bg-ink/[0.03]'
                       }
                     `}
                   >
@@ -182,7 +163,7 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
                   onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); setMobileOpen(false); }}
                   className={`
                     w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150
-                    ${isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50'}
+                    ${isDark ? 'text-fg-2 hover:bg-gray-800' : 'text-fg-3 hover:bg-ink/[0.03]'}
                   `}
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">

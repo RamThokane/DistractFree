@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useChartTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -7,6 +8,7 @@ import {
 } from 'recharts';
 import GlassNavbar from '../components/GlassNavbar';
 import HowItWorksWalkthrough from '../components/HowItWorksWalkthrough';
+import ThemeToggle from '../components/ThemeToggle';
 import '../styles/landing.css';
 
 /* ── 6-Layer Background System ── */
@@ -69,12 +71,12 @@ const CTAParticles = () => {
 const BackgroundVisuals = () => (
   <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
     {/* Abstract dashboard card outline */}
-    <div className="absolute top-[15%] right-[8%] w-[180px] h-[110px] rounded-xl border border-white/[0.03] opacity-[0.4] float-element-2">
-      <div className="m-3 h-2 w-16 rounded bg-white/[0.04]" />
-      <div className="mx-3 mt-2 h-8 w-24 rounded bg-white/[0.03]" />
+    <div className="absolute top-[15%] right-[8%] w-[180px] h-[110px] rounded-xl border border-ink/[0.03] opacity-[0.4] float-element-2">
+      <div className="m-3 h-2 w-16 rounded bg-ink/[0.04]" />
+      <div className="mx-3 mt-2 h-8 w-24 rounded bg-ink/[0.03]" />
       <div className="mx-3 mt-2 flex gap-1">
-        <div className="h-1 w-8 rounded bg-white/[0.04]" />
-        <div className="h-1 w-6 rounded bg-white/[0.03]" />
+        <div className="h-1 w-8 rounded bg-ink/[0.04]" />
+        <div className="h-1 w-6 rounded bg-ink/[0.03]" />
       </div>
     </div>
 
@@ -85,8 +87,8 @@ const BackgroundVisuals = () => (
     </svg>
 
     {/* Focus ring */}
-    <div className="absolute top-[45%] right-[12%] w-16 h-16 rounded-full border border-white/[0.03] focus-ring-pulse" />
-    <div className="absolute top-[46%] right-[12.5%] w-12 h-12 rounded-full border border-white/[0.02] focus-ring-pulse" style={{animationDelay:'1s'}} />
+    <div className="absolute top-[45%] right-[12%] w-16 h-16 rounded-full border border-ink/[0.03] focus-ring-pulse" />
+    <div className="absolute top-[46%] right-[12.5%] w-12 h-12 rounded-full border border-ink/[0.02] focus-ring-pulse" style={{animationDelay:'1s'}} />
 
     {/* Abstract workflow lines */}
     <svg className="absolute top-[60%] left-[15%] w-40 h-20 opacity-[0.03] float-element" viewBox="0 0 160 80" fill="none">
@@ -96,7 +98,7 @@ const BackgroundVisuals = () => (
 
     {/* Mini graph bars */}
     <div className="absolute bottom-[35%] right-[5%] flex items-end gap-1 opacity-[0.04] float-element-2">
-      {[16,28,20,36,24,32,18].map((h,i) => <div key={i} className="w-2 rounded-sm bg-white/40" style={{height:`${h}px`}} />)}
+      {[16,28,20,36,24,32,18].map((h,i) => <div key={i} className="w-2 rounded-sm bg-ink/40" style={{height:`${h}px`}} />)}
     </div>
   </div>
 );
@@ -134,11 +136,11 @@ const stagger = {
 /* ── Mini window chrome for product mockups ── */
 const WindowFrame = ({ children, className = '', title = '' }) => (
   <div className={`window-frame window-frame-upgrade ${className}`}>
-    <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] window-titlebar-upgrade">
+    <div className="flex items-center gap-2 px-4 py-3 border-b border-ink/[0.06] window-titlebar-upgrade">
       <div className="window-dot-red window-dot-red-glow" />
       <div className="window-dot-yellow window-dot-yellow-glow" />
       <div className="window-dot-green window-dot-green-glow" />
-      {title && <span className="text-[11px] text-gray-500 ml-3 font-medium">{title}</span>}
+      {title && <span className="text-[11px] text-fg-2 ml-3 font-medium">{title}</span>}
     </div>
     <div className="p-4">{children}</div>
   </div>
@@ -146,9 +148,9 @@ const WindowFrame = ({ children, className = '', title = '' }) => (
 
 /* ── Small inline stat for mockup dashboards ── */
 const MiniStat = ({ label, value, sub, className = '' }) => (
-  <div className={`bg-white/[0.06] rounded-xl p-3 ${className}`}>
-    <p className="text-[10px] text-gray-500 mb-0.5">{label}</p>
-    <p className="text-white font-semibold text-lg leading-tight">{value}</p>
+  <div className={`bg-ink/[0.06] rounded-xl p-3 ${className}`}>
+    <p className="text-[10px] text-fg-2 mb-0.5">{label}</p>
+    <p className="text-hi font-semibold text-lg leading-tight">{value}</p>
     {sub && <p className="text-[10px] text-emerald-400 mt-0.5">{sub}</p>}
   </div>
 );
@@ -158,6 +160,7 @@ const MiniStat = ({ label, value, sub, className = '' }) => (
 /* ══════════════════════════════════════════════════════════════ */
 
 const LandingPage = () => {
+  const chart = useChartTheme();
   const [scrolled, setScrolled] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState('');
 
@@ -202,7 +205,7 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen landing-bg text-white antialiased relative overflow-clip" style={{ background: 'var(--bg-void, #03040a)' }}>
+    <div className="min-h-screen landing-bg text-hi antialiased relative overflow-clip" style={{ background: 'var(--bg-void, #03040a)' }}>
       {/* 6-Layer Background System */}
       <BackgroundSystem />
       <BackgroundVisuals />
@@ -217,7 +220,7 @@ const LandingPage = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2.5 group">
             <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-xl transition-transform duration-200 group-hover:scale-105 shadow-sm" />
-            <span className="font-semibold text-white tracking-tight">DistractFree</span>
+            <span className="font-semibold text-hi tracking-tight">DistractFree</span>
           </Link>
 
           <GlassNavbar
@@ -230,10 +233,11 @@ const LandingPage = () => {
           />
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <a
               href="#"
               onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); }}
-              className="hidden sm:flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] transition-all duration-200"
+              className="hidden sm:flex items-center gap-2 text-sm font-medium text-fg-soft hover:text-hi px-4 py-2 rounded-full border border-ink/[0.08] bg-ink/[0.04] hover:bg-ink/[0.08] transition-all duration-200"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
@@ -246,7 +250,7 @@ const LandingPage = () => {
             </a>
             <Link
               to="/login"
-              className="text-sm font-medium text-gray-400 hover:text-white transition-colors duration-200"
+              className="text-sm font-medium text-fg-2 hover:text-hi transition-colors duration-200"
             >
               Log in
             </Link>
@@ -282,7 +286,7 @@ const LandingPage = () => {
             </p>
 
             <h1
-              className="text-4xl md:text-[3.25rem] lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-white mb-6 animate-fade-up-headline section-headline-upgrade"
+              className="text-4xl md:text-[3.25rem] lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-hi mb-6 animate-fade-up-headline section-headline-upgrade"
               style={{ animationDelay: '0.1s', letterSpacing: '-2px' }}
             >
               Focus should feel
@@ -293,7 +297,7 @@ const LandingPage = () => {
             </h1>
 
             <p
-              className="text-gray-400 text-lg leading-relaxed max-w-lg mb-10 animate-fade-up-subtext"
+              className="text-fg-2 text-lg leading-relaxed max-w-lg mb-10 animate-fade-up-subtext"
               style={{ animationDelay: '0.3s' }}
             >
               DistractFree helps you build sustainable focus habits using AI insights
@@ -316,7 +320,7 @@ const LandingPage = () => {
               </Link>
               <a
                 href="#how-it-works"
-                className="inline-flex items-center gap-2 border border-white/[0.1] text-gray-300 hover:border-white/[0.2] hover:bg-white/[0.04] font-medium px-8 py-3.5 rounded-full spring-hover hero-btn-secondary"
+                className="inline-flex items-center gap-2 border border-ink/[0.1] text-fg-soft hover:border-ink/[0.2] hover:bg-ink/[0.04] font-medium px-8 py-3.5 rounded-full spring-hover hero-btn-secondary"
               >
                 <span className="play-icon-nudge">▶</span>
                 See How It Works
@@ -338,12 +342,12 @@ const LandingPage = () => {
                   <MiniStat label="Focus Coins" value="340" sub="+45 today" />
                   <MiniStat label="Streak" value="12 days" sub="Personal best!" className="hero-stat-streak" />
                 </div>
-                <div className="bg-white/[0.04] rounded-xl p-3">
-                  <p className="text-[10px] text-gray-500 mb-2">Weekly Focus Time</p>
+                <div className="bg-ink/[0.04] rounded-xl p-3">
+                  <p className="text-[10px] text-fg-2 mb-2">Weekly Focus Time</p>
                   <ResponsiveContainer width="100%" height={120}>
                     <BarChart data={weeklyData}>
                       <Bar dataKey="m" fill="#4A7C6F" radius={[4, 4, 0, 0]} barSize={24} />
-                      <XAxis dataKey="d" stroke="#555" fontSize={9} tickLine={false} axisLine={false} />
+                      <XAxis dataKey="d" stroke={chart.axis} fontSize={9} tickLine={false} axisLine={false} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -362,7 +366,7 @@ const LandingPage = () => {
       <section className="relative z-10 py-[72px] px-6 problem-section">
         <div className="max-w-6xl mx-auto">
           <motion.h2
-            className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-16 max-w-2xl mx-auto text-center section-headline-upgrade"
+            className="text-3xl md:text-4xl font-bold tracking-tight text-hi mb-16 max-w-2xl mx-auto text-center section-headline-upgrade"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
@@ -370,7 +374,7 @@ const LandingPage = () => {
           >
             Most website blockers punish.
             <br />
-            <span className="text-gray-500" style={{ fontStyle: 'italic', fontWeight: 300 }}>We motivate.</span>
+            <span className="text-fg-2" style={{ fontStyle: 'italic', fontWeight: 300 }}>We motivate.</span>
           </motion.h2>
 
           <motion.div
@@ -386,17 +390,17 @@ const LandingPage = () => {
 
             {/* Traditional Blockers */}
             <motion.div
-              className="border border-white/[0.06] rounded-2xl p-8 bg-white/[0.03] land-card-upgrade compare-left-card"
+              className="border border-ink/[0.06] rounded-2xl p-8 bg-ink/[0.03] land-card-upgrade compare-left-card"
               variants={fadeUp}
             >
-              <p className="text-sm font-medium text-gray-500 mb-6 uppercase tracking-wide">Traditional blockers</p>
+              <p className="text-sm font-medium text-fg-2 mb-6 uppercase tracking-wide">Traditional blockers</p>
               <ul className="space-y-4">
                 {[
                   'Harsh restrictions that create frustration',
                   'Easy to bypass — a quick incognito tab away',
                   'Short-term control with no lasting habits',
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-gray-500">
+                  <li key={i} className="flex items-start gap-3 text-fg-2">
                     <span className="mt-1 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center" style={{background:'rgba(255,80,80,0.1)'}}>
                       <span style={{color:'rgba(255,80,80,0.8)', fontSize: 11, fontWeight: 700}}>×</span>
                     </span>
@@ -463,13 +467,13 @@ const LandingPage = () => {
               Website blocking
             </motion.p>
             <motion.h2
-              className="text-3xl md:text-4xl font-bold tracking-tight text-white max-w-xl mb-4 section-headline-upgrade"
+              className="text-3xl md:text-4xl font-bold tracking-tight text-hi max-w-xl mb-4 section-headline-upgrade"
               variants={fadeUp}
             >
               Smart Website Blocking — On Your Terms
             </motion.h2>
             <motion.p
-              className="text-gray-400 text-[15px] leading-relaxed max-w-lg"
+              className="text-fg-2 text-[15px] leading-relaxed max-w-lg"
               variants={fadeUp}
             >
               During focus sessions, selected websites are temporarily paused.
@@ -533,8 +537,8 @@ const LandingPage = () => {
                     {item.icon}
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold text-[15px] mb-1">{item.title}</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+                    <h3 className="text-hi font-semibold text-[15px] mb-1">{item.title}</h3>
+                    <p className="text-fg-2 text-sm leading-relaxed">{item.desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -554,7 +558,7 @@ const LandingPage = () => {
                   <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E] window-dot-yellow-glow" />
                   <div className="w-2.5 h-2.5 rounded-full bg-[#28C840] window-dot-green-glow" />
                   <div className="flex-1 mx-4">
-                    <div className="rounded-lg px-3 py-1.5 text-xs text-gray-400" style={{background:'var(--bg-overlay, #191d38)', border:'1px solid var(--bd-1)'}}>
+                    <div className="rounded-lg px-3 py-1.5 text-xs text-fg-2" style={{background:'var(--bg-overlay, #191d38)', border:'1px solid var(--bd-1)'}}>
                       twitter.com
                     </div>
                   </div>
@@ -575,17 +579,17 @@ const LandingPage = () => {
                     </svg>
                   </div>
 
-                  <h3 className="text-xl font-semibold text-white mb-2">
+                  <h3 className="text-xl font-semibold text-hi mb-2">
                     This site is paused
                   </h3>
-                  <p className="text-gray-400 text-sm mb-8">
+                  <p className="text-fg-2 text-sm mb-8">
                     You're in a focus session.
                   </p>
 
                   {/* Timer */}
                   <div className="mb-6">
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-2" style={{letterSpacing:'2px'}}>Return in</p>
-                    <p className="text-3xl font-bold text-white tracking-tight font-mono countdown-glow">
+                    <p className="text-xs text-fg-2 uppercase tracking-wide mb-2" style={{letterSpacing:'2px'}}>Return in</p>
+                    <p className="text-3xl font-bold text-hi tracking-tight font-mono countdown-glow">
                       18:42
                     </p>
                   </div>
@@ -620,7 +624,7 @@ const LandingPage = () => {
             variants={fadeUp}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-3 section-headline-upgrade">
+            <h2 className="text-3xl sm:text-4xl font-semibold text-hi tracking-tight mb-3 section-headline-upgrade">
               See what you're building toward.
             </h2>
           </motion.div>
@@ -639,8 +643,8 @@ const LandingPage = () => {
                     <MiniStat label="This Week" value="18.5h" sub="+3.2h vs last week" />
                     <MiniStat label="Focus Score" value="78/100" sub="+6 points" />
                   </div>
-                  <div className="bg-white/[0.04] rounded-xl p-3">
-                    <p className="text-[10px] text-gray-500 mb-2">Improvement Trend</p>
+                  <div className="bg-ink/[0.04] rounded-xl p-3">
+                    <p className="text-[10px] text-fg-2 mb-2">Improvement Trend</p>
                     <ResponsiveContainer width="100%" height={100}>
                       <AreaChart data={trendData}>
                         <defs>
@@ -650,7 +654,7 @@ const LandingPage = () => {
                           </linearGradient>
                         </defs>
                         <Area type="monotone" dataKey="s" stroke="#00d4c8" strokeWidth={2} fill="url(#trendFill)" dot={false} />
-                        <XAxis dataKey="w" stroke="#555" fontSize={9} tickLine={false} axisLine={false} />
+                        <XAxis dataKey="w" stroke={chart.axis} fontSize={9} tickLine={false} axisLine={false} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -681,12 +685,12 @@ const LandingPage = () => {
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-[7px] font-medium" style={{color:'var(--teal, #00d4c8)'}}>In Progress</span>
-                        <span className="text-white font-semibold text-sm" style={{fontFamily:'monospace', filter:'drop-shadow(0 0 8px rgba(0,212,200,0.4))'}}>18:32</span>
+                        <span className="text-hi font-semibold text-sm" style={{fontFamily:'monospace', filter:'drop-shadow(0 0 8px rgba(0,212,200,0.4))'}}>18:32</span>
                       </div>
                     </div>
                     <div>
-                      <p className="text-white font-semibold text-base">Deep Work Session</p>
-                      <p className="text-gray-500 text-[11px] mt-1">25 min &middot; Earn up to 20 coins</p>
+                      <p className="text-hi font-semibold text-base">Deep Work Session</p>
+                      <p className="text-fg-2 text-[11px] mt-1">25 min &middot; Earn up to 20 coins</p>
                     </div>
                   </div>
                 </WindowFrame>
@@ -707,7 +711,7 @@ const LandingPage = () => {
                       { desc: '7-day streak bonus', amt: '+50', color: 'var(--teal, #00d4c8)' },
                     ].map((tx, i) => (
                       <div key={i} className="flex items-center justify-between py-1.5">
-                        <span className="text-gray-400 text-[12px]">{tx.desc}</span>
+                        <span className="text-fg-2 text-[12px]">{tx.desc}</span>
                         <span className="text-[12px] font-medium" style={{color: tx.color}}>{tx.amt}</span>
                       </div>
                     ))}
@@ -742,13 +746,13 @@ const LandingPage = () => {
                 AI Transparency
               </motion.p>
               <motion.h2
-                className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-6 section-headline-upgrade"
+                className="text-3xl md:text-4xl font-bold tracking-tight text-hi mb-6 section-headline-upgrade"
                 variants={fadeUp}
               >
                 AI that explains itself.
               </motion.h2>
               <motion.p
-                className="text-gray-400 text-[15px] leading-relaxed mb-6 max-w-lg"
+                className="text-fg-2 text-[15px] leading-relaxed mb-6 max-w-lg"
                 variants={fadeUp}
               >
                 We use simple, explainable models to predict your distraction patterns.
@@ -778,8 +782,8 @@ const LandingPage = () => {
                   <div key={i} className="land-card land-card-upgrade rounded-xl p-4 flex gap-4 spring-hover">
                     <div className="w-1 rounded-full flex-shrink-0" style={{background: tip.borderColor}} />
                     <div>
-                      <p className="text-white font-medium text-sm mb-0.5">{tip.title}</p>
-                      <p className="text-gray-400 text-[13px] leading-relaxed">{tip.desc}</p>
+                      <p className="text-hi font-medium text-sm mb-0.5">{tip.title}</p>
+                      <p className="text-fg-2 text-[13px] leading-relaxed">{tip.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -794,17 +798,17 @@ const LandingPage = () => {
               transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
             >
               <div className="land-card land-card-upgrade rounded-2xl p-6 h-full flex flex-col justify-center">
-                <p className="text-sm font-medium text-white mb-1">Distraction Risk by Time</p>
-                <p className="text-xs text-gray-400 mb-4">AI-generated from your last 30 days</p>
+                <p className="text-sm font-medium text-hi mb-1">Distraction Risk by Time</p>
+                <p className="text-xs text-fg-2 mb-4">AI-generated from your last 30 days</p>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={[
                     { h: '8am', r: 12 }, { h: '10am', r: 8 }, { h: '12pm', r: 22 },
                     { h: '2pm', r: 58 }, { h: '4pm', r: 72 }, { h: '6pm', r: 45 },
                     { h: '8pm', r: 55 }, { h: '10pm', r: 38 },
                   ]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E8EBF0" className="opacity-10" />
-                    <XAxis dataKey="h" stroke="#9CA3AF" fontSize={11} tickLine={false} />
-                    <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                    <XAxis dataKey="h" stroke={chart.axis} fontSize={11} tickLine={false} />
+                    <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
                     <Line
                       type="monotone"
                       dataKey="r"
@@ -815,7 +819,7 @@ const LandingPage = () => {
                     />
                   </LineChart>
                 </ResponsiveContainer>
-                <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
+                <div className="mt-3 flex items-center gap-2 text-xs text-fg-2">
                   <div className="w-3 h-0.5 rounded" style={{background:'var(--teal, #00d4c8)'}} />
                   <span>Higher = more vulnerable to distraction</span>
                 </div>
@@ -847,18 +851,18 @@ const LandingPage = () => {
               Built on research
             </motion.p>
             <motion.h2
-              className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-6 section-headline-upgrade"
+              className="text-3xl md:text-4xl font-bold tracking-tight text-hi mb-6 section-headline-upgrade"
               variants={fadeUp}
             >
               Grounded in behavioral science.
             </motion.h2>
             <motion.div className="space-y-5" variants={fadeUp}>
-              <p className="text-gray-400 text-[15px] leading-[1.8]">
+              <p className="text-fg-2 text-[15px] leading-[1.8]">
                 DistractFree draws on established research in habit formation, self-determination theory,
                 and digital wellbeing. The reward-based model is inspired by intrinsic motivation frameworks
                 — the same principles behind why autonomy and competence drive sustained behavior change.
               </p>
-              <p className="text-gray-400 text-[15px] leading-[1.8]">
+              <p className="text-fg-2 text-[15px] leading-[1.8]">
                 Studies consistently show that punitive approaches to screen time (strict blocking, shame-based
                 trackers) produce short-term compliance but fail to build lasting habits. Our approach prioritizes
                 self-regulation — giving users agency, transparency, and incremental reinforcement.
@@ -930,7 +934,7 @@ const LandingPage = () => {
           </motion.div>
 
           <motion.h2
-            className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-5"
+            className="text-3xl md:text-5xl font-bold tracking-tight text-hi mb-5"
             variants={fadeUp}
             style={{letterSpacing: '-2px'}}
           >
@@ -939,7 +943,7 @@ const LandingPage = () => {
             <span className="hero-shimmer-word" style={{fontSize:'inherit', fontWeight:'inherit'}}>focus habits.</span>
           </motion.h2>
           <motion.p
-            className="text-gray-400 text-lg mb-10 max-w-md mx-auto"
+            className="text-fg-2 text-lg mb-10 max-w-md mx-auto"
             variants={fadeUp}
             style={{fontWeight: 300, fontStyle: 'italic'}}
           >
@@ -980,9 +984,9 @@ const LandingPage = () => {
             <span className="text-sm" style={{color:'var(--tx-3, #55556e)'}}>&copy; 2026 DistractFree</span>
           </div>
           <div className="flex gap-6 text-sm" style={{color:'var(--tx-3, #55556e)'}}>
-            <a href="#privacy" className="hover:text-white transition-colors duration-200">Privacy</a>
-            <a href="#terms" className="hover:text-white transition-colors duration-200">Terms</a>
-            <a href="mailto:thokaneram@gmail.com?subject=DistractFree%20Query" className="hover:text-white transition-colors duration-200">Contact</a>
+            <a href="#privacy" className="hover:text-hi transition-colors duration-200">Privacy</a>
+            <a href="#terms" className="hover:text-hi transition-colors duration-200">Terms</a>
+            <a href="mailto:thokaneram@gmail.com?subject=DistractFree%20Query" className="hover:text-hi transition-colors duration-200">Contact</a>
           </div>
         </div>
       </footer>

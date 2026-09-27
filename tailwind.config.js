@@ -5,6 +5,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        /* Theme tokens (CSS variables in src/index.css) */
+        canvas: 'rgb(var(--canvas) / <alpha-value>)',
+        'canvas-2': 'rgb(var(--canvas-2) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        'surface-2': 'rgb(var(--surface-2) / <alpha-value>)',
+        'surface-3': 'rgb(var(--surface-3) / <alpha-value>)',
+        hi: 'rgb(var(--hi) / <alpha-value>)',
+        fg: 'rgb(var(--fg) / <alpha-value>)',
+        'fg-soft': 'rgb(var(--fg-soft) / <alpha-value>)',
+        'fg-2': 'rgb(var(--fg-2) / <alpha-value>)',
+        'fg-lav': 'rgb(var(--fg-lav) / <alpha-value>)',
+        'fg-3': 'rgb(var(--fg-3) / <alpha-value>)',
+        'fg-4': 'rgb(var(--fg-4) / <alpha-value>)',
+        ink: 'rgb(var(--ink) / <alpha-value>)',
         primary: {
           DEFAULT: '#7C5CFC',
           light: '#9B7FFF',
@@ -40,22 +54,22 @@ module.exports = {
           muted: '#8B8AA8',
           subtle: '#141938',
           // dark mode (always dark in redesign)
-          'dark-bg': '#060918',
-          'dark-card': '#0F1329',
+          'dark-bg': 'rgb(var(--canvas) / <alpha-value>)',
+          'dark-card': 'rgb(var(--surface) / <alpha-value>)',
           'dark-border': 'rgba(124,92,252,0.12)',
-          'dark-text': '#F0EEFF',
-          'dark-muted': '#8B8AA8',
+          'dark-text': 'rgb(var(--fg) / <alpha-value>)',
+          'dark-muted': 'rgb(var(--fg-lav) / <alpha-value>)',
           'dark-subtle': '#141938',
         },
         dash: {
-          bg: '#060918',
+          bg: 'rgb(var(--canvas) / <alpha-value>)',
           sidebar: '#0A0E1F',
-          card: '#0F1329',
+          card: 'rgb(var(--surface) / <alpha-value>)',
           border: 'rgba(124,92,252,0.1)',
           'border-light': 'rgba(124,92,252,0.2)',
           hover: 'rgba(124,92,252,0.06)',
-          text: '#F0EEFF',
-          muted: '#8B8AA8',
+          text: 'rgb(var(--fg) / <alpha-value>)',
+          muted: 'rgb(var(--fg-2) / <alpha-value>)',
           accent: '#7C5CFC',
         },
         sage: {
@@ -162,5 +176,9 @@ module.exports = {
       },
     },
   },
-  plugins: [require('@tailwindcss/forms')],
+  plugins: [
+    require('@tailwindcss/forms'),
+    // `light:` variant — one-off tweaks for the light theme (html.light, see ThemeContext)
+    ({ addVariant }) => addVariant('light', 'html.light &'),
+  ],
 };

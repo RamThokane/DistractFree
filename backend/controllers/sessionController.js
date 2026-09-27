@@ -430,72 +430,56 @@ exports.getDashboard = async (req, res) => {
 // ────────────────────────────────────────────────────
 exports.getLeaderboard = async (req, res) => {
   try {
-    const userId = new mongoose.Types.ObjectId(req.user._id);
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const userId = req.user._id.toString();
+    const period = req.query.period === 'all' ? 'all' : 'week';
 
-    // Aggregate all users' completed sessions in the last 7 days
-    const leaderboardRaw = await FocusSession.aggregate([
-      { $match: { status: 'completed', startTime: { $gte: sevenDaysAgo } } },
-      {
-        $group: {
-          _id: '$userId',
-          totalMinutes: { $sum: '$duration' },
-          totalCoins: { $sum: '$coinsEarned' },
-          totalSessions: { $sum: 1 },
-        },
-      },
-      { $sort: { totalMinutes: -1, totalCoins: -1, _id: 1 } },
-      { $limit: 50 },
-    ]);
-
-    // Populate user names
-    const userIds = leaderboardRaw.map((e) => e._id);
-    const users = await User.find({ _id: { $in: userIds } }).select('name avatar');
-    const userMap = {};
-    users.forEach((u) => {
-      userMap[u._id.toString()] = { name: u.name, avatar: u.avatar };
-    });
-
-    const leaderboard = leaderboardRaw.map((entry, i) => ({
-      rank: i + 1,
-      name: userMap[entry._id.toString()]?.name || 'Anonymous',
-      avatar: userMap[entry._id.toString()]?.avatar || '',
-      weeklyHours: Math.round((entry.totalMinutes / 60) * 10) / 10,
-      coins: entry.totalCoins,
-      sessions: entry.totalSessions,
-      isCurrentUser: entry._id.toString() === userId.toString(),
-    }));
-
-    // If current user not in top 50, add them
-    const userInList = leaderboard.find((e) => e.isCurrentUser);
-    if (!userInList) {
-      const userStats = await FocusSession.aggregate([
-        { $match: { userId, status: 'completed', startTime: { $gte: sevenDaysAgo } } },
-        {
-          $group: {
-            _id: null,
-            totalMinutes: { $sum: '$duration' },
-            totalCoins: { $sum: '$coinsEarned' },
-            totalSessions: { $sum: 1 },
-          },
-        },
-      ]);
-
-      const me = userStats[0] || { totalMinutes: 0, totalCoins: 0, totalSessions: 0 };
-      const user = await User.findById(userId);
-      leaderboard.push({
-        rank: leaderboard.length + 1,
-        name: user?.name || 'You',
-        avatar: user?.avatar || '',
-        weeklyHours: Math.round((me.totalMinutes / 60) * 10) / 10,
-        coins: me.totalCoins,
-        sessions: me.totalSessions,
-        isCurrentUser: true,
-      });
+    const sessionMatch = { $expr: { $eq: ['$userId', '$$uid'] }, status: 'completed' };
+    if (period === 'week') {
+      sessionMatch.startTime = { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) };
     }
 
-    res.json({ success: true, leaderboard, currentUserRank: userInList?.rank || leaderboard.find(e => e.isCurrentUser)?.rank || null });
+    // Start from users (not sessions) so everyone appears, even with 0 focus time
+    const ranked = await User.aggregate([
+      {
+        $lookup: {
+          from: FocusSession.collection.name,
+          let: { uid: '$_id' },
+          pipeline: [
+            { $match: sessionMatch },
+            { $group: { _id: null, minutes: { $sum: '$duration' }, coins: { $sum: '$coinsEarned' }, sessions: { $sum: 1 } } },
+          ],
+          as: 'stats',
+        },
+      },
+      { $unwind: { path: '$stats', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          name: 1,
+          avatar: 1,
+          minutes: { $ifNull: ['$stats.minutes', 0] },
+          coins: { $ifNull: ['$stats.coins', 0] },
+          sessions: { $ifNull: ['$stats.sessions', 0] },
+        },
+      },
+      { $sort: { minutes: -1, coins: -1, sessions: -1, name: 1, _id: 1 } },
+    ]);
+
+    const entries = ranked.map((u, i) => ({
+      rank: i + 1,
+      name: u.name || 'Anonymous',
+      avatar: u.avatar || '',
+      hours: Math.round((u.minutes / 60) * 10) / 10,
+      coins: u.coins,
+      sessions: u.sessions,
+      isCurrentUser: u._id.toString() === userId,
+    }));
+
+    // Top 50, plus the current user if they rank lower
+    const leaderboard = entries.slice(0, 50);
+    const me = entries.find((e) => e.isCurrentUser);
+    if (me && me.rank > 50) leaderboard.push(me);
+
+    res.json({ success: true, period, leaderboard, currentUserRank: me?.rank || null, totalUsers: entries.length });
   } catch (error) {
     console.error('[Session] Leaderboard error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });

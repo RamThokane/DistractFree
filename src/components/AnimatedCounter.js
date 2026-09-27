@@ -7,9 +7,13 @@ const AnimatedCounter = ({ value, duration = 1.5, prefix = '', suffix = '', clas
   const displayRef = useRef(null);
 
   useEffect(() => {
+    // Show the starting number right away — a value of 0 never fires a 'change' event
+    if (displayRef.current && !displayRef.current.textContent) {
+      displayRef.current.textContent = `${prefix}${Math.round(count.get()).toLocaleString()}${suffix}`;
+    }
     const controls = animate(count, value, { duration });
     return controls.stop;
-  }, [value, count, duration]);
+  }, [value, count, duration, prefix, suffix]);
 
   useEffect(() => {
     const unsubscribe = rounded.on('change', (v) => {

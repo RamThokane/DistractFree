@@ -562,3 +562,37 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-light);
 }
+
+
+/* ═══════════════════════════════════════════════════
+   Light theme — set from the website via theme.js,
+   otherwise follows the OS preference.
+   ═══════════════════════════════════════════════════ */
+html[data-theme="light"] {
+  --bg: #FFFFFF;
+  --bg-elevated: #F9FAFB;
+  --bg-card: #F9FAFB;
+  --bg-card-hover: #F3F4F6;
+  --bg-card-active: #EFF6FF;
+  --border: #E5E7EB;
+  --border-light: #D1D5DB;
+  --text: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #6B7280;
+  --primary-glow: rgba(59, 130, 246, 0.12);
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]) {
+  --bg: #FFFFFF;
+  --bg-elevated: #F9FAFB;
+  --bg-card: #F9FAFB;
+  --bg-card-hover: #F3F4F6;
+  --bg-card-active: #EFF6FF;
+  --border: #E5E7EB;
+  --border-light: #D1D5DB;
+  --text: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #6B7280;
+  --primary-glow: rgba(59, 130, 246, 0.12);
+  }
+}

@@ -4,6 +4,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════
+   THEME TOKENS — the only place colours change between themes.
+   Values are RGB channels so Tailwind opacity modifiers work
+   (see tailwind.config.js). Dark is the default.
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --canvas: 6 9 24;          /* page background */
+  --canvas-2: 13 15 23;      /* alternate section background */
+  --surface: 15 19 41;       /* cards (used with opacity) */
+  --surface-2: 20 23 28;     /* inputs, raised blocks */
+  --surface-3: 26 29 36;     /* hover / popovers */
+  --hi: 255 255 255;         /* strongest text */
+  --fg: 240 238 255;         /* primary text */
+  --fg-soft: 196 193 224;    /* body copy on cards */
+  --fg-2: 156 163 175;       /* secondary text */
+  --fg-lav: 139 138 168;     /* muted labels */
+  --fg-3: 107 114 128;       /* tertiary text */
+  --fg-4: 107 106 133;       /* faint captions */
+  --ink: 255 255 255;        /* base for translucent borders / fills */
+  --card-alpha: 0.6;
+  --card-border: rgba(124, 92, 252, 0.1);
+  --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.03);
+  --nav-bg: rgba(15, 17, 21, 0.8);
+  --overlay: rgba(0, 0, 0, 0.4);
+  --ring-track: rgba(124, 92, 252, 0.08);
+}
+
+html.light {
+  --canvas: 247 248 252;
+  --canvas-2: 241 243 249;
+  --surface: 255 255 255;
+  --surface-2: 255 255 255;
+  --surface-3: 243 244 246;
+  --hi: 17 24 39;
+  --fg: 17 24 39;
+  --fg-soft: 55 65 81;
+  --fg-2: 75 85 99;
+  --fg-lav: 91 97 115;
+  --fg-3: 107 114 128;
+  --fg-4: 107 114 128;
+  --ink: 15 23 42;
+  --card-alpha: 1;
+  --card-border: #E5E7EB;
+  --card-shadow: 0 8px 30px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --nav-bg: rgba(255, 255, 255, 0.78);
+  --overlay: rgba(15, 23, 42, 0.25);
+  --ring-track: rgba(99, 102, 241, 0.12);
+}
+
+/* Short colour-only transition while switching themes (class added by ThemeContext) */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow !important;
+  transition-duration: 200ms !important;
+  transition-timing-function: ease !important;
+}
+
 /* ── Global Reset & Base ── */
 * {
   margin: 0;
@@ -13,13 +72,12 @@
 
 html {
   scroll-behavior: smooth;
-  color-scheme: dark;
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0d0f17;
-  color: #F0EEFF;
+  background: rgb(var(--canvas));
+  color: rgb(var(--fg));
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -43,7 +101,7 @@ body {
 /* ── Selection ── */
 ::selection {
   background: rgba(92, 107, 192, 0.3);
-  color: #fff;
+  color: rgb(var(--hi));
 }
 
 /* ── Theme Transition ── */
@@ -305,13 +363,19 @@ body {
   border: 1px solid rgba(124, 92, 252, 0.12);
   border-radius: 12px;
   padding: 10px 16px;
-  color: #F0EEFF;
+  color: rgb(var(--fg));
   font-size: 14px;
   transition: all 200ms;
 }
 .dash-input::placeholder {
   color: rgba(139, 138, 168, 0.5);
 }
+html.light .dash-input {
+  background: #FFFFFF;
+  border-color: #D1D5DB;
+}
+html.light .dash-input::placeholder { color: #9CA3AF; }
+html.light .dash-input:disabled { background: #F3F4F6; }
 .dash-input:focus {
   outline: none;
   border-color: rgba(124, 92, 252, 0.35);
@@ -487,120 +551,45 @@ body {
 }
 
 /* ═══════════════════════════════════════════ */
-/* ── Theme System ──────────────────────────── */
+/* ── Theme-aware component helpers ─────────── */
 /* ═══════════════════════════════════════════ */
 
-/* Minimal theme — now a muted dark variant */
-[data-theme="minimal"] body {
-  background: #0A0D1A;
+/* Solid dashboard card surface (was `bg-white` forced dark) */
+.df-card-bg {
+  background-color: rgba(20, 23, 28, 0.6);
+}
+html.light .df-card-bg {
+  background-color: #FFFFFF;
+  box-shadow: var(--card-shadow);
 }
 
-[data-theme="minimal"] .dash-card,
-[data-theme="minimal"] .bg-dash-card {
-  background-color: rgba(15, 19, 41, 0.5) !important;
-}
+html.light .shadow-card-soft { box-shadow: var(--card-shadow); }
 
-[data-theme="minimal"] .bg-dash-hover {
-  background-color: rgba(124, 92, 252, 0.04);
-}
+/* Pastel tints (bg-*-50 / border-*-100/200) were light-only: translucent tints in dark mode */
+html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.12); }
+html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12); }
+html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.12); }
+html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+html.dark .bg-green-50, html.dark .bg-emerald-50 { background-color: rgba(34, 197, 94, 0.12); }
+html.dark .border-indigo-100, html.dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.25); }
+html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.3); }
+html.dark .border-orange-200 { border-color: rgba(249, 115, 22, 0.3); }
+html.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
+html.dark .text-indigo-600, html.dark .text-indigo-700 { color: #A5B4FC; }
+html.dark .text-red-600 { color: #F87171; }
 
-[data-theme="minimal"] .border-dash-border {
-  border-color: rgba(124, 92, 252, 0.08);
-}
-
-[data-theme="minimal"] .text-dash-text {
-  color: #D0CCE8;
-}
-
-[data-theme="minimal"] .text-dash-muted {
-  color: #7A789A;
-}
-
-[data-theme="minimal"] .bg-sage {
-  background-color: #6B5CE0;
-}
-
-[data-theme="minimal"] .text-sage {
-  color: #9B7FFF;
-}
-
-/* Light theme — still dark but lighter shade */
-[data-theme="light"] body {
-  background: #0C1020;
-  color: #F0EEFF;
-}
-
-[data-theme="light"] .bg-white,
-[data-theme="light"] .dash-card,
-[data-theme="light"] .bg-dash-card {
-  background-color: rgba(15, 19, 41, 0.7) !important;
-}
-
-[data-theme="light"] .bg-dash-hover {
-  background-color: rgba(124, 92, 252, 0.06);
-}
-
-[data-theme="light"] .border-dash-border {
-  border-color: rgba(124, 92, 252, 0.12);
-}
-
-[data-theme="light"] .text-dash-text,
-[data-theme="light"] .text-gray-900 {
-  color: #F0EEFF;
-}
-
-[data-theme="light"] .text-dash-muted,
-[data-theme="light"] .text-gray-500,
-[data-theme="light"] .text-gray-400 {
-  color: #8B8AA8;
-}
-
-/* Dark theme (default) */
-[data-theme="dark"] body {
-  background: #0F1115;
-  color: #F0EEFF;
-}
-
-[data-theme="dark"] .bg-white,
-[data-theme="dark"] .dash-card,
-[data-theme="dark"] .bg-dash-card {
-  background-color: rgba(20, 23, 28, 0.6) !important;
-  border-color: rgba(255, 255, 255, 0.06) !important;
-}
-
-[data-theme="dark"] .bg-dash-hover {
-  background-color: rgba(92, 107, 192, 0.06);
-}
-
-[data-theme="dark"] .border-dash-border {
-  border-color: rgba(255, 255, 255, 0.06);
-}
-
-[data-theme="dark"] .text-dash-text,
-[data-theme="dark"] .text-gray-900 {
-  color: #F0EEFF;
-}
-
-[data-theme="dark"] .text-dash-muted,
-[data-theme="dark"] .text-gray-500,
-[data-theme="dark"] .text-gray-400 {
-  color: #9CA3AF;
-}
-
-[data-theme="dark"] .dash-input {
-  background-color: rgba(10, 14, 31, 0.8);
-  border-color: rgba(124, 92, 252, 0.12);
-  color: #F0EEFF;
-}
-
-[data-theme="dark"] .bg-gray-50,
-[data-theme="dark"] .bg-\[#F8F9FB\] {
-  background-color: rgba(20, 23, 28, 0.6) !important;
-}
-
-[data-theme="dark"] .hover\:bg-dash-hover:hover {
-  background-color: rgba(92, 107, 192, 0.1) !important;
-}
+/* Accent text shades tuned for dark backgrounds (300/400) are too pale on white:
+   use the deeper shade of the same hue in light mode. */
+html.light .text-amber-300, html.light .text-amber-400, html.light .text-yellow-400 { color: #B45309; }
+html.light .text-orange-300, html.light .text-orange-400 { color: #C2410C; }
+html.light .text-green-300, html.light .text-green-400, html.light .text-emerald-300, html.light .text-emerald-400, html.light .text-\[\#3FAE6A\] { color: #15803D; }
+html.light .text-red-300, html.light .text-red-400, html.light .text-rose-400, html.light .text-\[\#EF6B6B\] { color: #DC2626; }
+html.light .text-\[\#F5B638\] { color: #B45309; }
+html.light .text-indigo-300, html.light .text-indigo-400, html.light .text-violet-300, html.light .text-purple-400, html.light .text-sage, html.light .text-\[\#9B7FFF\] { color: #4F46E5; }
+html.light .text-blue-300, html.light .text-blue-400, html.light .text-sky-400 { color: #2563EB; }
+html.light .text-teal-300, html.light .text-teal-400, html.light .text-cyan-400 { color: #0F766E; }
+html.light .hover\:text-indigo-300:hover { color: #4338CA; }
 
 /* ═══════════════════════════════════════════ */
 /* ── Animation Utilities ───────────────────── */

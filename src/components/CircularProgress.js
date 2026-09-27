@@ -22,7 +22,7 @@ const CircularProgress = ({ value = 0, max = 100, size = 160, strokeWidth = 10, 
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(124, 92, 252, 0.08)"
+          style={{ stroke: 'var(--ring-track)' }}
           strokeWidth={strokeWidth}
         />
         {/* Progress arc with glow */}
@@ -43,8 +43,8 @@ const CircularProgress = ({ value = 0, max = 100, size = 160, strokeWidth = 10, 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {label && <span className="text-2xl font-bold text-[#F0EEFF]">{label}</span>}
-        {sublabel && <span className="text-xs text-[#8B8AA8] mt-1">{sublabel}</span>}
+        {label && <span className="text-2xl font-bold text-fg">{label}</span>}
+        {sublabel && <span className="text-xs text-fg-lav mt-1">{sublabel}</span>}
       </div>
     </div>
   );

@@ -15,8 +15,11 @@
 // API_BASE is read from storage (set via popup settings or default).
 // In development: http://localhost:5000/api
 // In production:  set EXTENSION_API_URL in chrome.storage.sync or hardcode below.
-const DEFAULT_API_BASE = 'https://distractfree-backend.vercel.app/api';
-const DEFAULT_DASHBOARD_ORIGIN = 'https://distractfree.vercel.app';
+// Local development (the Vercel backend is currently DEPLOYMENT_NOT_FOUND).
+// For production, switch back to:
+//   https://distractfree-backend.vercel.app/api  and  https://distractfree.vercel.app
+const DEFAULT_API_BASE = 'http://localhost:5000/api';
+const DEFAULT_DASHBOARD_ORIGIN = 'http://localhost:3000';
 
 let API_BASE = DEFAULT_API_BASE;
 let DASHBOARD_ORIGIN = DEFAULT_DASHBOARD_ORIGIN;

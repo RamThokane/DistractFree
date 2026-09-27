@@ -91,6 +91,22 @@
     window.location.hostname === 'localhost' &&
     window.location.port === '3000';
 
+  // ── Theme sync: copy the website's light/dark choice into extension storage ──
+  const isDistractFreeSite =
+    isDashboard || window.location.hostname === 'distractfree.vercel.app';
+  if (isDistractFreeSite) {
+    let lastTheme = null;
+    const syncTheme = () => {
+      const theme = document.documentElement.getAttribute('data-theme');
+      if ((theme === 'light' || theme === 'dark') && theme !== lastTheme) {
+        lastTheme = theme;
+        try { chrome.storage.local.set({ theme }); } catch (e) { /* extension reloaded */ }
+      }
+    };
+    syncTheme();
+    new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+
   if (isDashboard) {
     console.log('[DistractFree] Content script running on dashboard — monitoring auth state');
 

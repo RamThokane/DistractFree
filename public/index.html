@@ -6,13 +6,26 @@
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#03040a" />
+    <script>
+      /* Apply the saved (or OS) theme before first paint — must match src/context/ThemeContext.js */
+      (function () {
+        try {
+          var t = localStorage.getItem('df-theme');
+          if (t !== 'light' && t !== 'dark') t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          var r = document.documentElement;
+          r.classList.add(t);
+          r.setAttribute('data-theme', t);
+          r.style.colorScheme = t;
+        } catch (e) { document.documentElement.classList.add('dark'); }
+      })();
+    </script>
     <meta name="description" content="DistractFree — AI-powered productivity companion that rewards self-discipline" />
     <title>DistractFree — Build Focus. Earn Control.</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-dash-bg">
+  <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
   </body>

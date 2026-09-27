@@ -1,220 +1,417 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import BrowserFrame from './demo/BrowserFrame';
+import AnimatedCursor from './demo/AnimatedCursor';
+import ProductDemo, { SCENE_CURSOR_WAYPOINTS } from './demo/ProductDemo';
+
+/* ═══════════════════════════════════════════════════════
+   SCENE TIMELINE DEFINITION
+   ═══════════════════════════════════════════════════════ */
+
+interface SceneConfig {
+  id: string;
+  start: number;
+  end: number;
+  label: string;
+  stepIndex: number; // which step indicator to highlight (0-5)
+  url: string;
+  extensionGlow?: boolean;
+  typingText?: string;
+}
+
+const SCENES: SceneConfig[] = [
+  {
+    id: 'focus',
+    start: 0,
+    end: 5,
+    label: 'Start Focus',
+    stepIndex: 0,
+    url: 'app.distractfree.com/focus',
+  },
+  {
+    id: 'extension',
+    start: 5,
+    end: 10,
+    label: 'Extension Activates',
+    stepIndex: 1,
+    url: 'app.distractfree.com',
+    extensionGlow: true,
+  },
+  {
+    id: 'distraction',
+    start: 10,
+    end: 14,
+    label: 'Visit Instagram',
+    stepIndex: 2,
+    url: 'app.distractfree.com',
+    typingText: 'instagram.com',
+  },
+  {
+    id: 'blocked',
+    start: 14,
+    end: 20,
+    label: 'Distraction Blocked',
+    stepIndex: 2,
+    url: 'instagram.com',
+  },
+  {
+    id: 'return',
+    start: 20,
+    end: 24,
+    label: 'Return to Work',
+    stepIndex: 3,
+    url: 'app.distractfree.com/focus',
+  },
+  {
+    id: 'complete',
+    start: 24,
+    end: 29,
+    label: 'Session Complete',
+    stepIndex: 3,
+    url: 'app.distractfree.com/focus',
+  },
+  {
+    id: 'unlock',
+    start: 29,
+    end: 34,
+    label: 'Intentional Unlock',
+    stepIndex: 4,
+    url: 'youtube.com',
+  },
+  {
+    id: 'insights',
+    start: 34,
+    end: 40,
+    label: 'AI Insights',
+    stepIndex: 5,
+    url: 'app.distractfree.com/insights',
+  },
+];
+
+const TOTAL_DURATION = 42; // 40s scenes + 2s pause before loop
+
+const STEP_LABELS = [
+  { num: '01', label: 'Start Focus' },
+  { num: '02', label: 'Extension Activates' },
+  { num: '03', label: 'Distraction Blocked' },
+  { num: '04', label: 'Earn Coins' },
+  { num: '05', label: 'Unlock Intentionally' },
+  { num: '06', label: 'AI Insights' },
+];
+
+/* ═══════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════ */
+
+function getActiveScene(elapsed: number): {
+  scene: SceneConfig;
+  index: number;
+  progress: number;
+} {
+  for (let i = 0; i < SCENES.length; i++) {
+    const s = SCENES[i];
+    if (elapsed >= s.start && elapsed < s.end) {
+      return {
+        scene: s,
+        index: i,
+        progress: (elapsed - s.start) / (s.end - s.start),
+      };
+    }
+  }
+  // In the 2s pause, stay on last scene
+  return {
+    scene: SCENES[SCENES.length - 1],
+    index: SCENES.length - 1,
+    progress: 1,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ═══════════════════════════════════════════════════════ */
 
 export default function HowItWorksSection() {
-  const scrollAnimation = {
-    initial: { opacity: 0, y: 40 },
-    whileInView: { opacity: 1, y: 0 },
-    transition: { duration: 0.6, ease: [0.21, 1.02, 0.73, 1.0] },
-    viewport: { once: true, margin: '-80px' },
-  };
+  const sectionRef = useRef<HTMLElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [manualPause, setManualPause] = useState(false);
+  const elapsedRef = useRef(0);
+  const [elapsedState, setElapsedState] = useState(0);
+  const rafRef = useRef<number>(0);
+  const lastTimeRef = useRef(0);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
+  /* ── Intersection Observer ── */
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.25) {
+          if (!manualPause) setIsPlaying(true);
+        } else {
+          setIsPlaying(false);
+        }
       },
-    },
-  };
+      { threshold: [0.25, 0.5] }
+    );
 
-  const cardVariants = {
-    hidden: { opacity: 0, y: 35 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.6, ease: [0.21, 1.02, 0.73, 1.0] },
-    },
-  };
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [manualPause]);
+
+  /* ── Animation Loop ── */
+  useEffect(() => {
+    if (!isPlaying) {
+      lastTimeRef.current = 0;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      return;
+    }
+
+    const tick = (timestamp: number) => {
+      if (!lastTimeRef.current) lastTimeRef.current = timestamp;
+      const delta = (timestamp - lastTimeRef.current) / 1000;
+      lastTimeRef.current = timestamp;
+
+      elapsedRef.current += delta;
+      if (elapsedRef.current >= TOTAL_DURATION) {
+        elapsedRef.current = 0;
+      }
+
+      setElapsedState(elapsedRef.current);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [isPlaying]);
+
+  /* ── Derive current scene ── */
+  const { scene, index: sceneIndex, progress: sceneProgress } =
+    getActiveScene(elapsedState);
+
+  /* ── Controls ── */
+  const handlePlayPause = useCallback(() => {
+    if (isPlaying) {
+      setManualPause(true);
+      setIsPlaying(false);
+    } else {
+      setManualPause(false);
+      setIsPlaying(true);
+    }
+  }, [isPlaying]);
+
+  const handleReplay = useCallback(() => {
+    elapsedRef.current = 0;
+    setElapsedState(0);
+    lastTimeRef.current = 0;
+    setManualPause(false);
+    setIsPlaying(true);
+  }, []);
+
+  /* ── Typing progress for Scene 2 (distraction) ── */
+  const typingText =
+    scene.typingText && sceneIndex === 2 ? scene.typingText : undefined;
+  const typingProgress =
+    typingText ? Math.min(1, sceneProgress / 0.55) : 0;
+
+  /* ── Progress bar ── */
+  const totalProgress = elapsedState / TOTAL_DURATION;
 
   return (
-    <section id="how-it-works" className="relative w-full py-[100px] px-6 bg-[#050508] overflow-hidden">
+    <section
+      ref={sectionRef}
+      id="how-it-works"
+      className="relative w-full py-[80px] md:py-[100px] px-4 md:px-6 bg-[#050508] overflow-hidden"
+    >
       {/* Background decoration */}
-      <div className="absolute w-[400px] h-[400px] rounded-full bg-brand-teal/5 blur-[100px] top-[20%] left-[-100px] pointer-events-none" />
+      <div className="absolute w-[350px] h-[350px] rounded-full bg-brand-purple/[0.04] blur-[100px] top-[15%] left-[-80px] pointer-events-none" />
+      <div className="absolute w-[250px] h-[250px] rounded-full bg-brand-teal/[0.03] blur-[80px] bottom-[10%] right-[-60px] pointer-events-none" />
 
-      <div className="max-w-[1120px] mx-auto relative">
-        {/* Header */}
-        <motion.div {...scrollAnimation} className="mb-16">
+      <div className="max-w-[1180px] mx-auto relative">
+        {/* ═══ Header ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.21, 1.02, 0.73, 1] }}
+          viewport={{ once: true, margin: '-80px' }}
+          className="mb-10 md:mb-14"
+        >
           <p className="text-[11px] font-bold tracking-[1.8px] uppercase text-brand-purple mb-3">
             How It Works
           </p>
-          <h2 className="text-[clamp(36px,4vw,52px)] font-bold tracking-[-2px] leading-tight text-text-primary">
-            Three steps to sustainable focus.
+          <h2 className="text-[clamp(28px,4vw,48px)] font-bold tracking-[-1.5px] leading-tight text-text-primary max-w-2xl">
+            Watch DistractFree in action.
           </h2>
+          <p className="text-text-muted text-sm md:text-base mt-3 max-w-xl">
+            A complete walkthrough of the DistractFree experience — from starting
+            a focus session to earning coins and unlocking AI insights.
+          </p>
         </motion.div>
 
-        {/* Animated Connector Path (Desktop only) */}
-        <div className="hidden md:block absolute top-[140px] left-[15%] right-[15%] h-px pointer-events-none z-0">
-          <svg className="w-full h-8 overflow-visible" fill="none">
-            <motion.path
-              d="M 0 10 Q 200 40 400 10 Q 600 -20 800 10"
-              stroke="rgba(124, 111, 239, 0.25)"
-              strokeWidth="1.5"
-              strokeDasharray="6 6"
-              initial={{ strokeDashoffset: 100 }}
-              whileInView={{ strokeDashoffset: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 3, ease: 'linear', repeat: Infinity }}
-            />
-          </svg>
-        </div>
-
-        {/* Grid of Steps */}
+        {/* ═══ Two-column Layout ═══ */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="show"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.7,
+            ease: [0.21, 1.02, 0.73, 1],
+            delay: 0.15,
+          }}
           viewport={{ once: true, margin: '-60px' }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10"
+          className="flex flex-col lg:flex-row gap-6 lg:gap-10"
         >
-          {/* Step 1 */}
-          <motion.div
-            variants={cardVariants}
-            className="flex flex-col rounded-[20px] border border-white/5 bg-[#0c0d16]/80 backdrop-blur-[12px] p-6 hover:border-brand-purple/25 spring-hover hover:-translate-y-1 group"
-          >
-            {/* Step Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold tracking-[1.8px] text-brand-purple px-2.5 py-1 rounded-full bg-brand-purple/10 border border-brand-purple/20">
-                  01
-                </span>
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                  Session
-                </span>
-              </div>
-              <span className="text-xs font-semibold text-brand-purple font-mono">25:00</span>
-            </div>
+          {/* ── Left: Step Indicator ── */}
+          <div className="hidden lg:flex flex-col gap-1 w-[200px] shrink-0 pt-4">
+            {STEP_LABELS.map((step, i) => {
+              const isActive = scene.stepIndex === i;
+              const isPast = scene.stepIndex > i;
+              return (
+                <div
+                  key={i}
+                  className={`flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all duration-500 ${
+                    isActive
+                      ? 'bg-brand-purple/[0.08] border border-brand-purple/20'
+                      : 'border border-transparent'
+                  }`}
+                >
+                  <span
+                    className={`text-[10px] font-bold tracking-[1.5px] w-6 text-center transition-colors duration-500 ${
+                      isActive
+                        ? 'text-brand-purple'
+                        : isPast
+                        ? 'text-brand-purple/40'
+                        : 'text-text-muted/30'
+                    }`}
+                  >
+                    {step.num}
+                  </span>
+                  <span
+                    className={`text-[12px] font-medium transition-colors duration-500 ${
+                      isActive
+                        ? 'text-text-primary'
+                        : isPast
+                        ? 'text-text-muted/60'
+                        : 'text-text-muted/30'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeStep"
+                      className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-purple"
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                </div>
+              );
+            })}
 
-            {/* Mockup 1: Focus Timer Progress */}
-            <div className="bg-white/2 border border-white/5 rounded-xl p-4 mb-6 flex flex-col justify-center h-28">
-              <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden mb-4">
+            {/* Mini progress */}
+            <div className="mt-4 px-3">
+              <div className="w-full h-[3px] bg-white/[0.04] rounded-full overflow-hidden">
                 <motion.div
-                  initial={{ width: 0 }}
-                  whileInView={{ width: '45%' }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 1.2, ease: 'easeOut', delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-brand-purple to-purple-400 rounded-full"
+                  className="h-full bg-brand-purple/60 rounded-full"
+                  style={{ width: `${totalProgress * 100}%` }}
+                  transition={{ duration: 0.1 }}
                 />
               </div>
-              <div className="flex justify-center items-center gap-3">
-                <button className="w-7 h-7 rounded-full bg-brand-purple/20 border border-brand-purple/30 flex items-center justify-center text-brand-purple hover:scale-105 active:scale-95 transition-transform duration-200">
-                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </button>
-                <button className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-text-muted">
-                  <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
-                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                  </svg>
-                </button>
-              </div>
             </div>
+          </div>
 
-            {/* Step Copy */}
-            <h3 className="text-lg font-bold text-text-primary mb-2 group-hover:text-brand-purple transition-colors duration-300">
-              Start a Focus Session
-            </h3>
-            <p className="text-sm text-text-muted leading-relaxed">
-              Choose your duration, hit start, and enter a distraction-aware focus state.
-            </p>
-          </motion.div>
-
-          {/* Step 2 */}
-          <motion.div
-            variants={cardVariants}
-            className="flex flex-col rounded-[20px] border border-white/5 bg-[#0c0d16]/80 backdrop-blur-[12px] p-6 hover:border-brand-purple/25 spring-hover hover:-translate-y-1 group"
-          >
-            {/* Step Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold tracking-[1.8px] text-brand-purple px-2.5 py-1 rounded-full bg-brand-purple/10 border border-brand-purple/20">
-                  02
-                </span>
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                  Rewards
-                </span>
-              </div>
-              <span className="text-xs font-semibold text-gold font-mono">+20 Coins</span>
-            </div>
-
-            {/* Mockup 2: Earn Coins 3D Spin */}
-            <div className="bg-white/2 border border-white/5 rounded-xl p-4 mb-6 flex items-center justify-between h-28 overflow-hidden">
-              <div className="flex items-center gap-3">
-                {/* 3D coin icon */}
-                <div className="w-10 h-10 rounded-full bg-gold/15 flex items-center justify-center text-lg shadow-[0_0_20px_rgba(245,200,66,0.2)] animate-coin-flip border border-gold/30">
-                  🪙
-                </div>
-                <div>
-                  <motion.p
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                    className="text-sm font-bold text-gold"
+          {/* ── Right: Browser Demo ── */}
+          <div className="flex-1 min-w-0">
+            {/* Mobile step indicator */}
+            <div className="flex lg:hidden gap-1 mb-4 overflow-x-auto pb-2 scrollbar-none">
+              {STEP_LABELS.map((step, i) => {
+                const isActive = scene.stepIndex === i;
+                return (
+                  <div
+                    key={i}
+                    className={`shrink-0 px-2.5 py-1 rounded-full text-[9px] font-medium transition-all duration-300 ${
+                      isActive
+                        ? 'bg-brand-purple/15 text-brand-purple border border-brand-purple/20'
+                        : 'text-text-muted/30 border border-transparent'
+                    }`}
                   >
-                    +20 Focus Coins
-                  </motion.p>
-                  <p className="text-[10px] text-text-muted">For 25 min focused session</p>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-[9px] font-bold text-brand-teal uppercase">340 Total</span>
-                <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
-                  <div className="w-[85%] h-full bg-brand-teal rounded-full" />
-                </div>
-              </div>
+                    {step.label}
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Step Copy */}
-            <h3 className="text-lg font-bold text-text-primary mb-2 group-hover:text-brand-purple transition-colors duration-300">
-              Earn Focus Coins
-            </h3>
-            <p className="text-sm text-text-muted leading-relaxed">
-              Every focused minute earns coins. Longer sessions are worth more — consistency is rewarded.
-            </p>
-          </motion.div>
+            {/* Browser Frame */}
+            <BrowserFrame
+              url={
+                typingText && typingProgress >= 1
+                  ? typingText
+                  : typingText
+                  ? scene.url
+                  : scene.url
+              }
+              showExtensionGlow={scene.extensionGlow}
+              typingText={typingText}
+              typingProgress={typingProgress}
+            >
+              {/* Scene content */}
+              <ProductDemo
+                sceneIndex={sceneIndex}
+                sceneProgress={sceneProgress}
+              />
 
-          {/* Step 3 */}
-          <motion.div
-            variants={cardVariants}
-            className="flex flex-col rounded-[20px] border border-white/5 bg-[#0c0d16]/80 backdrop-blur-[12px] p-6 hover:border-brand-purple/25 spring-hover hover:-translate-y-1 group"
-          >
-            {/* Step Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold tracking-[1.8px] text-brand-purple px-2.5 py-1 rounded-full bg-brand-purple/10 border border-brand-purple/20">
-                  03
+              {/* Animated cursor */}
+              <AnimatedCursor
+                waypoints={SCENE_CURSOR_WAYPOINTS[sceneIndex] || []}
+                progress={sceneProgress}
+                isPlaying={isPlaying}
+                sceneKey={sceneIndex}
+              />
+            </BrowserFrame>
+
+            {/* ═══ Controls ═══ */}
+            <div className="flex items-center justify-center gap-4 mt-5">
+              {/* Play/Pause */}
+              <button
+                onClick={handlePlayPause}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 text-text-muted text-[11px] font-medium"
+                aria-label={isPlaying ? 'Pause demo' : 'Play demo'}
+              >
+                <span className="text-xs">
+                  {isPlaying ? '❚❚' : '▶'}
                 </span>
-                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                  Control
-                </span>
-              </div>
-              <span className="text-xs font-semibold text-brand-teal font-mono">Break Options</span>
+                {isPlaying ? 'Pause' : 'Play'}
+              </button>
+
+              {/* Replay */}
+              <button
+                onClick={handleReplay}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 text-text-muted text-[11px] font-medium"
+                aria-label="Replay demo"
+              >
+                <span className="text-xs">↻</span>
+                Replay
+              </button>
+
+              {/* Scene label */}
+              <span className="text-text-muted/40 text-[10px] font-mono hidden md:block">
+                {scene.label}
+              </span>
             </div>
 
-            {/* Mockup 3: Unlock Breaks */}
-            <div className="bg-white/2 border border-white/5 rounded-xl p-3.5 mb-6 flex flex-col justify-between h-28 text-left">
-              <div className="flex items-center justify-between p-1.5 px-2 bg-brand-purple/10 border border-brand-purple/20 border-l-[3px] border-l-brand-purple rounded-lg text-[10px]">
-                <span className="font-semibold text-text-primary">5 min break</span>
-                <span className="flex items-center gap-1 font-bold text-gold">🪙 10</span>
-              </div>
-              <div className="flex items-center justify-between p-1.5 px-2 border border-transparent rounded-lg text-[10px] opacity-40">
-                <span className="font-medium text-text-muted">15 min break</span>
-                <span className="flex items-center gap-1 text-gold">🪙 25</span>
+            {/* Mobile progress bar */}
+            <div className="mt-3 lg:hidden">
+              <div className="w-full h-[2px] bg-white/[0.04] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-purple/50 rounded-full transition-all duration-100"
+                  style={{ width: `${totalProgress * 100}%` }}
+                />
               </div>
             </div>
-
-            {/* Step Copy */}
-            <h3 className="text-lg font-bold text-text-primary mb-2 group-hover:text-brand-purple transition-colors duration-300">
-              Unlock breaks intentionally
-            </h3>
-            <p className="text-sm text-text-muted leading-relaxed">
-              Spend coins on controlled break time. You choose when — it's always your decision.
-            </p>
-          </motion.div>
+          </div>
         </motion.div>
       </div>
     </section>

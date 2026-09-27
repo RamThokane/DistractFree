@@ -8,7 +8,7 @@ const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /* ── Color scale (dark theme) ── */
 const scoreToColor = (score, hasData) => {
-  if (!hasData) return 'rgba(255,255,255,0.02)';
+  if (!hasData) return 'rgb(var(--ink) / 0.04)';
   if (score === 0) return 'rgba(239,107,107,0.15)';
   if (score < 20) return 'rgba(239,107,107,0.35)';
   if (score < 40) return 'rgba(245,182,56,0.3)';
@@ -31,15 +31,15 @@ const HeatmapTooltip = ({ cell, x, y }) => {
       className="fixed z-[100] pointer-events-none"
       style={{ left: x + 12, top: y - 10 }}
     >
-      <div className="bg-[#14171C]/95 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3 shadow-2xl min-w-[180px]">
-        <p className="text-white font-semibold text-sm mb-1">{formattedDate}</p>
+      <div className="bg-surface-2/95 backdrop-blur-md border border-ink/10 rounded-xl px-4 py-3 shadow-2xl min-w-[180px]">
+        <p className="text-hi font-semibold text-sm mb-1">{formattedDate}</p>
         <div className="space-y-1 text-xs">
-          <div className="flex justify-between"><span className="text-gray-400">Productivity</span><span className="text-white font-medium">{cell.score}%</span></div>
-          <div className="flex justify-between"><span className="text-gray-400">Distraction</span><span className="text-red-400 font-medium">{cell.distractionScore}%</span></div>
-          <div className="flex justify-between"><span className="text-gray-400">Sessions</span><span className="text-white">{cell.completedSessions}</span></div>
-          <div className="flex justify-between"><span className="text-gray-400">Focus</span><span className="text-white">{cell.focusMinutes} min</span></div>
+          <div className="flex justify-between"><span className="text-fg-2">Productivity</span><span className="text-hi font-medium">{cell.score}%</span></div>
+          <div className="flex justify-between"><span className="text-fg-2">Distraction</span><span className="text-red-400 font-medium">{cell.distractionScore}%</span></div>
+          <div className="flex justify-between"><span className="text-fg-2">Sessions</span><span className="text-hi">{cell.completedSessions}</span></div>
+          <div className="flex justify-between"><span className="text-fg-2">Focus</span><span className="text-hi">{cell.focusMinutes} min</span></div>
           {cell.blockedAttempts > 0 && (
-            <div className="flex justify-between"><span className="text-gray-400">Blocked</span><span className="text-red-400">{cell.blockedAttempts}</span></div>
+            <div className="flex justify-between"><span className="text-fg-2">Blocked</span><span className="text-red-400">{cell.blockedAttempts}</span></div>
           )}
         </div>
       </div>
@@ -48,23 +48,23 @@ const HeatmapTooltip = ({ cell, x, y }) => {
 };
 
 /* ── Summary Card ── */
-const SummaryCard = ({ icon, label, value, sublabel, color = '#F0EEFF' }) => (
+const SummaryCard = ({ icon, label, value, sublabel, color = 'rgb(var(--fg))' }) => (
   <GlassCard padding="p-4" className="text-center h-full">
     <span className="text-2xl">{icon}</span>
-    <p className="text-[#8B8AA8] text-[10px] mt-2 uppercase tracking-wider">{label}</p>
+    <p className="text-fg-lav text-[10px] mt-2 uppercase tracking-wider">{label}</p>
     <p className="font-bold text-xl mt-0.5" style={{ color }}>{value || 'N/A'}</p>
-    {sublabel && <p className="text-[#6B6A85] text-[10px] mt-1">{sublabel}</p>}
+    {sublabel && <p className="text-fg-4 text-[10px] mt-1">{sublabel}</p>}
   </GlassCard>
 );
 
 /* ── Legend ── */
 const Legend = () => (
   <div className="flex items-center gap-2 justify-end">
-    <span className="text-[#6B6A85] text-xs">Less</span>
+    <span className="text-fg-4 text-xs">Less</span>
     {[0, 15, 35, 55, 72, 85, 95].map((s, i) => (
       <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: scoreToColor(s, true) }} />
     ))}
-    <span className="text-[#6B6A85] text-xs">More</span>
+    <span className="text-fg-4 text-xs">More</span>
   </div>
 );
 
@@ -92,9 +92,9 @@ const ProductivityHeatmap = () => {
   if (loading && !heatmap) {
     return (
       <div className="animate-pulse">
-        <div className="bg-white/[0.03] rounded-2xl border border-white/[0.04] h-[280px] mb-4" />
+        <div className="bg-ink/[0.03] rounded-2xl border border-ink/[0.04] h-[280px] mb-4" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[...Array(6)].map((_, i) => <div key={i} className="bg-white/[0.03] rounded-2xl border border-white/[0.04] h-24" />)}
+          {[...Array(6)].map((_, i) => <div key={i} className="bg-ink/[0.03] rounded-2xl border border-ink/[0.04] h-24" />)}
         </div>
       </div>
     );
@@ -105,7 +105,7 @@ const ProductivityHeatmap = () => {
       <GlassCard>
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <span className="text-4xl mb-3">📊</span>
-          <p className="text-[#8B8AA8] text-sm max-w-sm leading-relaxed">
+          <p className="text-fg-lav text-sm max-w-sm leading-relaxed">
             No heatmap data found for {selectedYear}.
           </p>
         </div>
@@ -158,19 +158,19 @@ const ProductivityHeatmap = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-[#F0EEFF] font-semibold text-2xl mb-1 flex items-center gap-2">🗓️ Productivity Heatmap</h2>
-          <p className="text-[#8B8AA8] text-sm">Your productivity across the year</p>
+          <h2 className="text-fg font-semibold text-2xl mb-1 flex items-center gap-2">🗓️ Productivity Heatmap</h2>
+          <p className="text-fg-lav text-sm">Your productivity across the year</p>
         </div>
-        <div className="flex items-center gap-2 bg-[#14171C]/50 px-3 py-1.5 rounded-lg border border-white/5">
-          <span className="text-[#8B8AA8] text-xs">Year:</span>
+        <div className="flex items-center gap-2 bg-surface-2/50 px-3 py-1.5 rounded-lg border border-ink/5">
+          <span className="text-fg-lav text-xs">Year:</span>
           <select 
             value={selectedYear} 
             onChange={e => setSelectedYear(parseInt(e.target.value))}
-            className="bg-transparent text-[#F0EEFF] text-sm font-semibold outline-none cursor-pointer"
+            className="bg-transparent text-fg text-sm font-semibold outline-none cursor-pointer"
           >
             {[...Array(5)].map((_, i) => {
               const y = new Date().getFullYear() - i;
-              return <option key={y} value={y} className="bg-[#1C2028]">{y}</option>;
+              return <option key={y} value={y} className="bg-surface-2 text-fg">{y}</option>;
             })}
           </select>
         </div>
@@ -185,7 +185,7 @@ const ProductivityHeatmap = () => {
               {monthLabels.map((m, i) => (
                 <div 
                   key={i} 
-                  className="absolute text-xs text-[#8B8AA8] font-medium"
+                  className="absolute text-xs text-fg-lav font-medium"
                   style={{ left: `${m.index * 16 + 40}px` }}
                 >
                   {m.label}
@@ -199,7 +199,7 @@ const ProductivityHeatmap = () => {
               {/* Day Labels */}
               <div className="flex flex-col gap-1 pr-2 mt-[2px]">
                 {DAY_LABELS.map((day, i) => (
-                  <div key={day} className="h-[14px] text-[10px] text-[#6B6A85] font-medium flex items-center justify-end w-6">
+                  <div key={day} className="h-[14px] text-[10px] text-fg-4 font-medium flex items-center justify-end w-6">
                     {i % 2 !== 0 ? day : ''}
                   </div>
                 ))}
@@ -214,7 +214,7 @@ const ProductivityHeatmap = () => {
                       className="w-[14px] h-[14px] rounded-[3px] transition-all relative"
                       style={{
                         backgroundColor: scoreToColor(cell?.score || 0, cell?.hasData),
-                        outline: cell ? 'none' : '1px solid rgba(255,255,255,0.02)',
+                        outline: cell ? 'none' : '1px solid rgb(var(--ink) / 0.04)',
                         cursor: cell ? 'pointer' : 'default'
                       }}
                       whileHover={cell ? { scale: 1.3, zIndex: 10 } : {}}
@@ -229,7 +229,7 @@ const ProductivityHeatmap = () => {
 
             <div className="mt-5 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <span className="text-[#6B6A85] text-xs font-medium">Data Coverage: <span className="text-[#3FAE6A]">{heatmap.coverage}%</span></span>
+                <span className="text-fg-4 text-xs font-medium">Data Coverage: <span className="text-[#3FAE6A]">{heatmap.coverage}%</span></span>
               </div>
               <Legend />
             </div>

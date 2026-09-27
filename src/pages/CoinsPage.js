@@ -59,7 +59,7 @@ const CoinsPage = () => {
       case 'spent': return 'bg-orange-50';
       case 'bonus': return 'bg-amber-50';
       case 'penalty': return 'bg-red-50';
-      default: return 'bg-gray-50';
+      default: return 'bg-ink/[0.03]';
     }
   };
 
@@ -127,18 +127,18 @@ const CoinsPage = () => {
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="flex items-center gap-3 py-3 px-4 animate-pulse">
-                    <div className="w-9 h-9 bg-gray-200 rounded-xl" />
+                    <div className="w-9 h-9 bg-ink/[0.08] rounded-xl" />
                     <div className="flex-1">
-                      <div className="h-4 w-48 bg-gray-200 rounded mb-1" />
-                      <div className="h-3 w-20 bg-gray-200 rounded" />
+                      <div className="h-4 w-48 bg-ink/[0.08] rounded mb-1" />
+                      <div className="h-3 w-20 bg-ink/[0.08] rounded" />
                     </div>
-                    <div className="h-4 w-12 bg-gray-200 rounded" />
+                    <div className="h-4 w-12 bg-ink/[0.08] rounded" />
                   </div>
                 ))}
               </div>
             ) : error ? (
               <div className="text-center py-8">
-                <p className="text-gray-400 mb-3">{error}</p>
+                <p className="text-fg-2 mb-3">{error}</p>
                 <button onClick={fetchData} className="text-indigo-500 font-medium hover:underline">
                   Retry
                 </button>
@@ -146,8 +146,8 @@ const CoinsPage = () => {
             ) : transactions.length === 0 ? (
               <div className="text-center py-12">
                 <span className="text-4xl block mb-3">🪙</span>
-                <p className="text-gray-400 text-sm">No transactions yet.</p>
-                <p className="text-gray-400 text-xs mt-1">Complete your first focus session to earn coins!</p>
+                <p className="text-fg-2 text-sm">No transactions yet.</p>
+                <p className="text-fg-2 text-xs mt-1">Complete your first focus session to earn coins!</p>
               </div>
             ) : (
               <div className="space-y-1">

@@ -11,10 +11,10 @@ const GlassCard = ({
 }) => {
   const baseClasses = `
     relative overflow-hidden
-    bg-[rgba(15,19,41,0.6)] backdrop-blur-xl
-    border border-[rgba(124,92,252,0.1)]
+    bg-[rgb(var(--surface)/var(--card-alpha))] backdrop-blur-xl
+    border border-[color:var(--card-border)]
     rounded-2xl ${padding}
-    shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.03)]
+    shadow-[var(--card-shadow)]
   `;
   const hoverClasses = hover
     ? 'transition-all duration-500 hover:border-[rgba(124,92,252,0.2)] hover:shadow-[0_12px_48px_rgba(124,92,252,0.1)] hover:-translate-y-1 cursor-pointer'

@@ -7,13 +7,13 @@ import { HiOutlineTrophy } from 'react-icons/hi2';
 
 const rankBg = {
   1: 'bg-amber-50 border-amber-200',
-  2: 'bg-gray-50 border-gray-200',
+  2: 'bg-ink/[0.03] border-ink/[0.08]',
   3: 'bg-orange-50 border-orange-200',
 };
 
 const rankText = {
   1: 'text-amber-600',
-  2: 'text-gray-500',
+  2: 'text-fg-2',
   3: 'text-orange-600',
 };
 
@@ -23,11 +23,13 @@ const LeaderboardPage = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [period, setPeriod] = useState('week');
 
   const fetchLeaderboard = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/session/leaderboard');
+      setError(null);
+      const res = await api.get(`/session/leaderboard?period=${period}`);
       if (res.data.success) {
         setLeaderboard(res.data.leaderboard);
       }
@@ -37,7 +39,7 @@ const LeaderboardPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => {
     fetchLeaderboard();
@@ -47,13 +49,13 @@ const LeaderboardPage = () => {
     return (
       <PageTransition>
         <div className="max-w-4xl mx-auto space-y-6 animate-pulse">
-          <div className="h-8 w-56 bg-gray-200 rounded mx-auto mb-4" />
+          <div className="h-8 w-56 bg-ink/[0.08] rounded mx-auto mb-4" />
           <div className="grid grid-cols-3 gap-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100 h-40" />
+              <div key={i} className="df-card-bg rounded-2xl p-6 border border-ink/[0.06] h-40" />
             ))}
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 h-[400px]" />
+          <div className="df-card-bg rounded-2xl p-4 border border-ink/[0.06] h-[400px]" />
         </div>
       </PageTransition>
     );
@@ -63,7 +65,7 @@ const LeaderboardPage = () => {
     return (
       <PageTransition>
         <div className="flex flex-col items-center justify-center py-20">
-          <p className="text-gray-500 text-lg mb-4">{error}</p>
+          <p className="text-fg-2 text-lg mb-4">{error}</p>
           <button onClick={fetchLeaderboard} className="px-6 py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 font-medium">
             Retry
           </button>
@@ -106,9 +108,26 @@ const LeaderboardPage = () => {
         >
           <h1 className="text-3xl font-bold text-dash-text flex items-center justify-center gap-3">
             <HiOutlineTrophy className="w-8 h-8 text-amber-400" />
-            Weekly Leaderboard
+            Leaderboard
           </h1>
-          <p className="text-dash-muted mt-2">Top focused minds this week</p>
+          <p className="text-dash-muted mt-2">
+            {period === 'week' ? 'Top focused minds this week' : 'Top focused minds of all time'}
+          </p>
+          <div className="inline-flex mt-4 p-1 rounded-full bg-ink/[0.04] border border-ink/[0.06]" role="tablist">
+            {[['week', 'This Week'], ['all', 'All Time']].map(([key, label]) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={period === key}
+                onClick={() => setPeriod(key)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  period === key ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-fg-2 hover:text-hi'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </motion.div>
 
         {/* Top 3 podium */}
@@ -139,7 +158,7 @@ const LeaderboardPage = () => {
                       <span className={`font-bold text-lg ${rankText[entry.rank]}`}>{entry.name.charAt(0)}</span>
                     </div>
                     <p className="text-dash-text font-semibold text-sm">{entry.name}</p>
-                    <p className="text-sage font-bold text-lg">{entry.weeklyHours}h</p>
+                    <p className="text-sage font-bold text-lg">{entry.hours}h</p>
                     <div className="flex items-center justify-center gap-1 mt-1">
                       <span className="text-xs">🪙</span>
                       <span className="text-dash-muted text-xs">{entry.coins}</span>
@@ -165,7 +184,7 @@ const LeaderboardPage = () => {
             <div className="grid grid-cols-12 gap-2 px-6 py-4 border-b border-dash-border text-dash-muted text-xs uppercase tracking-wider">
               <span className="col-span-1">Rank</span>
               <span className="col-span-5">Name</span>
-              <span className="col-span-3 text-right">Weekly Hours</span>
+              <span className="col-span-3 text-right">{period === 'week' ? 'Weekly Hours' : 'Total Hours'}</span>
               <span className="col-span-3 text-right">Coins</span>
             </div>
 
@@ -211,7 +230,7 @@ const LeaderboardPage = () => {
                 <span className={`col-span-3 text-right font-semibold text-sm ${
                   entry.isCurrentUser ? 'text-dash-text' : 'text-dash-muted'
                 }`}>
-                  {entry.weeklyHours}h
+                  {entry.hours}h
                 </span>
 
                 {/* Coins */}

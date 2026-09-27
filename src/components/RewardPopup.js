@@ -26,7 +26,7 @@ const RewardPopup = () => {
             onClick={clearReward}
           >
             <motion.div
-              className="bg-white/15 backdrop-blur-2xl border border-white/25 rounded-[32px] p-10 text-center max-w-sm mx-4 shadow-2xl"
+              className="bg-ink/15 backdrop-blur-2xl border border-ink/25 rounded-[32px] p-10 text-center max-w-sm mx-4 shadow-2xl"
               initial={{ scale: 0.5, opacity: 0, y: 50 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.8, opacity: 0, y: -30 }}
@@ -41,7 +41,7 @@ const RewardPopup = () => {
                 🎉
               </motion.div>
               <motion.h2
-                className="text-3xl font-bold text-white mb-2"
+                className="text-3xl font-bold text-hi mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
@@ -49,7 +49,7 @@ const RewardPopup = () => {
                 +{pendingReward.amount} Focus Coins
               </motion.h2>
               <motion.p
-                className="text-gray-300 text-sm mb-6"
+                className="text-fg-soft text-sm mb-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}

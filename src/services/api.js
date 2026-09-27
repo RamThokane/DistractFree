@@ -20,6 +20,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // No response at all: the API server is down, the URL is wrong, or CORS blocked it
+    if (!error.response) {
+      error.message = "Can't reach the DistractFree server. Please try again in a moment.";
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('df_token');
       // Only redirect if we're on a protected page, not during login/register

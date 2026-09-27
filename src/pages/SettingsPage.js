@@ -5,8 +5,10 @@ import Button from '../components/Button';
 import PageTransition from '../components/PageTransition';
 import PDFReportGenerator from '../components/PDFReportGenerator';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import {
+  HiOutlineSwatch,
   HiOutlineGlobeAlt,
   HiOutlineBell,
   HiOutlinePaintBrush,
@@ -17,6 +19,7 @@ import {
 } from 'react-icons/hi2';
 
 const SettingsPage = () => {
+  const { theme, setTheme } = useTheme();
   const { user, updateUser } = useAuth();
 
   const [blockedSites, setBlockedSites] = useState([]);
@@ -186,24 +189,8 @@ const SettingsPage = () => {
 
 
   const themes = [
-    {
-      value: 'light',
-      label: 'Light Mode',
-      desc: 'Clean light surfaces',
-      colors: ['#ffffff', '#f0f2f5', '#3FAE6A', '#1a1a2e'],
-    },
-    {
-      value: 'minimal',
-      label: 'Minimal',
-      desc: 'Subtle neutral tones',
-      colors: ['#fafaf9', '#e7e5e4', '#78716c', '#292524'],
-    },
-    {
-      value: 'dark',
-      label: 'Dark Mode',
-      desc: 'Easy on the eyes',
-      colors: ['#1a1a2e', '#16213e', '#3FAE6A', '#e2e8f0'],
-    },
+    { value: 'dark', label: 'Dark', desc: 'Easy on the eyes at night', swatch: ['#060918', '#14171C', '#7C5CFC', '#F0EEFF'] },
+    { value: 'light', label: 'Light', desc: 'Clean, bright surfaces', swatch: ['#F7F8FC', '#FFFFFF', '#6366F1', '#111827'] },
   ];
 
   return (
@@ -299,7 +286,7 @@ const SettingsPage = () => {
                     key={site}
                     onClick={() => addSite(site)}
                     disabled={addingState === 'adding'}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dash-border bg-white/[0.02] hover:bg-white/[0.06] text-dash-muted hover:text-white transition-colors text-xs font-medium"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dash-border bg-ink/[0.02] hover:bg-ink/[0.06] text-dash-muted hover:text-hi transition-colors text-xs font-medium"
                   >
                     <HiOutlinePlus className="w-3 h-3" />
                     {site}
@@ -329,6 +316,49 @@ const SettingsPage = () => {
                   transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                 />
               </button>
+            </div>
+          </GlassCard>
+        </motion.div>
+
+        {/* ── Appearance ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <GlassCard>
+            <h2 className="text-dash-text font-semibold text-base mb-1 flex items-center gap-2">
+              <HiOutlineSwatch className="w-5 h-5 text-sage" />
+              Appearance
+            </h2>
+            <p className="text-dash-muted text-sm mb-4">Applies across the website, dashboard and extension pages.</p>
+            <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Theme">
+              {themes.map((t) => {
+                const selected = theme === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setTheme(t.value)}
+                    className={`text-left rounded-xl border p-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                      selected ? 'border-indigo-500 bg-indigo-500/[0.08]' : 'border-ink/[0.08] hover:bg-ink/[0.03]'
+                    }`}
+                  >
+                    <div className="flex gap-1 mb-2.5" aria-hidden="true">
+                      {t.swatch.map((c) => (
+                        <span key={c} className="w-6 h-6 rounded-md border border-ink/[0.1]" style={{ background: c }} />
+                      ))}
+                    </div>
+                    <p className="text-dash-text text-sm font-semibold flex items-center gap-1.5">
+                      {t.label}
+                      {selected && <span className="text-[10px] font-semibold text-indigo-500 bg-indigo-500/10 rounded-full px-1.5 py-0.5">Active</span>}
+                    </p>
+                    <p className="text-dash-muted text-xs mt-0.5">{t.desc}</p>
+                  </button>
+                );
+              })}
             </div>
           </GlassCard>
         </motion.div>

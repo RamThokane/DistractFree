@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCoins } from '../context/CoinContext';
 import { getGreeting } from '../utils/helpers';
 import api from '../services/api';
+import ThemeToggle from '../components/ThemeToggle';
 import {
   HiOutlineHome,
   HiOutlineClock,
@@ -94,7 +95,7 @@ const TopNavbar = () => {
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled 
-            ? 'bg-[#0F1115]/80 backdrop-blur-xl border-b border-white/[0.06] shadow-lg shadow-black/20' 
+            ? 'bg-canvas/80 backdrop-blur-xl border-b border-ink/[0.06] shadow-lg shadow-black/[0.05] dark:shadow-black/20' 
             : 'bg-transparent border-b border-transparent'
         }`}
         style={{ height: 64 }}
@@ -104,7 +105,7 @@ const TopNavbar = () => {
           {/* Left — Logo + Brand */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-lg shadow-sm" />
-            <span className="text-white font-semibold text-base tracking-tight hidden sm:block">
+            <span className="text-hi font-semibold text-base tracking-tight hidden sm:block">
               DistractFree
             </span>
           </div>
@@ -112,7 +113,7 @@ const TopNavbar = () => {
           {/* Center — Navigation Pills */}
           <nav
             className={`hidden md:flex items-center gap-1 px-2 py-1.5 rounded-full transition-all duration-300 ${
-              scrolled ? 'bg-white/[0.03]' : ''
+              scrolled ? 'bg-ink/[0.03]' : ''
             }`}
             role="navigation"
             aria-label="Main navigation"
@@ -125,8 +126,8 @@ const TopNavbar = () => {
                 className={({ isActive }) =>
                   `relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                     isActive
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                      ? 'text-hi'
+                      : 'text-fg-2 hover:text-hi hover:bg-ink/[0.04]'
                   }`
                 }
                 style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -136,7 +137,7 @@ const TopNavbar = () => {
                     <span className="relative z-10">{label}</span>
                     {isActive && (
                       <motion.div
-                        className="absolute inset-0 bg-white/[0.08] rounded-full shadow-sm"
+                        className="absolute inset-0 bg-ink/[0.08] rounded-full shadow-sm"
                         layoutId="activeNavPill"
                         transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
                         style={{ zIndex: 0 }}
@@ -162,14 +163,16 @@ const TopNavbar = () => {
               <span className="text-amber-400 text-xs font-semibold">{balance}</span>
             </div>
 
+            <ThemeToggle />
+
             {/* Notification Bell */}
             <div className="relative">
               <button
-                className="relative p-2 rounded-xl hover:bg-white/[0.06] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="relative p-2 rounded-xl hover:bg-ink/[0.06] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                 onClick={() => setShowNotifications(!showNotifications)}
                 aria-label="Notifications"
               >
-                <HiOutlineBell className="w-[18px] h-[18px] text-gray-400" />
+                <HiOutlineBell className="w-[18px] h-[18px] text-fg-2" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 min-w-[14px] h-[14px] bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white px-0.5 border-2 border-[#0F1115]">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -185,10 +188,10 @@ const TopNavbar = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-80 bg-[#14171C] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-80 bg-surface-2 border border-ink/[0.08] rounded-2xl shadow-2xl overflow-hidden z-50"
                   >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-                      <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-ink/[0.06]">
+                      <h3 className="text-sm font-semibold text-hi">Notifications</h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllAsRead}
@@ -200,26 +203,26 @@ const TopNavbar = () => {
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-sm text-gray-500">
+                        <div className="p-6 text-center text-sm text-fg-2">
                           No notifications yet.
                         </div>
                       ) : (
                         notifications.map((notif) => (
                           <div
                             key={notif._id}
-                            className={`px-4 py-3 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors ${
+                            className={`px-4 py-3 border-b border-ink/[0.04] last:border-0 hover:bg-ink/[0.02] transition-colors ${
                               !notif.read ? 'bg-indigo-500/[0.03]' : ''
                             }`}
                           >
                             <div className="flex justify-between items-start gap-2">
                               <div>
-                                <p className={`text-sm font-medium ${!notif.read ? 'text-white' : 'text-gray-300'}`}>
+                                <p className={`text-sm font-medium ${!notif.read ? 'text-hi' : 'text-fg-soft'}`}>
                                   {notif.title}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                <p className="text-xs text-fg-2 mt-1 line-clamp-2">
                                   {notif.message}
                                 </p>
-                                <span className="text-[10px] text-gray-600 mt-1.5 block">
+                                <span className="text-[10px] text-fg-3 mt-1.5 block">
                                   {new Date(notif.createdAt).toLocaleDateString()} {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               </div>
@@ -250,7 +253,7 @@ const TopNavbar = () => {
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="hidden md:flex items-center gap-1.5 px-3 py-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 text-fg-2 hover:text-red-400 hover:bg-red-500/10 rounded-xl text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               aria-label="Logout"
             >
               <HiOutlineArrowRightOnRectangle className="w-4 h-4" />
@@ -258,7 +261,7 @@ const TopNavbar = () => {
 
             {/* Mobile Hamburger */}
             <button
-              className="md:hidden p-2 rounded-xl hover:bg-white/[0.06] transition-colors text-gray-400"
+              className="md:hidden p-2 rounded-xl hover:bg-ink/[0.06] transition-colors text-fg-2"
               onClick={() => setMobileOpen(true)}
               aria-label="Open menu"
             >
@@ -282,20 +285,20 @@ const TopNavbar = () => {
             />
             {/* Drawer Panel */}
             <motion.div
-              className="md:hidden fixed right-0 top-0 bottom-0 w-72 z-[70] bg-[#14171C] border-l border-white/[0.06] shadow-2xl"
+              className="md:hidden fixed right-0 top-0 bottom-0 w-72 z-[70] bg-surface-2 border-l border-ink/[0.06] shadow-2xl"
               initial={{ x: 300 }}
               animate={{ x: 0 }}
               exit={{ x: 300 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-ink/[0.06]">
                 <div className="flex items-center gap-2.5">
                   <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-lg" />
-                  <span className="text-white font-semibold text-sm">DistractFree</span>
+                  <span className="text-hi font-semibold text-sm">DistractFree</span>
                 </div>
                 <button
-                  className="p-2 rounded-xl hover:bg-white/[0.06] transition-colors text-gray-400"
+                  className="p-2 rounded-xl hover:bg-ink/[0.06] transition-colors text-fg-2"
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close menu"
                 >
@@ -304,9 +307,9 @@ const TopNavbar = () => {
               </div>
 
               {/* User Info */}
-              <div className="px-5 py-4 border-b border-white/[0.06]">
-                <p className="text-xs text-gray-500 mb-0.5">{getGreeting()}</p>
-                <p className="text-sm font-semibold text-white">{user?.name || 'User'}</p>
+              <div className="px-5 py-4 border-b border-ink/[0.06]">
+                <p className="text-xs text-fg-2 mb-0.5">{getGreeting()}</p>
+                <p className="text-sm font-semibold text-hi">{user?.name || 'User'}</p>
                 <div className="flex items-center gap-3 mt-2">
                   <div className="flex items-center gap-1 text-xs">
                     <HiOutlineFire className="w-3.5 h-3.5 text-orange-400" />
@@ -331,7 +334,7 @@ const TopNavbar = () => {
                       `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                         isActive
                           ? 'bg-indigo-500/10 text-indigo-400'
-                          : 'text-gray-400 hover:bg-white/[0.04] hover:text-white'
+                          : 'text-fg-2 hover:bg-ink/[0.04] hover:text-hi'
                       }`
                     }
                   >
@@ -342,13 +345,13 @@ const TopNavbar = () => {
               </nav>
 
               {/* Logout */}
-              <div className="absolute bottom-0 left-0 right-0 px-3 py-4 border-t border-white/[0.06]">
+              <div className="absolute bottom-0 left-0 right-0 px-3 py-4 border-t border-ink/[0.06]">
                 <button
                   onClick={() => {
                     setMobileOpen(false);
                     handleLogout();
                   }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150 w-full"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-fg-2 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150 w-full"
                 >
                   <HiOutlineArrowRightOnRectangle className="w-[18px] h-[18px]" />
                   <span>Logout</span>

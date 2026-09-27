@@ -8,15 +8,8 @@ import { useCoins } from '../context/CoinContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { formatTime, getRandomQuote, motivationalQuotes } from '../utils/helpers';
+import { SESSION_PRESETS } from '../utils/coinRules';
 import { HiOutlinePlay, HiOutlineStop, HiOutlineLockClosed } from 'react-icons/hi2';
-
-const SESSION_PRESETS = [
-  { label: '25 min (Pomodoro)', seconds: 25 * 60, coins: 10 },
-  { label: '50 min (Deep Work)', seconds: 50 * 60, coins: 25 },
-  { label: '90 min (Marathon)', seconds: 90 * 60, coins: 40 },
-  { label: '120 min (Ultra)', seconds: 120 * 60, coins: 60 },
-  { label: 'Custom', isCustom: true },
-];
 
 const FocusSession = () => {
   const { refreshCoins } = useCoins();
@@ -217,7 +210,7 @@ const FocusSession = () => {
     <PageTransition>
       <div className="max-w-4xl mx-auto space-y-6">
         {isInitializing && (
-          <div className="text-center text-gray-500 py-10">Syncing session state...</div>
+          <div className="text-center text-fg-2 py-10">Syncing session state...</div>
         )}
         {!isInitializing && (
           <>
@@ -255,7 +248,7 @@ const FocusSession = () => {
                         className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                           i === selectedPreset
                             ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                            : 'bg-white/[0.03] border border-white/[0.06] text-gray-400 hover:text-white hover:bg-white/[0.06]'
+                            : 'bg-ink/[0.03] border border-ink/[0.06] text-fg-2 hover:text-hi hover:bg-ink/[0.06]'
                         } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
                         onClick={() => selectPreset(i)}
                         whileHover={!isRunning ? { scale: 1.05 } : {}}
@@ -275,7 +268,7 @@ const FocusSession = () => {
                         exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                         className="flex items-center gap-3 overflow-hidden"
                       >
-                        <span className="text-sm text-gray-400">Duration (minutes):</span>
+                        <span className="text-sm text-fg-2">Duration (minutes):</span>
                         <input
                           type="number"
                           min="25"
@@ -295,7 +288,7 @@ const FocusSession = () => {
                             setCustomMinutes(val);
                             setTimeLeft(val * 60);
                           }}
-                          className="w-24 text-center bg-white/[0.03] border border-white/[0.1] text-white rounded-lg py-1.5 focus:outline-none focus:border-indigo-500"
+                          className="w-24 text-center bg-ink/[0.03] border border-ink/[0.1] text-hi rounded-lg py-1.5 focus:outline-none focus:border-indigo-500"
                         />
                       </motion.div>
                     )}
@@ -338,9 +331,9 @@ const FocusSession = () => {
                   </div>
 
                   {/* Coins to earn */}
-                  <div className="mt-6 flex items-center justify-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-full px-5 py-2.5">
+                  <div className="mt-6 flex items-center justify-center gap-2 bg-ink/[0.03] border border-ink/[0.06] rounded-full px-5 py-2.5">
                     <span className="text-lg">🪙</span>
-                    <span className="text-gray-400 text-sm">
+                    <span className="text-fg-2 text-sm">
                       Earn up to <span className="text-amber-400 font-semibold">{earnableCoins}</span> Focus Coins
                     </span>
                   </div>
@@ -356,7 +349,7 @@ const FocusSession = () => {
                 transition={{ delay: 0.2 }}
               >
                 <GlassCard>
-                  <h3 className="text-gray-900 font-semibold mb-3">Live ML State</h3>
+                  <h3 className="text-fg font-semibold mb-3">Live ML State</h3>
                   <div className="flex items-center gap-4">
                     <div className={`p-4 rounded-full ${mlStatus === 'Distracted' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
                       <span className="text-3xl font-bold">{mlStatus === 'Distracted' ? '⚠️' : '🎯'}</span>

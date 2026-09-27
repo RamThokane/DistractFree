@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AnimatePresence } from 'framer-motion';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { CoinProvider } from './context/CoinContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -27,14 +28,8 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || (() => {
 })();
 
 function App() {
-  React.useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute('data-theme', 'dark');
-    root.classList.add('dark');
-    localStorage.setItem('df_theme', 'dark');
-  }, []);
-
   return (
+    <ThemeProvider>
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <AuthProvider>
       <CoinProvider>
@@ -72,6 +67,7 @@ function App() {
       </CoinProvider>
     </AuthProvider>
     </GoogleOAuthProvider>
+    </ThemeProvider>
   );
 }
 
