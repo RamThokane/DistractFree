@@ -7,6 +7,7 @@
  * Endpoints:
  *   GET /api/insights/full       — Full AI insights (prediction + analytics + recommendations)
  *   GET /api/insights/predict    — ML prediction only (legacy compat)
+ *   GET /api/insights/model      — Model transparency: training report + live accuracy
  *   GET /api/insights/analytics  — Browsing analytics only
  *   POST /api/insights/browsing/log — Log a browsing event
  *   GET /api/insights/weekly-report — CSV export
@@ -14,7 +15,15 @@
 
 const BrowsingLog = require('../models/BrowsingLog');
 const FocusSession = require('../models/FocusSession');
-const { predict } = require('../ml/decisionTreeModel');
+const { getModelState, getModelInfo, computeFeatureImportances } = require('../ml/activeModel');
+const { getTrainingReport, AUTO_RETRAIN_NEW_SESSIONS } = require('../ml/trainModel');
+const {
+  predictForUser,
+  toClientPrediction,
+  toLegacyTopFeatures,
+  countRealSessions,
+  getLiveAccuracy,
+} = require('../services/predictionService');
 const {
   getHourlyActivity,
   getProductivityWindows,
@@ -55,20 +64,11 @@ exports.getFullInsights = async (req, res) => {
       getHighDistractionHours(userId, 30, tz, hourly),
     ]);
 
-    // ── ML Prediction ──────────────────────────────
+    // ── ML Prediction: will the next session succeed? ──
+    // Pre-session features only; reasons come from the active model (logistic
+    // regression input effects, or the decision tree's path with ML_MODEL=tree).
     const dominantCategory = _getDominantCategory(topSites);
-    const mlFeatures = {
-      timeOfDay: features.timeOfDay,
-      websiteCategory: dominantCategory,
-      sessionDuration: features.sessionDuration || 25,
-      previousDistractions: features.blockedSiteAttempts || 0,
-      focusScore: features.focusScore,
-    };
-
-    const mlPrediction = predict(mlFeatures);
-
-    // ── Top contributing features (Explainable AI) ─
-    const topFeatures = _explainPrediction(features, mlPrediction.riskLevel);
+    const mlPrediction = await predictForUser(userId, { timezone: req.query.tz });
 
     // ── Recommendations ────────────────────────────
     const recommendations = generateRecommendations(
@@ -76,23 +76,18 @@ exports.getFullInsights = async (req, res) => {
     );
     const sessionRec = getSessionRecommendation(features, productivity);
 
-
-
-    // ── Decision path explanation ──────────────────
-    const explanation = _buildExplanation(features, mlPrediction.riskLevel, topFeatures);
-
     // ── Assemble response ──────────────────────────
     res.json({
       success: true,
 
-      // Prediction
+      // Prediction. riskLevel / topFeatures / explanation keep their old shape
+      // for existing UI; they now come from the success probability and the model's reasons.
       prediction: {
-        riskLevel: mlPrediction.riskLevel,
+        ...toClientPrediction(mlPrediction),
+        topFeatures: toLegacyTopFeatures(mlPrediction.reasons),
+        // Descriptive 7-day composites (not model outputs)
         distractionScore: features.distractionScore,
         focusScore: features.focusScore,
-        classProbabilities: mlPrediction.classProbabilities,
-        topFeatures,
-        explanation,
       },
 
       // Feature details
@@ -122,12 +117,17 @@ exports.getFullInsights = async (req, res) => {
       topSites,
 
       // Meta
+      // hasSessions / totalSessions cover the last 7 days (analytics window).
+      // The prediction is always returned; isColdStart means the user has no
+      // finished sessions at all, so it rests on default values.
       dataStatus: {
         hasSessions: features.totalSessions > 0,
         hasEnoughData: features.totalSessions >= 3,
         totalSessions: features.totalSessions,
         totalBrowsingEvents: features.totalBrowsingEvents,
         dataRange: '7 days',
+        allTimeFinishedSessions: mlPrediction.baseline.sessions,
+        isColdStart: mlPrediction.isColdStart,
       },
     });
   } catch (error) {
@@ -142,28 +142,22 @@ exports.getFullInsights = async (req, res) => {
 exports.predictDistraction = async (req, res) => {
   try {
     const userId = req.user._id;
-    const features = await computeUserFeatures(userId, 7);
-    const topSites = await getTopSites(userId, 7);
-    const dominantCategory = _getDominantCategory(topSites);
-
-    const mlFeatures = {
-      timeOfDay: features.timeOfDay,
-      websiteCategory: dominantCategory,
-      sessionDuration: features.sessionDuration || 25,
-      previousDistractions: features.blockedSiteAttempts || 0,
-      focusScore: features.focusScore,
-    };
-
-    const prediction = predict(mlFeatures);
-    const breakdown = await getDistractionBreakdown(userId, 7);
-    const productivity = await getProductivityWindows(userId, 30);
+    // Optional ?plannedDuration= lets a client preview a specific plan
+    const plannedDuration = parseInt(req.query.plannedDuration) || undefined;
+    const [features, prediction, breakdown, productivity] = await Promise.all([
+      computeUserFeatures(userId, 7),
+      predictForUser(userId, { timezone: req.query.tz, plannedDuration }),
+      getDistractionBreakdown(userId, 7),
+      getProductivityWindows(userId, 30),
+    ]);
     const sessionRec = getSessionRecommendation(features, productivity);
 
-    const topFeatures = _explainPrediction(features, prediction.riskLevel);
+    const topFeatures = toLegacyTopFeatures(prediction.reasons);
 
     res.json({
       success: true,
       prediction: {
+        ...toClientPrediction(prediction),
         distractionRisk: prediction.riskLevel,
         distractionScore: features.distractionScore,
         breakdown,
@@ -260,11 +254,13 @@ exports.downloadWeeklyReport = async (req, res) => {
       status: 'completed',
     }).sort({ startTime: -1 });
 
-    let csv = 'Date,Duration (minutes),Coins Earned,Distraction Attempts,Tab Switches,Interruptions,ML Status\n';
+    let csv = 'Date,Duration (minutes),Coins Earned,Distraction Attempts,Tab Switches,Interruptions,Live Focus Status,Predicted Success %,Succeeded\n';
 
     sessions.forEach((session) => {
       const date = session.startTime.toISOString().split('T')[0];
-      csv += `${date},${session.duration || 0},${session.coinsEarned || 0},${session.distractionAttempts || 0},${session.tabSwitches || 0},${session.interruptions || 0},${session.mlStatus || 'low'}\n`;
+      const predicted = session.predictedSuccessProb == null ? '' : Math.round(session.predictedSuccessProb * 100);
+      const succeeded = session.actualSuccess == null ? '' : session.actualSuccess ? 'yes' : 'no';
+      csv += `${date},${session.duration || 0},${session.coinsEarned || 0},${session.distractionAttempts || 0},${session.tabSwitches || 0},${session.interruptions || 0},${session.mlStatus || 'low'},${predicted},${succeeded}\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv');
@@ -287,136 +283,64 @@ function _getDominantCategory(topSites) {
 }
 
 /**
- * Explainable AI: Identify the top features contributing to the current prediction.
+ * Precision / recall / F1 for each class, from a confusion matrix
+ * (rows = actual, columns = predicted).
  */
-function _explainPrediction(features, riskLevel) {
-  const explanations = [];
-
-  // Tab switching
-  if (features.tabSwitchCount > 5) {
-    explanations.push({
-      feature: 'Tab Switching',
-      value: `${features.tabSwitchCount} avg per session`,
-      impact: 'high',
-      explanation: `High tab switching (${features.tabSwitchCount}/session) indicates fragmented attention.`,
-    });
-  } else if (features.tabSwitchCount > 2) {
-    explanations.push({
-      feature: 'Tab Switching',
-      value: `${features.tabSwitchCount} avg per session`,
-      impact: 'medium',
-      explanation: `Moderate tab switching suggests occasional context breaks.`,
-    });
-  }
-
-  // Blocked site attempts
-  if (features.blockedSiteAttempts > 3) {
-    explanations.push({
-      feature: 'Blocked Site Attempts',
-      value: `${features.blockedSiteAttempts} avg per session`,
-      impact: 'high',
-      explanation: `Repeated blocked site attempts (${features.blockedSiteAttempts}/session) drive distraction risk up.`,
-    });
-  } else if (features.blockedSiteAttempts > 1) {
-    explanations.push({
-      feature: 'Blocked Site Attempts',
-      value: `${features.blockedSiteAttempts} avg per session`,
-      impact: 'medium',
-      explanation: `Some blocked site visits detected — manageable but worth watching.`,
-    });
-  }
-
-  // Time of day
-  if (features.timeOfDay === 'night') {
-    explanations.push({
-      feature: 'Time of Day',
-      value: 'Night',
-      impact: 'medium',
-      explanation: 'Late-night sessions historically correlate with higher distraction rates.',
-    });
-  } else if (features.timeOfDay === 'evening') {
-    explanations.push({
-      feature: 'Time of Day',
-      value: 'Evening',
-      impact: 'low',
-      explanation: 'Evening sessions show moderate distraction patterns in your data.',
-    });
-  } else if (features.timeOfDay === 'morning') {
-    explanations.push({
-      feature: 'Time of Day',
-      value: 'Morning',
-      impact: 'positive',
-      explanation: 'Morning sessions typically show your best focus performance.',
-    });
-  }
-
-  // Completion rate
-  if (features.completionRate < 50) {
-    explanations.push({
-      feature: 'Completion Rate',
-      value: `${features.completionRate}%`,
-      impact: 'high',
-      explanation: `Low completion rate (${features.completionRate}%) suggests sessions are too long or poorly timed.`,
-    });
-  } else if (features.completionRate >= 80) {
-    explanations.push({
-      feature: 'Completion Rate',
-      value: `${features.completionRate}%`,
-      impact: 'positive',
-      explanation: `Strong completion rate (${features.completionRate}%) shows good session planning.`,
-    });
-  }
-
-  // Blocked visit ratio (browsing)
-  if (features.blockedVisitRatio > 20) {
-    explanations.push({
-      feature: 'Blocked Visit Ratio',
-      value: `${features.blockedVisitRatio}%`,
-      impact: 'high',
-      explanation: `${features.blockedVisitRatio}% of browsing activity targets blocked sites.`,
-    });
-  }
-
-  // Sort: high impact first, then medium, then positive
-  const impactOrder = { high: 0, medium: 1, low: 2, positive: 3 };
-  explanations.sort((a, b) => (impactOrder[a.impact] || 3) - (impactOrder[b.impact] || 3));
-
-  return explanations.slice(0, 5);
+function _perClassMetrics(cm, classNames) {
+  const round = (x) => Math.round(x * 10000) / 10000;
+  return classNames.map((name, k) => {
+    const tp = cm[k][k];
+    const predicted = cm.reduce((sum, row) => sum + row[k], 0);
+    const actual = cm[k].reduce((a, b) => a + b, 0);
+    const precision = predicted ? tp / predicted : 0;
+    const recall = actual ? tp / actual : 0;
+    const f1 = precision + recall ? (2 * precision * recall) / (precision + recall) : 0;
+    return { class: name, precision: round(precision), recall: round(recall), f1: round(f1), support: actual };
+  });
 }
 
-/**
- * Build a human-readable decision path explanation.
- */
-function _buildExplanation(features, riskLevel, topFeatures) {
-  if (features.totalSessions === 0) {
-    return 'No session data available yet. Complete a few focus sessions to generate AI predictions.';
+// ────────────────────────────────────────────────────
+// GET /api/insights/model
+// Model transparency: how the model was evaluated, and how the predictions
+// stored at session start have held up against real outcomes since.
+// ────────────────────────────────────────────────────
+exports.getModelInfo = async (req, res) => {
+  try {
+    const state = getModelState();
+    const [realSessions, newSinceTraining, liveAccuracy] = await Promise.all([
+      countRealSessions(),
+      state.trainedAt ? countRealSessions(new Date(state.trainedAt)) : null,
+      getLiveAccuracy(),
+    ]);
+
+    const report = getTrainingReport();
+    const trainedReport = report?.status === 'trained' ? report : null;
+
+    res.json({
+      success: true,
+      // 'model' = trained model in use (state.kind says which); 'baseline' = each user's past success rate
+      source: state.ready ? 'model' : 'baseline',
+      modelInfo: getModelInfo(),
+      state: {
+        ...state,
+        status: state.ready ? 'ready' : 'learning',
+        realSessions,
+        newSinceTraining,
+        autoRetrainAfter: AUTO_RETRAIN_NEW_SESSIONS,
+      },
+      report,
+      perClass: trainedReport ? _perClassMetrics(trainedReport.metrics.confusion_matrix, trainedReport.class_names) : null,
+      // The training report's importances when it has them, else computed from the exported model JSON
+      featureImportances: trainedReport?.feature_importances
+        ? { source: 'training_report', values: trainedReport.feature_importances }
+        : { source: 'model_json', values: computeFeatureImportances() },
+      liveAccuracy,
+    });
+  } catch (error) {
+    console.error('[Insights] Model info error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-
-  if (topFeatures.length === 0) {
-    return `Based on ${features.totalSessions} sessions over the past week, your overall distraction risk is ${riskLevel}.`;
-  }
-
-  const negativeFeatures = topFeatures.filter((f) => f.impact === 'high' || f.impact === 'medium');
-  const positiveFeatures = topFeatures.filter((f) => f.impact === 'positive');
-
-  let explanation = '';
-
-  if (negativeFeatures.length > 0) {
-    const factors = negativeFeatures.map((f) => f.feature.toLowerCase()).join(', ');
-    explanation += `Key risk factors: ${factors}. `;
-  }
-
-  if (positiveFeatures.length > 0) {
-    const factors = positiveFeatures.map((f) => f.feature.toLowerCase()).join(', ');
-    explanation += `Strengths: ${factors}. `;
-  }
-
-  explanation += `Analysis based on ${features.totalSessions} sessions and ${features.totalBrowsingEvents} browsing events over 7 days.`;
-
-  return explanation;
-}
-
-
+};
 
 // ────────────────────────────────────────────────────
 // GET /api/insights/heatmap

@@ -43,9 +43,58 @@ const focusSessionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    /**
+     * Live in-session indicator (low/medium/high), set by a simple rule in
+     * utils/liveFocusStatus.js. Not a model output — the field name is legacy.
+     */
     mlStatus: {
       type: String,
       default: 'low',
+    },
+    /**
+     * Prediction made when the session started, kept so it can be scored
+     * against what actually happened (see actualSuccess).
+     */
+    predictedSuccessProb: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 1,
+    },
+    predictedSuccess: {
+      type: Boolean,
+      default: null,
+    },
+    /** 'model' = trained model (see ml/activeModel.js), 'baseline' = user's past success rate (model still learning). */
+    predictionSource: {
+      type: String,
+      enum: ['model', 'baseline', null],
+      default: null,
+    },
+    modelVersion: {
+      type: String,
+      default: null,
+    },
+    /** Top reasons from the tree's decision path at start, strongest first. */
+    predictionReasons: {
+      type: [String],
+      default: [],
+    },
+    /** Observed outcome, set when the session ends (ml/target.js). */
+    actualSuccess: {
+      type: Boolean,
+      default: null,
+    },
+    /** User's IANA timezone at session start; hour-of-day features are local. */
+    timezone: {
+      type: String,
+      default: null,
+    },
+    /** 'simulated' sessions come from ml/seedSimulatedUsers.js and never count in metrics. */
+    source: {
+      type: String,
+      enum: ['real', 'simulated'],
+      default: 'real',
     },
     tabSwitches: {
       type: Number,
@@ -86,6 +135,12 @@ const focusSessionSchema = new mongoose.Schema(
       type: String,
       maxlength: 500,
       default: '',
+    },
+    /** The scheduled session this was started from; null when started by hand. */
+    scheduledSessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ScheduledSession',
+      default: null,
     },
   },
   {

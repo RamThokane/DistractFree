@@ -54,6 +54,10 @@ const validateLogin = [
 const validateStartSession = [
   body('plannedDuration')
     .isInt({ min: 1, max: 480 }).withMessage('plannedDuration must be between 1 and 480 minutes'),
+  // IANA timezone, e.g. "Asia/Kolkata". Unknown zones are ignored server-side.
+  body('timezone')
+    .optional()
+    .isString().isLength({ max: 64 }).withMessage('timezone must be an IANA timezone name'),
   handleValidationErrors,
 ];
 
@@ -130,6 +134,56 @@ const validateMongoIdParam = [
   handleValidationErrors,
 ];
 
+// ── Scheduled session validators ───────────────────
+// Shape only; future start time and overlaps are checked in scheduleService.
+
+const scheduleFields = (required) => {
+  const req = (chain) => (required ? chain : chain.optional());
+  return [
+    req(body('title'))
+      .isString().withMessage('title is required')
+      .trim()
+      .notEmpty().withMessage('title is required')
+      .isLength({ max: 100 }).withMessage('title cannot exceed 100 characters'),
+    body('subject')
+      .optional({ values: 'null' })
+      .isString().trim()
+      .isLength({ max: 60 }).withMessage('subject cannot exceed 60 characters'),
+    req(body('startAt'))
+      .isISO8601().withMessage('startAt must be an ISO 8601 date'),
+    req(body('plannedDuration'))
+      .isInt({ min: 5, max: 240 }).withMessage('Duration must be between 5 and 240 minutes')
+      .toInt(),
+    body('repeat')
+      .optional()
+      .isIn(['none', 'daily', 'weekly']).withMessage("repeat must be 'none', 'daily' or 'weekly'"),
+    body('repeatDays')
+      .optional()
+      .isArray({ max: 7 }).withMessage('repeatDays must be a list of weekdays'),
+    body('repeatDays.*')
+      .isInt({ min: 0, max: 6 }).withMessage('repeatDays must be weekdays 0 (Sun) to 6 (Sat)')
+      .toInt(),
+    body('timezone')
+      .optional()
+      .isString().isLength({ max: 64 }).withMessage('timezone must be an IANA timezone name'),
+  ];
+};
+
+const validateCreateSchedule = [...scheduleFields(true), handleValidationErrors];
+const validateUpdateSchedule = [...scheduleFields(false), handleValidationErrors];
+
+const validateScheduleRange = [
+  query('from').isISO8601().withMessage('from must be an ISO 8601 date'),
+  query('to').isISO8601().withMessage('to must be an ISO 8601 date'),
+  handleValidationErrors,
+];
+
+// Occurrence ids: "<24-hex id>" or "<24-hex series id>_<start ms>"
+const validateScheduleId = [
+  param('id').matches(/^[a-f0-9]{24}(_\d{1,15})?$/i).withMessage('Invalid scheduled session id'),
+  handleValidationErrors,
+];
+
 module.exports = {
   handleValidationErrors,
   validateRegister,
@@ -142,4 +196,8 @@ module.exports = {
   validateBrowsingLog,
   validatePagination,
   validateMongoIdParam,
+  validateCreateSchedule,
+  validateUpdateSchedule,
+  validateScheduleRange,
+  validateScheduleId,
 };

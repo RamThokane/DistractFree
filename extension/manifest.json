@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DistractFree",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AI-powered focus assistant — block distracting websites, track browsing, and earn Focus Coins.",
   "minimum_chrome_version": "102",
   "permissions": [
@@ -29,15 +29,27 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["block.html", "block.css", "block.js", "theme.js", "icons/*"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "block.html",
+        "block.css",
+        "block.js",
+        "theme.js",
+        "icons/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "icons": {
@@ -47,7 +59,8 @@
   },
   "externally_connectable": {
     "matches": [
-      "https://distractfree.vercel.app/*",
+      "https://distractfree.site/*",
+      "https://www.distractfree.site/*",
       "http://localhost:3000/*"
     ]
   }

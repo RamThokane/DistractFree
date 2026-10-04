@@ -9,6 +9,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import {
   HiOutlineHome,
   HiOutlineClock,
+  HiOutlineCalendarDays,
   HiOutlineCurrencyDollar,
   HiOutlineLightBulb,
   HiOutlineTrophy,
@@ -23,6 +24,7 @@ import {
 const navItems = [
   { to: '/dashboard', icon: HiOutlineHome, label: 'Dashboard' },
   { to: '/dashboard/focus', icon: HiOutlineClock, label: 'Focus Session' },
+  { to: '/dashboard/calendar', icon: HiOutlineCalendarDays, label: 'Calendar' },
   { to: '/dashboard/coins', icon: HiOutlineCurrencyDollar, label: 'Coins' },
   { to: '/dashboard/insights', icon: HiOutlineLightBulb, label: 'AI Insights' },
   { to: '/dashboard/leaderboard', icon: HiOutlineTrophy, label: 'Leaderboard' },

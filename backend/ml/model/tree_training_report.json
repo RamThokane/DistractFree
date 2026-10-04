@@ -1,0 +1,233 @@
+{
+  "status": "trained",
+  "model_version": "dt-20261002201726",
+  "trained_at": "2026-10-02T20:17:26.736603+00:00",
+  "n_real": 71,
+  "n_simulated": 0,
+  "n_train": 56,
+  "task": "Pre-session prediction of sessionSuccess (binary)",
+  "target": "status == 'completed' AND duration >= 0.9 * plannedDuration AND distractionAttempts <= 1",
+  "evaluated_on": "real sessions only",
+  "split": "time-based: oldest 80% of real sessions train, newest 20% test",
+  "n_train_real": 56,
+  "n_test": 15,
+  "train_range": {
+    "from": "2026-04-18T19:41:33.199000+00:00",
+    "to": "2026-09-27T10:20:50.108000+00:00",
+    "n": 56
+  },
+  "test_range": {
+    "from": "2026-09-27T10:35:02.076000+00:00",
+    "to": "2026-10-02T05:49:41.679000+00:00",
+    "n": 15
+  },
+  "success_rate": {
+    "train_real": 0.2857,
+    "test": 0.6667
+  },
+  "class_names": [
+    "not_successful",
+    "successful"
+  ],
+  "metrics": {
+    "accuracy": 0.4667,
+    "balanced_accuracy": 0.35,
+    "precision": 0.5833,
+    "recall": 0.7,
+    "f1": 0.6364,
+    "roc_auc": 0.35,
+    "confusion_matrix": [
+      [
+        0,
+        5
+      ],
+      [
+        3,
+        7
+      ]
+    ]
+  },
+  "baselines": {
+    "majority_class": {
+      "accuracy": 0.3333,
+      "balanced_accuracy": 0.5,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.5,
+      "confusion_matrix": [
+        [
+          5,
+          0
+        ],
+        [
+          10,
+          0
+        ]
+      ]
+    },
+    "last5_success_rate": {
+      "accuracy": 0.6,
+      "balanced_accuracy": 0.55,
+      "precision": 0.7,
+      "recall": 0.7,
+      "f1": 0.7,
+      "roc_auc": 0.46,
+      "confusion_matrix": [
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          7
+        ]
+      ]
+    }
+  },
+  "beats_baseline": {
+    "majority_class": true,
+    "last5_success_rate": false
+  },
+  "walk_forward": {
+    "n_splits": 4,
+    "n_predictions": 56,
+    "model": {
+      "accuracy": 0.5893,
+      "balanced_accuracy": 0.5013,
+      "precision": 0.4,
+      "recall": 0.0909,
+      "f1": 0.1481,
+      "roc_auc": 0.5187,
+      "confusion_matrix": [
+        [
+          31,
+          3
+        ],
+        [
+          20,
+          2
+        ]
+      ]
+    },
+    "majority_class": {
+      "accuracy": 0.6071,
+      "balanced_accuracy": 0.5,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": null,
+      "confusion_matrix": [
+        [
+          34,
+          0
+        ],
+        [
+          22,
+          0
+        ]
+      ]
+    },
+    "last5_success_rate": {
+      "accuracy": 0.625,
+      "balanced_accuracy": 0.611,
+      "precision": 0.5217,
+      "recall": 0.5455,
+      "f1": 0.5333,
+      "roc_auc": 0.619,
+      "confusion_matrix": [
+        [
+          23,
+          11
+        ],
+        [
+          10,
+          12
+        ]
+      ]
+    }
+  },
+  "best_params": {
+    "criterion": "gini",
+    "max_depth": 3,
+    "min_samples_leaf": 5
+  },
+  "cv": {
+    "splitter": "TimeSeriesSplit",
+    "n_splits": 3,
+    "scoring": "balanced_accuracy",
+    "best_score": 0.5293
+  },
+  "feature_names": [
+    "hourOfDay",
+    "dayOfWeek",
+    "isWeekend",
+    "plannedDuration",
+    "successRateLast5",
+    "successRateLast20",
+    "avgDistractionsLast5",
+    "avgTabSwitchesLast5",
+    "currentStreak",
+    "minutesSinceLastSession",
+    "sessionsAlreadyToday",
+    "hourBandSuccessRate",
+    "hasHistory"
+  ],
+  "feature_importances": [
+    {
+      "feature": "hourOfDay",
+      "importance": 0.5007
+    },
+    {
+      "feature": "successRateLast20",
+      "importance": 0.2304
+    },
+    {
+      "feature": "avgDistractionsLast5",
+      "importance": 0.2035
+    },
+    {
+      "feature": "minutesSinceLastSession",
+      "importance": 0.0654
+    },
+    {
+      "feature": "dayOfWeek",
+      "importance": 0.0
+    },
+    {
+      "feature": "isWeekend",
+      "importance": 0.0
+    },
+    {
+      "feature": "plannedDuration",
+      "importance": 0.0
+    },
+    {
+      "feature": "successRateLast5",
+      "importance": 0.0
+    },
+    {
+      "feature": "avgTabSwitchesLast5",
+      "importance": 0.0
+    },
+    {
+      "feature": "currentStreak",
+      "importance": 0.0
+    },
+    {
+      "feature": "sessionsAlreadyToday",
+      "importance": 0.0
+    },
+    {
+      "feature": "hourBandSuccessRate",
+      "importance": 0.0
+    },
+    {
+      "feature": "hasHistory",
+      "importance": 0.0
+    }
+  ],
+  "n_nodes": 13,
+  "max_depth": 3,
+  "min_real_sessions": 50
+}

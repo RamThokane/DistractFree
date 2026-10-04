@@ -811,3 +811,57 @@ html.light .hover\:text-indigo-300:hover { color: #4338CA; }
 .animate-glow-pulse {
   animation: glowPulse 2s infinite;
 }
+
+/* ── Focus Calendar (react-big-calendar) — themed with the app tokens ── */
+.df-calendar .rbc-calendar { color: rgb(var(--fg)); font-size: 0.85rem; }
+.df-calendar .rbc-month-view,
+.df-calendar .rbc-time-view,
+.df-calendar .rbc-header,
+.df-calendar .rbc-header + .rbc-header,
+.df-calendar .rbc-day-bg + .rbc-day-bg,
+.df-calendar .rbc-month-row + .rbc-month-row,
+.df-calendar .rbc-time-header-content,
+.df-calendar .rbc-time-content,
+.df-calendar .rbc-time-content > * + * > *,
+.df-calendar .rbc-timeslot-group,
+.df-calendar .rbc-day-slot .rbc-time-slot,
+.df-calendar .rbc-time-header.rbc-overflowing,
+.df-calendar .rbc-time-view .rbc-row,
+.df-calendar .rbc-time-view .rbc-allday-cell + .rbc-allday-cell { border-color: rgb(var(--ink) / 0.08); }
+.df-calendar .rbc-month-view,
+.df-calendar .rbc-time-view { border-radius: 12px; overflow: hidden; }
+.df-calendar .rbc-header { padding: 8px 4px; font-weight: 600; color: rgb(var(--fg-2)); }
+.df-calendar .rbc-off-range-bg { background: rgb(var(--ink) / 0.03); }
+.df-calendar .rbc-off-range { color: rgb(var(--fg-4)); }
+.df-calendar .rbc-today { background: rgba(124, 92, 252, 0.08); }
+.df-calendar .rbc-label,
+.df-calendar .rbc-time-gutter { color: rgb(var(--fg-2)); font-size: 0.75rem; }
+.df-calendar .rbc-toolbar { gap: 8px; flex-wrap: wrap; }
+.df-calendar .rbc-toolbar .rbc-toolbar-label { font-weight: 600; color: rgb(var(--fg)); }
+.df-calendar .rbc-toolbar button {
+  color: rgb(var(--fg-2));
+  border-color: rgb(var(--ink) / 0.12);
+  background: transparent;
+  padding: 6px 12px;
+}
+.df-calendar .rbc-toolbar button:hover,
+.df-calendar .rbc-toolbar button:active { background: rgb(var(--ink) / 0.06); color: rgb(var(--fg)); box-shadow: none; }
+.df-calendar .rbc-toolbar button.rbc-active { background: #7C5CFC; border-color: #7C5CFC; color: #fff; box-shadow: none; }
+.df-calendar .rbc-toolbar button:focus-visible,
+.df-calendar .rbc-event:focus-visible,
+.df-calendar .rbc-show-more:focus-visible { outline: 2px solid #7C5CFC; outline-offset: 2px; }
+.df-calendar .rbc-event,
+.df-calendar .rbc-day-slot .rbc-background-event { border-radius: 6px; padding: 2px 6px; font-size: 0.75rem; }
+.df-calendar .rbc-event.rbc-selected { filter: brightness(1.1); }
+.df-calendar .rbc-day-slot .rbc-event { border: 1px solid rgba(255, 255, 255, 0.25); }
+.df-calendar .rbc-show-more { color: #7C5CFC; background: transparent; font-weight: 600; }
+.df-calendar .rbc-current-time-indicator { background-color: #7C5CFC; height: 2px; }
+.df-calendar .rbc-slot-selection { background: rgba(124, 92, 252, 0.3); color: #fff; }
+.df-calendar .rbc-day-slot .rbc-event-label { font-size: 0.7rem; }
+.rbc-overlay { background: rgb(var(--surface-2)); border: 1px solid rgb(var(--ink) / 0.1); border-radius: 12px; color: rgb(var(--fg)); }
+.rbc-overlay-header { border-color: rgb(var(--ink) / 0.08); }
+@media (max-width: 640px) {
+  .df-calendar .rbc-toolbar { flex-direction: column; align-items: stretch; }
+  .df-calendar .rbc-toolbar .rbc-btn-group { display: flex; }
+  .df-calendar .rbc-toolbar .rbc-btn-group button { flex: 1; }
+}

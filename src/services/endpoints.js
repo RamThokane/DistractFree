@@ -16,8 +16,19 @@ export const sessionService = {
   getActive: () => api.get('/session/active'),
   getHistory: (params) => api.get('/session/history', { params }),
   getStats: () => api.get('/session/stats'),
-  getDashboard: () => api.get('/session/dashboard'),
+  getDashboard: (tz) => api.get('/session/dashboard', { params: { tz } }),
   getLeaderboard: () => api.get('/session/leaderboard'),
+};
+
+/* ── Scheduled sessions (calendar) ── */
+// id: an occurrence id; scope 'following' = this occurrence and every later one
+export const scheduleService = {
+  list: (from, to) => api.get('/schedule', { params: { from, to } }),
+  next: () => api.get('/schedule/next'),
+  create: (data) => api.post('/schedule', data),
+  update: (id, data, scope) => api.put(`/schedule/${id}`, data, { params: scope ? { scope } : {} }),
+  cancel: (id, scope) => api.delete(`/schedule/${id}`, { params: scope ? { scope } : {} }),
+  startNow: (id) => api.post(`/schedule/${id}/start-now`),
 };
 
 /* ── Coins ── */
@@ -30,7 +41,9 @@ export const coinService = {
 
 /* ── AI Insights ── */
 export const insightService = {
-  predict: () => api.get('/insights/predict'),
+  getFull: (tz) => api.get('/insights/full', { params: { tz } }),
+  getModel: () => api.get('/insights/model'),
+  predict: (params) => api.get('/insights/predict', { params }),
   getAnalytics: (params) => api.get('/insights/analytics', { params }),
   downloadWeeklyReport: () => api.get('/insights/weekly-report', { responseType: 'blob' }),
 };

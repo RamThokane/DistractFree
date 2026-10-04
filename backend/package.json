@@ -6,7 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "train": "python ml/train_model.py"
+    "test": "node --test \"tests/**/*.test.js\"",
+    "ml:retrain": "node ml/trainModel.js",
+    "ml:retrain:tree": "node ml/trainModel.js --tree",
+    "ml:seed-simulated": "node ml/seedSimulatedUsers.js",
+    "train": "python ml/train_model.py",
+    "train:tree": "python ml/train_tree.py"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

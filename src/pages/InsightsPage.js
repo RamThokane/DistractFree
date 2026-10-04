@@ -32,12 +32,93 @@ const itemV = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, tran
 
 const riskColors = { low: '#3FAE6A', medium: '#F5B638', high: '#EF6B6B' };
 const riskMeaning = {
-  low: 'Low: you usually stay on task',
-  medium: 'Medium: some distractions likely',
-  high: 'High: distractions very likely next session',
+  low: 'Low: likely to finish as planned',
+  medium: 'Medium: could go either way',
+  high: 'High: unlikely to finish as planned',
 };
+const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)}%`);
+
+/* ── Two-class probability bar ── */
+const ProbabilityBar = ({ probabilities }) => {
+  if (!probabilities) return null;
+  const success = Math.round(probabilities.successful * 100);
+  return (
+    <div>
+      <div className="flex h-2.5 rounded-full overflow-hidden bg-ink/[0.06]">
+        <div style={{ width: `${success}%`, backgroundColor: '#3FAE6A' }} />
+        <div style={{ width: `${100 - success}%`, backgroundColor: '#EF6B6B', opacity: 0.75 }} />
+      </div>
+      <div className="flex justify-between mt-1 text-[10px] text-fg-lav">
+        <span>Successful {success}%</span>
+        <span>Not successful {100 - success}%</span>
+      </div>
+    </div>
+  );
+};
+
+/* ── Next-session prediction ── */
+const PredictionPanel = ({ prediction, features, dataStatus }) => {
+  const riskColor = riskColors[prediction?.riskLevel] || '#9CA3AF';
+  const isPersonal = prediction?.source === 'model';
+
+  return (
+    <>
+      <motion.div variants={itemV}>
+        <h2 className="text-fg font-semibold text-xl mb-1 flex items-center gap-2">🤖 AI Prediction: Next Session</h2>
+        <p className="text-fg-lav text-xs mb-4">
+          {isPersonal
+            ? `Chance that a ${prediction.plannedDuration}-minute session started now goes to plan (you finish at least 90% of it, with at most one blocked-site attempt).`
+            : prediction?.message}
+        </p>
+
+        {prediction?.isColdStart && (
+          <GlassCard padding="p-3" className="mb-4 border-indigo-500/20">
+            <p className="text-fg-soft text-sm">
+              <span className="text-indigo-500 font-medium">Not personalised yet</span> — you have no finished sessions.
+              Complete a few sessions to personalise this prediction.
+            </p>
+          </GlassCard>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <GlassCard className="lg:col-span-2">
+            {prediction?.successProbability === null || prediction?.successProbability === undefined ? (
+              <p className="text-fg-lav text-sm py-6 text-center">{prediction?.explanation || 'No prediction available yet.'}</p>
+            ) : (
+              <>
+                <div className="flex items-end justify-between gap-4 mb-3">
+                  <div>
+                    <p className="text-fg-lav text-xs mb-1">Risk level</p>
+                    <p className="font-bold text-3xl capitalize" style={{ color: riskColor }}>{prediction.riskLevel}</p>
+                    <p className="text-fg-lav text-[11px] mt-0.5">{riskMeaning[prediction.riskLevel]}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-fg-lav text-xs mb-1">{isPersonal ? 'Predicted success' : 'Past success rate'}</p>
+                    <p className="text-fg font-bold text-3xl">{prediction.successPercent}%</p>
+                  </div>
+                </div>
+                <ProbabilityBar probabilities={prediction.classProbabilities} />
+                <p className="text-fg-soft text-xs leading-relaxed mt-3">{prediction.explanation}</p>
+              </>
+            )}
+          </GlassCard>
+          <GlassCard className="text-center flex flex-col justify-center">
+            <p className="text-fg-lav text-sm mb-2">Focus Score</p>
+            <p className="text-[#3FAE6A] font-bold text-5xl">{prediction?.focusScore || 0}<span className="text-xl text-fg-lav">/100</span></p>
+            <p className="text-fg-lav text-sm mt-2">Last 7 days</p>
+          </GlassCard>
+          <GlassCard className="text-center flex flex-col justify-center">
+            <p className="text-fg-lav text-sm mb-2">Sessions (7 days)</p>
+            <p className="text-fg font-bold text-5xl">{features?.completedSessions || 0}<span className="text-xl text-fg-lav">/{features?.totalSessions || 0}</span></p>
+            <p className="text-fg-lav text-sm mt-2">Completed · {dataStatus?.allTimeFinishedSessions ?? 0} finished all-time</p>
+          </GlassCard>
+        </div>
+      </motion.div>
+    </>
+  );
+};
+
 const priorityColors = { high: '#EF6B6B', medium: '#F5B638', low: '#3FAE6A' };
-const impactColors = { high: '#EF6B6B', medium: '#F5B638', low: '#60A5FA', positive: '#3FAE6A' };
 
 /* ── Skeleton ── */
 const LoadingSkeleton = () => (
@@ -61,9 +142,8 @@ const EmptyInsights = () => (
     <span className="text-6xl mb-4">🧠</span>
     <h2 className="text-xl font-bold text-fg mb-2">No Insights Available Yet</h2>
     <p className="text-fg-lav text-sm max-w-md leading-relaxed">
-      Complete a few focus sessions to generate AI-powered insights. Our Decision Tree model
-      analyzes your session patterns, distraction behavior, and browsing activity to give you
-      personalized recommendations.
+      Complete a few focus sessions to generate insights. DistractFree uses your own
+      session history to estimate, before you start, how likely your next session is to succeed.
     </p>
   </div>
 );
@@ -102,76 +182,16 @@ const InsightsPage = () => {
       </div>
     </PageTransition>
   );
-  if (!data || !data.dataStatus?.hasSessions) return <PageTransition><EmptyInsights /></PageTransition>;
+  if (!data) return <PageTransition><EmptyInsights /></PageTransition>;
 
   const { prediction, features, breakdown, productivityWindows, distractionHours, recommendations, sessionRecommendation, trends, topSites, dataStatus } = data;
-  const riskColor = riskColors[prediction?.riskLevel] || '#9CA3AF';
 
   return (
     <PageTransition>
       <motion.div className="max-w-6xl mx-auto space-y-8" variants={containerV} initial="hidden" animate="visible">
 
-        {/* ═══ A. AI DISTRACTION PREDICTION ═══ */}
-        <motion.div variants={itemV}>
-          <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">🤖 AI Distraction Prediction</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <GlassCard className="text-center">
-              <p className="text-fg-lav text-xs mb-1">Risk Level</p>
-              <p className="font-bold text-2xl capitalize" style={{ color: riskColor }}>{prediction?.riskLevel || 'N/A'}</p>
-              <p className="text-fg-lav text-[10px] mt-0.5 leading-snug">{riskMeaning[prediction?.riskLevel] || 'Chance of getting distracted next session'}</p>
-            </GlassCard>
-            <GlassCard className="text-center">
-              <p className="text-fg-lav text-xs mb-1">Focus Score</p>
-              <p className="text-[#3FAE6A] font-bold text-2xl">{prediction?.focusScore || 0}<span className="text-sm text-fg-lav">/100</span></p>
-              <p className="text-fg-lav text-[10px] mt-0.5">Higher is better · 7-day avg</p>
-            </GlassCard>
-            <GlassCard className="text-center">
-              <p className="text-fg-lav text-xs mb-1">Distraction Score</p>
-              <p className="text-[#EF6B6B] font-bold text-2xl">{prediction?.distractionScore || 0}<span className="text-sm text-fg-lav">/100</span></p>
-              <p className="text-fg-lav text-[10px] mt-0.5">100 − Focus Score · lower is better</p>
-            </GlassCard>
-            <GlassCard className="text-center">
-              <p className="text-fg-lav text-xs mb-1">Sessions</p>
-              <p className="text-fg font-bold text-2xl">{features?.completedSessions || 0}<span className="text-sm text-fg-lav">/{features?.totalSessions || 0}</span></p>
-              <p className="text-fg-lav text-[10px] mt-0.5">Completed</p>
-            </GlassCard>
-          </div>
-        </motion.div>
-
-        {/* Explanation Banner */}
-        {prediction?.explanation && (
-          <motion.div variants={itemV}>
-            <GlassCard padding="p-4" className="border-indigo-500/20">
-              <div className="flex items-start gap-3">
-                <span className="text-lg">💡</span>
-                <p className="text-fg-soft text-sm leading-relaxed">{prediction.explanation}</p>
-              </div>
-            </GlassCard>
-          </motion.div>
-        )}
-
-        {/* ═══ Top Features (Explainable AI) ═══ */}
-        {prediction?.topFeatures?.length > 0 && (
-          <motion.div variants={itemV}>
-            <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">🔍 Key Contributing Factors</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {prediction.topFeatures.map((f, i) => (
-                <GlassCard key={i} padding="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: impactColors[f.impact] || '#9CA3AF' }} />
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-fg text-sm font-semibold">{f.feature}</span>
-                        <span className="text-fg-lav text-xs bg-ink/5 px-2 py-0.5 rounded-full">{f.value}</span>
-                      </div>
-                      <p className="text-fg-lav text-xs leading-relaxed">{f.explanation}</p>
-                    </div>
-                  </div>
-                </GlassCard>
-              ))}
-            </div>
-          </motion.div>
-        )}
+        {/* ═══ A. AI PREDICTION — shown even with no recent sessions ═══ */}
+        <PredictionPanel prediction={prediction} features={features} dataStatus={dataStatus} />
 
         {/* ═══ B. DISTRACTION BREAKDOWN ═══ */}
         <motion.div variants={itemV}>
@@ -399,8 +419,6 @@ const InsightsPage = () => {
             </GlassCard>
           </motion.div>
         )}
-
-
 
       </motion.div>
     </PageTransition>

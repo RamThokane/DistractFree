@@ -105,6 +105,7 @@ const PREFERENCE_FOR_TYPE = {
   streak_milestone: 'streakAlert',
   streak_alert: 'streakAlert',
   focus_reminder: 'focusReminder',
+  scheduled_reminder: 'focusReminder',
   weekly_report: 'weeklyReport',
 };
 

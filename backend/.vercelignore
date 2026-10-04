@@ -4,3 +4,7 @@ node_modules
 test_db
 ml/train_model.py
 ml/data/
+# Trained model files in ml/model/ ARE deployed (the API loads them)
+ml/model/*.pkl
+tests
+

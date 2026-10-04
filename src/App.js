@@ -19,6 +19,7 @@ import InsightsPage from './pages/InsightsPage';
 import ProductivityHeatmapPage from './pages/ProductivityHeatmapPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import SettingsPage from './pages/SettingsPage';
+import CalendarPage from './pages/CalendarPage';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || (() => {
   if (process.env.NODE_ENV !== 'production') {
@@ -52,6 +53,7 @@ function App() {
               >
                 <Route index element={<DashboardHome />} />
                 <Route path="focus" element={<FocusSession />} />
+                <Route path="calendar" element={<CalendarPage />} />
                 <Route path="coins" element={<CoinsPage />} />
                 <Route path="insights" element={<InsightsPage />} />
                 <Route path="heatmap" element={<ProductivityHeatmapPage />} />

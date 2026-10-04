@@ -6,8 +6,8 @@
  * 
  * Two responsibilities:
  *  1. Check if the current URL is blocked during a focus session
- *  2. On localhost:3000 (dashboard), watch for auth changes and
- *     sync them to the extension's chrome.storage
+ *  2. On the DistractFree website (distractfree.site, or localhost:3000 in
+ *     development), watch for auth changes and sync them to chrome.storage
  */
 
 (function () {
@@ -85,16 +85,19 @@
   }
 
   // ────────────────────────────────────────────────
-  // 2. Dashboard Auth Sync (only on localhost:3000)
+  // 2. Dashboard Auth Sync (the DistractFree website only)
   // ────────────────────────────────────────────────
+  const DASHBOARD_HOSTS = ['distractfree.site', 'www.distractfree.site'];
   const isDashboard =
-    window.location.hostname === 'localhost' &&
-    window.location.port === '3000';
+    DASHBOARD_HOSTS.includes(window.location.hostname) ||
+    (window.location.hostname === 'localhost' && window.location.port === '3000');
 
   // ── Theme sync: copy the website's light/dark choice into extension storage ──
-  const isDistractFreeSite =
-    isDashboard || window.location.hostname === 'distractfree.vercel.app';
+  const isDistractFreeSite = isDashboard;
   if (isDistractFreeSite) {
+    // Lets the website know the extension is installed (it tracks tab switches for the live state)
+    document.documentElement.setAttribute('data-distractfree-extension', '1');
+
     let lastTheme = null;
     const syncTheme = () => {
       const theme = document.documentElement.getAttribute('data-theme');
@@ -172,7 +175,7 @@
   }
 
   // ────────────────────────────────────────────────
-  // 2.b Dashboard Session Sync (only on localhost:3000)
+  // 2.b Dashboard Session Sync (the DistractFree website only)
   // ────────────────────────────────────────────────
   if (isDashboard) {
     // Watch for CustomEvents directly from the React App (more reliable than localstorage)

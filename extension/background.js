@@ -12,14 +12,11 @@
  */
 
 // ── Configuration ─────────────────────────────────
-// API_BASE is read from storage (set via popup settings or default).
-// In development: http://localhost:5000/api
-// In production:  set EXTENSION_API_URL in chrome.storage.sync or hardcode below.
-// Local development (the Vercel backend is currently DEPLOYMENT_NOT_FOUND).
-// For production, switch back to:
-//   https://distractfree-backend.vercel.app/api  and  https://distractfree.vercel.app
-const DEFAULT_API_BASE = 'http://localhost:5000/api';
-const DEFAULT_DASHBOARD_ORIGIN = 'http://localhost:3000';
+// API_BASE / DASHBOARD_ORIGIN default to production and can be overridden from
+// the popup settings (stored as apiBase / dashboardOrigin), e.g. for local
+// development: http://localhost:5000/api and http://localhost:3000
+const DEFAULT_API_BASE = 'https://api.distractfree.site/api';
+const DEFAULT_DASHBOARD_ORIGIN = 'https://distractfree.site';
 
 let API_BASE = DEFAULT_API_BASE;
 let DASHBOARD_ORIGIN = DEFAULT_DASHBOARD_ORIGIN;
@@ -37,13 +34,15 @@ let authToken = null;
 let temporarilyUnlocked = new Map(); // URLs unlocked with coins -> Expiry timestamp
 let strictMode = false; // mirrors user.settings.strictMode — no coin unlocks while on
 
-// ML Telemetry tracking
-let sessionTelemetry = {
-  tabSwitches: 0,
-  interruptions: 0,
-  blockAttempts: 0,
-};
+// Live-state telemetry for the running session. Kept in chrome.storage too:
+// the MV3 service worker is stopped when idle, which would lose in-memory
+// counts (and then overwrite the server's counts with zeros).
+const EMPTY_TELEMETRY = { tabSwitches: 0, interruptions: 0, blockAttempts: 0 };
+let sessionTelemetry = { ...EMPTY_TELEMETRY };
 let liveSyncInterval = null;
+let telemetryPushTimer = null;
+// Recent blocked navigations, so one attempt seen by two listeners counts once
+const recentBlocks = new Map();
 
 // ── Initialisation ─────────────────────────────────
 
@@ -80,6 +79,7 @@ async function loadFromStorage() {
     'apiBase',
     'dashboardOrigin',
     'strictMode',
+    'sessionTelemetry',
   ]);
 
   authToken = data.authToken || null;
@@ -99,8 +99,69 @@ async function loadFromStorage() {
   });
 
   if (activeSession) {
+    // Counts survive a service-worker restart
+    if (data.sessionTelemetry?.sessionId === activeSession.sessionId) {
+      const { sessionId, ...counts } = data.sessionTelemetry;
+      sessionTelemetry = { ...EMPTY_TELEMETRY, ...counts };
+    }
     startSessionTimer();
+    startLiveSync();
   }
+}
+
+// ── Live-state telemetry ───────────────────────────
+
+/** Start counting for a session; keeps the stored counts if it is the same session. */
+async function resetTelemetry(sessionId) {
+  const { sessionTelemetry: stored } = await chrome.storage.local.get('sessionTelemetry');
+  if (stored?.sessionId === sessionId) {
+    const { sessionId: _id, ...counts } = stored;
+    sessionTelemetry = { ...EMPTY_TELEMETRY, ...counts };
+  } else {
+    sessionTelemetry = { ...EMPTY_TELEMETRY };
+    await chrome.storage.local.set({ sessionTelemetry: { ...sessionTelemetry, sessionId } });
+  }
+}
+
+/** Count one event for the running session, save it, and send it to the server shortly. */
+function bumpTelemetry(field) {
+  if (!activeSession) return;
+  sessionTelemetry[field] += 1;
+  chrome.storage.local.set({ sessionTelemetry: { ...sessionTelemetry, sessionId: activeSession.sessionId } });
+  // Debounced so a burst of tab switches is one request; the card updates within seconds
+  clearTimeout(telemetryPushTimer);
+  telemetryPushTimer = setTimeout(pushTelemetry, 2000);
+}
+
+/** Send the session's counts so far; the server turns them into the live status. */
+async function pushTelemetry() {
+  if (!activeSession || !authToken) return;
+  const elapsedMinutes = Math.round((Date.now() - activeSession.startTime) / 60000);
+  try {
+    await apiRequest('/session/live-update', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: activeSession.sessionId,
+        duration: elapsedMinutes,
+        tabSwitches: sessionTelemetry.tabSwitches,
+        interruptions: sessionTelemetry.interruptions,
+        blockAttempts: sessionTelemetry.blockAttempts,
+      }),
+    });
+  } catch (e) {
+    console.warn('[Live Sync] Failed:', e.message);
+  }
+}
+
+/** Count a blocked attempt once, even when two navigation listeners both see it. */
+function countBlockedAttempt(tabId, url) {
+  if (!activeSession) return;
+  const key = `${tabId}|${extractHostname(url)}`;
+  const now = Date.now();
+  if (now - (recentBlocks.get(key) || 0) < 5000) return;
+  recentBlocks.set(key, now);
+  for (const [k, t] of recentBlocks) if (now - t > 60000) recentBlocks.delete(k);
+  bumpTelemetry('blockAttempts');
 }
 
 // ── Auth helpers ───────────────────────────────────
@@ -195,6 +256,8 @@ function isInternalUrl(url) {
     const parsed = new URL(url);
     const dashboardParsed = new URL(DASHBOARD_ORIGIN);
     if (parsed.hostname === dashboardParsed.hostname) return true;
+    // The production site and API, including www
+    if (parsed.hostname === 'distractfree.site' || parsed.hostname.endsWith('.distractfree.site')) return true;
     // Also skip localhost during development
     if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') return true;
   } catch {
@@ -275,7 +338,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
     // Log every blocked attempt (linked to the session when one is running)
     logBrowsingEvent(url, true, false);
-    if (activeSession) sessionTelemetry.blockAttempts += 1;
+    countBlockedAttempt(details.tabId, url);
   }
 });
 
@@ -304,6 +367,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       chrome.tabs.update(tabId, {
         url: `${blockPageUrl}?${params.toString()}`,
       });
+      // In-page navigations (single-page apps) only show up here
+      countBlockedAttempt(tabId, changeInfo.url);
     }
   }
 });
@@ -329,13 +394,13 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     activeTabUrl = tab.url || '';
     activeTabStartTime = Date.now();
 
-    // ML Tracking
+    // Live-state tracking
     if (activeSession) {
-      sessionTelemetry.tabSwitches += 1;
+      bumpTelemetry('tabSwitches');
       // Check against configured distraction domains
       const hostname = extractHostname(activeTabUrl);
       if (DISTRACTION_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))) {
-        sessionTelemetry.interruptions += 1;
+        bumpTelemetry('interruptions');
       }
     }
   } catch {
@@ -383,7 +448,8 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
 
     const data = await apiRequest('/session/start', {
       method: 'POST',
-      body: JSON.stringify({ plannedDuration }),
+      // Timezone lets the server compute hour-of-day features in local time
+      body: JSON.stringify({ plannedDuration, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     });
 
     const serverTime = data.serverTime ? new Date(data.serverTime).getTime() : Date.now();
@@ -399,8 +465,8 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
     await chrome.storage.local.set({ activeSession });
     temporarilyUnlocked.clear();
 
-    // ML Tracking Reset & Start
-    sessionTelemetry = { tabSwitches: 0, interruptions: 0, blockAttempts: 0 };
+    // Live-state tracking reset & start
+    await resetTelemetry(activeSession.sessionId);
     startLiveSync();
 
     startSessionTimer();
@@ -426,6 +492,9 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
           await chrome.storage.local.set({ activeSession });
           temporarilyUnlocked.clear();
           startSessionTimer();
+          // The website started this session: count and report its activity here too
+          await resetTelemetry(activeSession.sessionId);
+          startLiveSync();
           return { success: true, session: activeData.session };
         }
       } catch (syncErr) {
@@ -442,7 +511,8 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
 async function clearLocalSession() {
   activeSession = null;
   temporarilyUnlocked.clear();
-  await chrome.storage.local.remove('activeSession');
+  await chrome.storage.local.remove(['activeSession', 'sessionTelemetry']);
+  sessionTelemetry = { ...EMPTY_TELEMETRY };
   stopSessionTimer();
   stopLiveSync();
 }
@@ -451,6 +521,10 @@ async function clearLocalSession() {
  * Keep the extension in step with the server: if the session was ended
  * elsewhere (e.g. cancelled on the website) clear it here, and adopt a
  * session that was started elsewhere.
+ *
+ * GET /session/active also starts a scheduled session that is due, so this
+ * minute-by-minute check is what starts scheduled sessions when only the
+ * extension is running.
  */
 async function reconcileSession() {
   try {
@@ -471,11 +545,23 @@ async function reconcileSession() {
         startTime: Date.now() - elapsedSecs * 1000,
         plannedDuration: serverSession.plannedDuration,
         blockedSites: serverSession.blockedSitesUsed || [],
+        title: data.schedule?.title || null,
       };
       await chrome.storage.local.set({ activeSession });
-      sessionTelemetry = { tabSwitches: 0, interruptions: 0, blockAttempts: 0 };
+      await resetTelemetry(activeSession.sessionId);
       startSessionTimer();
       startLiveSync();
+      // Blocked sites are enforced at all times; refresh the list for this session
+      await syncBlockedSites();
+
+      if (serverSession.scheduledSessionId) {
+        chrome.notifications?.create(`scheduledStart-${serverSession._id}`, {
+          type: 'basic',
+          iconUrl: 'icons/icon128.png',
+          title: `Focus session started: ${data.schedule?.title || 'Scheduled session'}`,
+          message: `${serverSession.plannedDuration} minutes${data.schedule?.subject ? ` · ${data.schedule.subject}` : ''}. Blocked sites stay blocked — good luck!`,
+        });
+      }
     }
   } catch (err) {
     console.warn('[DistractFree] Session reconcile failed:', err.message);
@@ -511,25 +597,9 @@ async function endFocusSession(cancelled = false) {
 
 function startLiveSync() {
   if (liveSyncInterval) clearInterval(liveSyncInterval);
-  // Sync ML data every 10 seconds
-  liveSyncInterval = setInterval(async () => {
-    if (!activeSession) return;
-    const elapsedMinutes = Math.round((Date.now() - activeSession.startTime) / 60000);
-    try {
-      await apiRequest('/session/live-update', {
-        method: 'POST',
-        body: JSON.stringify({
-          sessionId: activeSession.sessionId,
-          duration: elapsedMinutes,
-          tabSwitches: sessionTelemetry.tabSwitches,
-          interruptions: sessionTelemetry.interruptions,
-          blockAttempts: sessionTelemetry.blockAttempts
-        })
-      });
-    } catch (e) {
-      console.warn('[ML Sync] Failed:', e.message);
-    }
-  }, 10000);
+  // Every 10 s while the worker is awake; the minute alarm covers the rest
+  pushTelemetry();
+  liveSyncInterval = setInterval(pushTelemetry, 10000);
 }
 
 function stopLiveSync() {
@@ -540,9 +610,12 @@ function stopLiveSync() {
 function startSessionTimer() {
   if (!activeSession) return;
 
+  // Fire when the session's planned time is up — measured from its start, so a
+  // session adopted mid-way (or a restarted service worker) still ends on time.
   // Use chrome.alarms for MV3 service worker persistence
+  const endsAt = activeSession.startTime + activeSession.plannedDuration * 60000;
   chrome.alarms.create('sessionEnd', {
-    delayInMinutes: activeSession.plannedDuration,
+    when: Math.max(Date.now() + 1000, endsAt),
   });
 }
 
@@ -568,6 +641,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (authToken) {
       await syncBlockedSites();
       await reconcileSession();
+      // setInterval stops while the worker sleeps; this alarm wakes it every minute
+      if (activeSession) await pushTelemetry();
     }
     return;
   }

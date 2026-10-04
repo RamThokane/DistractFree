@@ -21,10 +21,14 @@ const insightsRoutes = require('./routes/insightsRoutes');
 const mlRoutes = require('./routes/mlRoutes');
 const browsingRoutes = require('./routes/browsingRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
 
 const app = express();
 
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Behind Vercel's proxy: use X-Forwarded-For for the client IP (rate limiting)
+if (isProduction || process.env.VERCEL) app.set('trust proxy', 1);
 
 // ── Security ───────────────────────────────────────
 app.use(helmet({
@@ -36,13 +40,15 @@ app.use(helmet({
 app.use(mongoSanitize());
 
 // ── CORS ───────────────────────────────────────────
+// CLIENT_URL plus the comma-separated ALLOWED_ORIGINS, e.g.
+//   CLIENT_URL=https://distractfree.site
+//   ALLOWED_ORIGINS=https://distractfree.site,https://www.distractfree.site
+const normaliseOrigin = (o) => o.trim().replace(/\/+$/, '');
 const buildAllowedOrigins = () => {
-  const origins = [];
-
-  // Always allow the configured CLIENT_URL
-  if (process.env.CLIENT_URL) {
-    origins.push(process.env.CLIENT_URL);
-  }
+  const origins = [process.env.CLIENT_URL, ...(process.env.ALLOWED_ORIGINS || '').split(',')]
+    .filter(Boolean)
+    .map(normaliseOrigin)
+    .filter(Boolean);
 
   // Allow localhost ONLY in non-production environments
   if (!isProduction) {
@@ -50,13 +56,13 @@ const buildAllowedOrigins = () => {
     origins.push('http://127.0.0.1:3000');
   }
 
-  return origins;
+  return [...new Set(origins)];
 };
+const allowedOrigins = buildAllowedOrigins();
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      const allowedOrigins = buildAllowedOrigins();
 
       // Allow requests with no origin (mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
@@ -113,14 +119,14 @@ app.use('/api/insights', insightsRoutes);
 app.use('/api/ml', mlRoutes);
 app.use('/api/browsing', browsingRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/schedule', scheduleRoutes);
 
-// Health check
+// Health check (public)
 app.get('/api/health', (_req, res) => {
   res.json({
-    success: true,
-    status: 'healthy',
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString(),
+    status: 'ok',
+    time: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development',
   });
 });
 

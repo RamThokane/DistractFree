@@ -15,9 +15,10 @@
 // These match the defaults in background.js.
 // To use a custom backend, update DEFAULT_API_BASE.
 // Local development — keep in sync with background.js. For production, switch back to:
-//   https://distractfree-backend.vercel.app/api  and  https://distractfree.vercel.app
-const DEFAULT_API_BASE = 'http://localhost:5000/api';
-const DEFAULT_DASHBOARD_URL = 'http://localhost:3000';
+//   Production defaults below; override from the popup settings for local
+//   development (http://localhost:5000/api and http://localhost:3000)
+const DEFAULT_API_BASE = 'https://api.distractfree.site/api';
+const DEFAULT_DASHBOARD_URL = 'https://distractfree.site';
 
 let API_BASE = DEFAULT_API_BASE;
 let DASHBOARD_URL = DEFAULT_DASHBOARD_URL;

@@ -1,5 +1,6 @@
 import React, { memo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useChartTheme } from '../context/ThemeContext';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -8,6 +9,7 @@ import {
 import CircularProgress from '../components/CircularProgress';
 import AnimatedCounter from '../components/AnimatedCounter';
 import PageTransition from '../components/PageTransition';
+import NextScheduledCard from '../components/NextScheduledCard';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { formatMinutesToHours, getGreeting } from '../utils/helpers';
@@ -60,6 +62,47 @@ const MetricCard = memo(({ icon: Icon, iconBg, iconColor, label, sublabel, value
   </motion.div>
 ));
 MetricCard.displayName = 'MetricCard';
+
+/* ── AI Prediction tile: forecast for the next session ── */
+const RISK_TEXT = { low: 'text-green-600', medium: 'text-amber-500', high: 'text-red-500' };
+
+const PredictionTile = memo(({ prediction, delay }) => {
+  const known = prediction?.riskLevel;
+  const isModel = prediction?.source === 'model';
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.5 }}>
+      <Link
+        to="/dashboard/insights"
+        className="block df-card-bg rounded-2xl p-6 border border-ink/[0.06] shadow-card-soft hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-full"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-indigo-50 flex-shrink-0">
+            <HiOutlineSparkles className="w-5 h-5 text-indigo-500" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm text-fg-2 mb-0.5">AI Prediction — Next session</p>
+            {known ? (
+              <p className="text-fg">
+                <span className={`text-2xl font-bold capitalize ${RISK_TEXT[prediction.riskLevel]}`}>{prediction.riskLevel}</span>
+                <span className="text-fg-2 text-sm font-medium"> risk ({Math.round(prediction.confidence * 100)}%)</span>
+              </p>
+            ) : (
+              <p className="text-2xl font-bold text-fg">—</p>
+            )}
+            <p className="text-[10px] text-fg-2 mt-0.5">
+              {!prediction
+                ? 'Prediction unavailable right now'
+                : isModel
+                  ? `${prediction.successPercent}% chance of success${prediction.isColdStart ? ' · not personalised yet' : ''}`
+                  : 'Based on your past sessions so far'}
+            </p>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
+  );
+});
+PredictionTile.displayName = 'PredictionTile';
 
 /* ── Chart Card Wrapper ── */
 const ChartCard = memo(({ title, subtitle, children, className = '', delay = 0 }) => (
@@ -184,7 +227,8 @@ const DashboardHome = () => {
   const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/session/dashboard');
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const res = await api.get(`/session/dashboard?tz=${encodeURIComponent(tz)}`);
       if (res.data.success) {
         setData(res.data);
       }
@@ -240,7 +284,6 @@ const DashboardHome = () => {
   const todayFocusMinutes = data?.todayFocusMinutes || 0;
   const coinsEarnedToday = data?.coinsEarnedToday || 0;
   const currentStreak = data?.currentStreak || user?.currentStreak || 0;
-  const aiFocusScore = data?.aiFocusScore || 0;
   const goalMinutes = data?.dailyGoal?.focusMinutes || data?.goalMinutes || 120;
   const weeklyFocusData = data?.weeklyFocusData || [];
   const distractionTrend = data?.distractionTrend || [];
@@ -310,17 +353,11 @@ const DashboardHome = () => {
             suffix="days"
             delay={0.16}
           />
-          <MetricCard
-            icon={HiOutlineSparkles}
-            iconBg="bg-indigo-50"
-            iconColor="text-indigo-500"
-            label="AI Focus Score"
-            sublabel="(Based on last session)"
-            value={aiFocusScore}
-            suffix="/100"
-            delay={0.24}
-          />
+          <PredictionTile prediction={data?.mlPrediction} delay={0.24} />
         </div>
+
+        {/* ── Next scheduled session ── */}
+        <NextScheduledCard delay={0.28} />
 
         {/* ── Analytics Row: Progress Ring + Weekly Focus ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

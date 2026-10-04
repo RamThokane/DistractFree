@@ -9,9 +9,42 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { formatTime, getRandomQuote, motivationalQuotes } from '../utils/helpers';
 import { SESSION_PRESETS } from '../utils/coinRules';
-import { HiOutlinePlay, HiOutlineStop, HiOutlineLockClosed } from 'react-icons/hi2';
+import { HiOutlinePlay, HiOutlineStop, HiOutlineLockClosed, HiOutlineCalendarDays } from 'react-icons/hi2';
 
-const ML_STATUS_LABELS = { low: 'Focused', medium: 'Drifting', high: 'Distracted' };
+// Live state (a simple rule over this session's counts, computed on the server)
+const LIVE_STATES = {
+  low: {
+    label: 'Focused',
+    icon: '🎯',
+    message: "You're in the zone. Keep going!",
+    badge: 'bg-green-100 text-green-600',
+    text: 'text-green-600',
+  },
+  medium: {
+    label: 'Drifting',
+    icon: '🌊',
+    message: "You've switched away a few times — bring your attention back to one task.",
+    badge: 'bg-amber-100 text-amber-600',
+    text: 'text-amber-500',
+  },
+  high: {
+    label: 'Distracted',
+    icon: '⚠️',
+    message: 'Lots of switching and distracting sites. Close one tab and refocus.',
+    badge: 'bg-red-100 text-red-600',
+    text: 'text-red-600',
+  },
+};
+// Legacy sessions may hold the old labels
+const LEGACY_STATUS = { Focused: 'low', Distracted: 'high' };
+const EMPTY_COUNTS = { tabSwitches: 0, interruptions: 0, blockAttempts: 0 };
+const countsOf = (session) => ({
+  tabSwitches: session?.tabSwitches || 0,
+  interruptions: session?.interruptions || 0,
+  blockAttempts: session?.distractionAttempts || 0,
+});
+// The extension marks the page when it is installed; it is what counts tab switches
+const hasExtension = () => document.documentElement.getAttribute('data-distractfree-extension') === '1';
 
 const FocusSession = () => {
   const { refreshCoins } = useCoins();
@@ -24,30 +57,88 @@ const FocusSession = () => {
   const [quote, setQuote] = useState(() => getRandomQuote(motivationalQuotes));
   const [isInitializing, setIsInitializing] = useState(true);
   const [mlStatus, setMlStatus] = useState('low');
+  const [showNudge, setShowNudge] = useState(false);
+  const [lastLiveSync, setLastLiveSync] = useState(null);
+  const [liveError, setLiveError] = useState(false);
+  const [liveCounts, setLiveCounts] = useState(EMPTY_COUNTS);
+  const [extensionDetected, setExtensionDetected] = useState(hasExtension);
   const [activeSessionId, setActiveSessionId] = useState(null);
+  // Length of the running session when it isn't one of the presets (e.g. a scheduled 40-min session)
+  const [activeTotalSecs, setActiveTotalSecs] = useState(null);
+  // { title, subject } when the running session came from the calendar
+  const [schedule, setSchedule] = useState(null);
   const intervalRef = useRef(null);
   const pollIntervalRef = useRef(null);
 
-  const isDistracted = mlStatus === 'high' || mlStatus === 'Distracted';
+  const liveKey = LEGACY_STATUS[mlStatus] || (LIVE_STATES[mlStatus] ? mlStatus : 'low');
+  const liveState = LIVE_STATES[liveKey];
+  const isDistracted = liveKey === 'high';
 
   const isCustomPreset = SESSION_PRESETS[selectedPreset]?.isCustom;
   const parsedCustomMinutes = parseInt(customMinutes);
   const effectiveCustomMinutes = isNaN(parsedCustomMinutes) ? 25 : Math.max(25, Math.min(180, parsedCustomMinutes));
 
-  const totalTime = isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds;
+  const presetTotal = isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds;
+  const totalTime = activeTotalSecs ?? presetTotal;
   const elapsed = Math.max(0, totalTime - timeLeft);
   const progressPercent = (elapsed / totalTime) * 100;
-  const earnableCoins = isCustomPreset ? Math.round(effectiveCustomMinutes * 0.4) : SESSION_PRESETS[selectedPreset].coins;
+  const activePreset = activeTotalSecs ? SESSION_PRESETS.find((p) => !p.isCustom && p.seconds === activeTotalSecs) : null;
+  const earnableCoins = activePreset
+    ? activePreset.coins
+    : activeTotalSecs
+      ? Math.round((activeTotalSecs / 60) * 0.4)
+      : isCustomPreset ? Math.round(effectiveCustomMinutes * 0.4) : SESSION_PRESETS[selectedPreset].coins;
+
+  /** Show a session that is already running on the server (started elsewhere, or by the calendar). */
+  const adoptSession = useCallback((session, serverTimeIso, scheduleInfo) => {
+    const serverTime = serverTimeIso ? new Date(serverTimeIso).getTime() : Date.now();
+    const elapsedSecs = Math.floor((serverTime - new Date(session.startTime).getTime()) / 1000);
+    const totalSecs = session.plannedDuration * 60;
+    const remaining = totalSecs - elapsedSecs;
+
+    setActiveSessionId(session._id);
+    if (session.mlStatus) setMlStatus(session.mlStatus);
+    setLiveCounts(countsOf(session));
+    const presetIdx = SESSION_PRESETS.findIndex((p) => !p.isCustom && p.seconds === totalSecs);
+    if (presetIdx !== -1) setSelectedPreset(presetIdx);
+    setActiveTotalSecs(totalSecs);
+    setSchedule(scheduleInfo || null);
+    if (remaining > 0) {
+      setTimeLeft(remaining);
+      setIsRunning(true);
+      setIsComplete(false);
+    } else {
+      setTimeLeft(0);
+      setIsRunning(false);
+      setIsComplete(true);
+    }
+  }, []);
+
+  /** Back to the idle timer for the selected preset. */
+  const resetToIdle = useCallback(() => {
+    setIsRunning(false);
+    setActiveSessionId(null);
+    setActiveTotalSecs(null);
+    setSchedule(null);
+    setMlStatus('low');
+    setLiveCounts(EMPTY_COUNTS);
+    setIsComplete(false);
+    setTimeLeft(isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds);
+  }, [isCustomPreset, effectiveCustomMinutes, selectedPreset]);
 
   const isStrictMode = user?.settings?.strictMode || false;
 
   // ── Start Session (API-backed) ──
   const startTimer = useCallback(async () => {
     try {
-      const plannedDuration = Math.round(totalTime / 60);
-      const res = await api.post('/session/start', { plannedDuration });
+      const plannedDuration = Math.round(presetTotal / 60);
+      // Timezone lets the server compute hour-of-day features in the user's local time
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const res = await api.post('/session/start', { plannedDuration, timezone });
       if (res.data.success) {
         setActiveSessionId(res.data.session._id);
+        setActiveTotalSecs(null);
+        setSchedule(null);
         setIsRunning(true);
         setIsComplete(false);
         // Notify extension
@@ -65,20 +156,10 @@ const FocusSession = () => {
       console.error('[FocusSession] Start error:', err);
       // If session already exists, try to resume
       if (err.response?.status === 409 && err.response?.data?.session) {
-        const existingSession = err.response.data.session;
-        const serverTime = err.response.data.serverTime ? new Date(err.response.data.serverTime).getTime() : Date.now();
-        setActiveSessionId(existingSession._id);
-        const elapsedSecs = Math.floor((serverTime - new Date(existingSession.startTime).getTime()) / 1000);
-        const totalSecs = existingSession.plannedDuration * 60;
-        const remaining = totalSecs - elapsedSecs;
-        if (remaining > 0) {
-          setTimeLeft(remaining);
-          setIsRunning(true);
-          setIsComplete(false);
-        }
+        adoptSession(err.response.data.session, err.response.data.serverTime, null);
       }
     }
-  }, [totalTime]);
+  }, [presetTotal, adoptSession]);
 
   // ── Stop / Cancel Session (API-backed) ──
   const stopTimer = useCallback(async () => {
@@ -90,13 +171,11 @@ const FocusSession = () => {
         console.error('[FocusSession] End error:', err);
       }
     }
-    setActiveSessionId(null);
-    setTimeLeft(isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds);
-    setIsComplete(false);
+    resetToIdle();
     // Notify extension
     window.dispatchEvent(new CustomEvent('DF_SESSION_END'));
     localStorage.setItem('df_session_action', JSON.stringify({ action: 'end', ts: Date.now() }));
-  }, [activeSessionId, selectedPreset, isCustomPreset, effectiveCustomMinutes]);
+  }, [activeSessionId, resetToIdle]);
 
   // ── Complete Session (timer hits 0) ──
   const completeSession = useCallback(async () => {
@@ -135,43 +214,38 @@ const FocusSession = () => {
     setIsComplete(false);
   };
 
-  // ── Sync active session on mount ──
-  useEffect(() => {
-    const fetchActiveSession = async () => {
-      try {
-        const res = await api.get('/session/active');
-        if (res.data.success && res.data.session) {
-          const session = res.data.session;
-          setActiveSessionId(session._id);
-          if (session.mlStatus) setMlStatus(session.mlStatus);
-
-          const serverTime = res.data.serverTime ? new Date(res.data.serverTime).getTime() : Date.now();
-          const elapsedSecs = Math.floor((serverTime - new Date(session.startTime).getTime()) / 1000);
-          const totalSecs = session.plannedDuration * 60;
-          const remaining = totalSecs - elapsedSecs;
-
-          if (remaining > 0) {
-            const presetIdx = SESSION_PRESETS.findIndex(p => p.seconds === totalSecs);
-            if (presetIdx !== -1) setSelectedPreset(presetIdx);
-            setTimeLeft(remaining);
-            setIsRunning(true);
-            setIsComplete(false);
-          } else {
-            setTimeLeft(0);
-            setIsRunning(false);
-            setIsComplete(true);
-          }
-        }
-      } catch (e) {
-        console.error('Failed to sync active session', e);
-      } finally {
-        setIsInitializing(false);
+  // ── Sync the active session (this request also starts a due scheduled session) ──
+  const syncActiveSession = useCallback(async () => {
+    try {
+      const res = await api.get('/session/active');
+      if (res.data.success && res.data.session) {
+        adoptSession(res.data.session, res.data.serverTime, res.data.schedule);
       }
-    };
-    fetchActiveSession();
-  }, []);
+    } catch (e) {
+      console.error('Failed to sync active session', e);
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [adoptSession]);
 
-  // ── Poll ML status every 5 seconds while running ──
+  useEffect(() => {
+    syncActiveSession();
+  }, [syncActiveSession]);
+
+  // ── While idle, pick up a session started by the calendar or elsewhere ──
+  useEffect(() => {
+    if (isRunning || isComplete) return undefined;
+    const id = setInterval(syncActiveSession, 30000);
+    window.addEventListener('DF_ACTIVE_SESSION_CHANGED', syncActiveSession);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('DF_ACTIVE_SESSION_CHANGED', syncActiveSession);
+    };
+  }, [isRunning, isComplete, syncActiveSession]);
+
+  // ── Live state: poll the server every 5 seconds while running ──
+  // The extension reports tab switches / blocked attempts; the server turns
+  // them into the status. This keeps the card within seconds of it.
   useEffect(() => {
     if (!isRunning || !activeSessionId) return;
 
@@ -181,20 +255,55 @@ const FocusSession = () => {
         if (!res.data.success) return;
         if (!res.data.session || res.data.session._id !== activeSessionId) {
           // Ended elsewhere (e.g. cancelled from the extension) — reset locally
-          setIsRunning(false);
-          setActiveSessionId(null);
-          setIsComplete(false);
-          setTimeLeft(isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds);
+          resetToIdle();
           return;
         }
         if (res.data.session.mlStatus) {
           setMlStatus(res.data.session.mlStatus);
         }
-      } catch (e) { /* ignore */ }
+        setLiveCounts(countsOf(res.data.session));
+        setLastLiveSync(new Date());
+        setLiveError(false);
+        setExtensionDetected(hasExtension());
+      } catch (e) {
+        setLiveError(true);
+      }
     }, 5000);
 
     return () => clearInterval(pollIntervalRef.current);
-  }, [isRunning, activeSessionId, isCustomPreset, effectiveCustomMinutes, selectedPreset]);
+  }, [isRunning, activeSessionId, resetToIdle]);
+
+  // ── Live update every 60 seconds while running ──
+  // Sends no counts (the extension reports those), so it never overwrites them;
+  // returns the live status.
+  useEffect(() => {
+    if (!isRunning || !activeSessionId) return;
+
+    const sync = async () => {
+      try {
+        const res = await api.post('/session/live-update', { sessionId: activeSessionId });
+        if (!res.data.success) return;
+        setLiveError(false);
+        setLastLiveSync(new Date());
+        if (res.data.liveStatus) setMlStatus(res.data.liveStatus);
+        if (res.data.counts) setLiveCounts(res.data.counts);
+      } catch (e) {
+        setLiveError(true);
+      }
+    };
+
+    sync();
+    const id = setInterval(sync, 60000);
+    return () => clearInterval(id);
+  }, [isRunning, activeSessionId]);
+
+  // ── Gentle nudge when the live status turns to "Distracted" ──
+  const prevStatusRef = useRef(mlStatus);
+  useEffect(() => {
+    if (isDistracted && prevStatusRef.current !== mlStatus && isRunning) setShowNudge(true);
+    if (!isDistracted) setShowNudge(false);
+    prevStatusRef.current = mlStatus;
+  }, [mlStatus, isDistracted, isRunning]);
 
   // ── Countdown timer ──
   useEffect(() => {
@@ -251,6 +360,15 @@ const FocusSession = () => {
                       <HiOutlineLockClosed className="w-4 h-4 text-red-500" />
                       <span className="text-red-600 text-xs font-semibold">Strict Mode Active</span>
                     </motion.div>
+                  )}
+
+                  {/* Scheduled session title */}
+                  {schedule && (isRunning || isComplete) && (
+                    <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-4 max-w-full">
+                      <HiOutlineCalendarDays className="w-4 h-4 text-indigo-500 flex-shrink-0" aria-hidden="true" />
+                      <span className="text-indigo-600 text-sm font-semibold truncate">{schedule.title}</span>
+                      {schedule.subject && <span className="text-fg-2 text-sm truncate">· {schedule.subject}</span>}
+                    </div>
                   )}
 
                   {/* Session presets */}
@@ -333,11 +451,7 @@ const FocusSession = () => {
                       </Button>
                     )}
                     {isComplete && (
-                      <Button variant="accent" size="lg" onClick={() => {
-                        setTimeLeft(isCustomPreset ? effectiveCustomMinutes * 60 : SESSION_PRESETS[selectedPreset].seconds);
-                        setIsComplete(false);
-                        setActiveSessionId(null);
-                      }}>
+                      <Button variant="accent" size="lg" onClick={resetToIdle}>
                         Start Another
                       </Button>
                     )}
@@ -354,33 +468,83 @@ const FocusSession = () => {
               </GlassCard>
             </motion.div>
 
+            {/* ── Gentle nudge when the live status turns to Distracted ── */}
+            <AnimatePresence>
+              {showNudge && isRunning && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex items-start justify-between gap-4 rounded-2xl border border-amber-300/40 bg-amber-50 dark:bg-amber-500/10 px-5 py-4"
+                >
+                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                    <span className="font-semibold">Quick check-in:</span> lots of switching away in the last few minutes.
+                    Close one distracting tab and give the next five minutes to a single task.
+                  </p>
+                  <button onClick={() => setShowNudge(false)} className="text-amber-700 dark:text-amber-200 text-sm font-medium flex-shrink-0">
+                    Dismiss
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* ── Bottom Info Row ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${isRunning ? 'md:grid-cols-2' : ''}`}>
+              {/* Live State — only while a session is running */}
+              {isRunning && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
                 <GlassCard>
-                  <h3 className="text-fg font-semibold mb-3">Live State</h3>
-                  <div className="flex items-center gap-4">
-                    {/* mlStatus is the model's risk level (low/medium/high); legacy sessions may hold Focused/Distracted */}
-                    <div className={`p-4 rounded-full ${isDistracted ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                      <span className="text-3xl font-bold">{isDistracted ? '⚠️' : '🎯'}</span>
-                    </div>
-                    <div>
-                      <h4 className={`text-xl font-bold ${isDistracted ? 'text-red-600' : 'text-green-600'}`}>
-                        {ML_STATUS_LABELS[mlStatus] || mlStatus}
-                      </h4>
-                      <p className="text-dash-muted text-sm leading-relaxed mt-1">
-                        {isDistracted
-                          ? 'You seem distracted! Too many tab switches. Focus up!'
-                          : 'You are perfectly in the zone. Keep going!'}
-                      </p>
-                    </div>
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h3 className="text-fg font-semibold">Live State</h3>
+                    <span className="flex items-center gap-1.5 text-[11px] text-dash-muted">
+                      <span className={`w-2 h-2 rounded-full ${liveError ? 'bg-amber-400' : 'bg-green-500 animate-pulse'}`} aria-hidden="true" />
+                      {liveError ? 'Reconnecting…' : 'Live'}
+                    </span>
                   </div>
+
+                    <>
+                      <div className="flex items-center gap-4" aria-live="polite">
+                        <div className={`p-4 rounded-full ${liveState.badge}`}>
+                          <span className="text-3xl font-bold" aria-hidden="true">{liveState.icon}</span>
+                        </div>
+                        <div>
+                          <h4 className={`text-xl font-bold ${liveState.text}`}>{liveState.label}</h4>
+                          <p className="text-dash-muted text-sm leading-relaxed mt-1">{liveState.message}</p>
+                        </div>
+                      </div>
+
+                      <dl className="grid grid-cols-3 gap-2 mt-4 text-center">
+                        {[
+                          ['Tab switches', liveCounts.tabSwitches],
+                          ['Distracting sites', liveCounts.interruptions],
+                          ['Blocked attempts', liveCounts.blockAttempts],
+                        ].map(([label, value]) => (
+                          <div key={label} className="rounded-xl bg-ink/[0.03] border border-ink/[0.06] py-2">
+                            <dd className="text-fg font-bold text-lg tabular-nums">{value}</dd>
+                            <dt className="text-dash-muted text-[11px]">{label}</dt>
+                          </div>
+                        ))}
+                      </dl>
+
+                      {!extensionDetected && (
+                        <p className="text-[11px] text-amber-600 mt-3">
+                          The DistractFree extension wasn't detected in this browser. It's what counts tab switches and blocked
+                          sites, so without it the live state stays at Focused.
+                        </p>
+                      )}
+                      <p className="text-dash-muted/70 text-[11px] mt-2">
+                        {liveError
+                          ? 'Live update failed, retrying'
+                          : lastLiveSync ? `Updated ${lastLiveSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Waiting for the first update…'}
+                      </p>
+                    </>
                 </GlassCard>
               </motion.div>
+              )}
 
               {/* Motivational Quote */}
               <motion.div

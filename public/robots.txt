@@ -1,0 +1,7 @@
+# https://distractfree.site
+User-agent: *
+Allow: /
+# Signed-in app pages are private
+Disallow: /dashboard
+
+Sitemap: https://distractfree.site/sitemap.xml

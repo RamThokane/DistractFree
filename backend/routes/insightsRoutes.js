@@ -7,6 +7,7 @@ const {
   downloadWeeklyReport,
   getHeatmap,
   getYearlyHeatmapData,
+  getModelInfo,
 } = require('../controllers/insightsController');
 const { protect } = require('../middleware/authMiddleware');
 const { validateBrowsingLog, validatePagination } = require('../middleware/validateRequest');
@@ -17,6 +18,9 @@ router.use(protect);
 
 // Full AI Insights endpoint (primary)
 router.get('/full', getFullInsights);
+
+// Model transparency: training report + live accuracy
+router.get('/model', getModelInfo);
 
 // Productivity Heatmap
 router.get('/heatmap', getHeatmap);

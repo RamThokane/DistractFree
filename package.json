@@ -7,6 +7,7 @@
     "@tailwindcss/forms": "^0.5.11",
     "autoprefixer": "^10.4.24",
     "axios": "^1.13.5",
+    "date-fns": "^4.4.0",
     "framer-motion": "^12.34.3",
     "gsap": "^3.15.0",
     "html2canvas": "^1.4.1",
@@ -14,6 +15,7 @@
     "jspdf": "^4.2.1",
     "postcss": "^8.5.6",
     "react": "^19.2.4",
+    "react-big-calendar": "^1.20.0",
     "react-confetti": "^6.4.0",
     "react-dom": "^19.2.4",
     "react-icons": "^5.5.0",
@@ -26,6 +28,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:backend": "npm --prefix backend test",
+    "ml:retrain": "npm --prefix backend run ml:retrain --",
     "eject": "react-scripts eject"
   },
   "browserslist": {

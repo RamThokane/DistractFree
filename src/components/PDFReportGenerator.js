@@ -20,9 +20,9 @@ const COLORS = {
 };
 const RISK_COLOR = { low: COLORS.green, medium: COLORS.amber, high: COLORS.red };
 const RISK_MEANING = {
-  low: 'You usually stay on task.',
-  medium: 'Some distractions are likely.',
-  high: 'Distractions are very likely next session.',
+  low: 'Likely to finish as planned.',
+  medium: 'Could go either way.',
+  high: 'Unlikely to finish as planned.',
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -340,8 +340,10 @@ const PDFReportGenerator = ({ user }) => {
       // ── 3. AI insights ──
       doc.heading('3. AI Focus Analysis');
       const risk = pred.riskLevel || 'n/a';
+      const successLabel = pred.source === 'baseline' ? 'Past success rate' : 'Predicted success, next session';
       doc.keyValues([
-        ['Predicted distraction risk', `${risk.toUpperCase()}${RISK_MEANING[risk] ? ` - ${RISK_MEANING[risk]}` : ''}`, RISK_COLOR[risk]],
+        [successLabel, pred.successPercent == null ? 'Not enough history' : `${pred.successPercent}%`, RISK_COLOR[risk]],
+        ['Risk level', `${risk.toUpperCase()}${RISK_MEANING[risk] ? ` - ${RISK_MEANING[risk]}` : ''}`, RISK_COLOR[risk]],
         ['Focus score (7-day)', `${pred.focusScore ?? 0} / 100`, COLORS.green],
         ['Distraction score (100 - focus)', `${pred.distractionScore ?? 0} / 100`, COLORS.red],
         ['Best focus window', prod.bestFocusHours || 'Not enough data'],

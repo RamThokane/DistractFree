@@ -1,12 +1,19 @@
 const mongoose = require('mongoose');
 const FocusSession = require('../models/FocusSession');
 const User = require('../models/User');
-const BlockedWebsite = require('../models/BlockedWebsite');
 const CoinTransaction = require('../models/CoinTransaction');
 const { calculateCoins } = require('../utils/coinCalculator');
 const { createNotification } = require('./notificationController');
-const BrowsingLog = require('../models/BrowsingLog');
-const { predict } = require('../ml/decisionTreeModel');
+const { isSessionSuccess } = require('../ml/target');
+const { maybeAutoRetrain } = require('../ml/trainModel');
+const { liveFocusStatus } = require('../utils/liveFocusStatus');
+const {
+  toClientPrediction,
+  storedSessionPrediction,
+  countRealSessions,
+} = require('../services/predictionService');
+const { safePredict, createFocusSession } = require('../services/focusSessionService');
+const { processDueSchedules, scheduleSummary } = require('../services/scheduleService');
 
 // ────────────────────────────────────────────────────
 // POST /api/session/start
@@ -14,7 +21,7 @@ const { predict } = require('../ml/decisionTreeModel');
 exports.startSession = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { plannedDuration } = req.body; // minutes
+    const { plannedDuration, timezone } = req.body; // minutes, IANA timezone
 
     if (!plannedDuration || plannedDuration < 1) {
       return res.status(400).json({
@@ -34,21 +41,13 @@ exports.startSession = async (req, res) => {
       });
     }
 
-    // Snapshot of blocked sites for this session
-    const blockedSites = await BlockedWebsite.find({ userId, isActive: true });
-    const blockedUrls = blockedSites.map((s) => s.websiteUrl);
-
-    const session = await FocusSession.create({
-      userId,
-      plannedDuration,
-      startTime: new Date(),
-      blockedSitesUsed: blockedUrls,
-    });
+    const { session, prediction } = await createFocusSession({ userId, plannedDuration, timezone });
 
     res.status(201).json({
       success: true,
       serverTime: new Date().toISOString(),
       session,
+      prediction: prediction ? toClientPrediction(prediction) : null,
     });
   } catch (error) {
     console.error('[Session] Start error:', error.message);
@@ -167,12 +166,17 @@ exports.endSession = async (req, res) => {
       }
     }
 
+    // Record what actually happened next to the prediction made at start
+    session.actualSuccess = isSessionSuccess(session) === 1;
     await session.save();
 
     res.json({
       success: true,
       session,
     });
+
+    // Learning loop: retrain in the background when enough new sessions exist
+    maybeAutoRetrain(countRealSessions);
   } catch (error) {
     console.error('[Session] End error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -192,45 +196,36 @@ exports.updateLiveSession = async (req, res) => {
       return res.status(404).json({ success: false, message: 'No active session found' });
     }
 
-    // Update session metrics
-    if (tabSwitches !== undefined) session.tabSwitches = tabSwitches;
-    if (interruptions !== undefined) session.interruptions = interruptions;
-    if (blockAttempts !== undefined) session.distractionAttempts = blockAttempts;
-
-    // Predict distraction risk with the JS decision tree model
-    const hour = new Date(session.startTime).getHours();
-    let timeOfDay;
-    if (hour >= 5 && hour < 12) timeOfDay = 'morning';
-    else if (hour >= 12 && hour < 17) timeOfDay = 'afternoon';
-    else if (hour >= 17 && hour < 21) timeOfDay = 'evening';
-    else timeOfDay = 'night';
-
-    // Dominant category of this session's browsing so far
-    const [topCategory] = await BrowsingLog.aggregate([
-      { $match: { sessionId: session._id } },
-      { $group: { _id: '$category', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 1 },
-    ]);
-
-    const mlFeatures = {
-      timeOfDay,
-      websiteCategory: topCategory?._id || 'other',
-      sessionDuration: duration || 0,
-      previousDistractions: blockAttempts || 0,
-      focusScore: Math.round(Math.max(0, Math.min(100,
-        Math.max(0, (1 - (blockAttempts || 0) / 5)) * 40 +
-        Math.max(0, (1 - (tabSwitches || 0) / 10)) * 30 +
-        Math.max(0, (1 - (interruptions || 0) / 8)) * 30
-      ))),
+    // Update session metrics. These are running totals for the session, so
+    // they only go up: a client that lost its counts can't reset them.
+    const total = (current, incoming) => {
+      const n = Number(incoming);
+      return Number.isFinite(n) && n >= 0 ? Math.max(current || 0, Math.floor(n)) : current;
     };
-    const prediction = predict(mlFeatures);
-    session.mlStatus = prediction.riskLevel;
+    if (tabSwitches !== undefined) session.tabSwitches = total(session.tabSwitches, tabSwitches);
+    if (interruptions !== undefined) session.interruptions = total(session.interruptions, interruptions);
+    if (blockAttempts !== undefined) session.distractionAttempts = total(session.distractionAttempts, blockAttempts);
+
+    // Live status is a plain rule over this session's counts so far — not the model
+    session.mlStatus = liveFocusStatus({
+      tabSwitches: session.tabSwitches,
+      interruptions: session.interruptions,
+      blockAttempts: session.distractionAttempts,
+    });
     await session.save();
 
     res.json({
       success: true,
+      // Rule-based, from this session's counts so far
       mlStatus: session.mlStatus,
+      liveStatus: session.mlStatus,
+      counts: {
+        tabSwitches: session.tabSwitches,
+        interruptions: session.interruptions,
+        blockAttempts: session.distractionAttempts,
+      },
+      // The model's prediction, made when the session started
+      prediction: storedSessionPrediction(session),
     });
   } catch (error) {
     console.error('[Session] Live Update error:', error.message);
@@ -241,17 +236,32 @@ exports.updateLiveSession = async (req, res) => {
 // ────────────────────────────────────────────────────
 // GET /api/session/active
 // ────────────────────────────────────────────────────
+// Also the trigger for scheduled sessions (no cron, so it works on Vercel):
+// a scheduled session that is due starts here, one that was due while
+// another session was running is marked missed. The extension calls this
+// every minute and the website on every dashboard page, so a schedule starts
+// within a minute of its time even when only one of them is open.
 exports.getActiveSession = async (req, res) => {
   try {
-    const session = await FocusSession.findOne({
-      userId: req.user._id,
-      status: 'active',
-    });
+    const userId = req.user._id;
+    let autoStarted = null;
+    try {
+      ({ started: autoStarted } = await processDueSchedules(userId));
+    } catch (error) {
+      // Schedules must never break the active-session check
+      console.error('[Schedule] Due check error:', error.message);
+    }
+
+    const session = await FocusSession.findOne({ userId, status: 'active' });
 
     res.json({
       success: true,
       serverTime: new Date().toISOString(),
       session: session || null,
+      // Title/subject of the schedule this session came from, if any
+      schedule: session?.scheduledSessionId ? await scheduleSummary(session.scheduledSessionId) : null,
+      // True only on the request that started it
+      autoStarted: Boolean(autoStarted && session && String(autoStarted._id) === String(session._id)),
     });
   } catch (error) {
     console.error('[Session] GetActive error:', error.message);
@@ -422,14 +432,10 @@ exports.getDashboard = async (req, res) => {
       distractionTrend.push({ day: dayName, score: found ? found.distractions : 0 });
     }
 
-    // AI Focus Score from latest prediction (or compute from distraction data)
-    let aiFocusScore = 0;
-    const lastSession = await FocusSession.findOne({ userId, status: 'completed' }).sort({ endTime: -1 });
-    if (lastSession) {
-      // Simple heuristic: 100 - (distraction penalty)
-      const penalty = Math.min(lastSession.distractionAttempts * 8, 60);
-      aiFocusScore = Math.max(0, 100 - penalty);
-    }
+    // Forward-looking: the model's estimate for a session started right now.
+    // Deliberately separate from the "today" numbers above, which describe the past.
+    const prediction = await safePredict(userId, { timezone: req.query.tz });
+    const client = prediction ? toClientPrediction(prediction) : null;
 
     res.json({
       success: true,
@@ -437,7 +443,16 @@ exports.getDashboard = async (req, res) => {
       coinsEarnedToday: today.coinsEarned,
       sessionsToday: today.sessions,
       currentStreak: user.currentStreak || 0,
-      aiFocusScore,
+      nextSessionPrediction: client,
+      // Compact form for the dashboard tile
+      mlPrediction: client && {
+        riskLevel: client.riskLevel,
+        successPercent: client.successPercent,
+        confidence: client.confidence,
+        classProbabilities: client.classProbabilities,
+        source: client.source,
+        isColdStart: client.isColdStart,
+      },
       dailyGoal: user.dailyGoal || { focusMinutes: 0, sessions: 0 },
       goalMinutes: user.settings?.dailyGoalMinutes || 120,
       weeklyFocusData,

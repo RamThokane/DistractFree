@@ -108,12 +108,12 @@ export const screenAt = (t) => {
 };
 
 const PAGES = {
-  focus: { url: 'app.distractfree.com/focus', title: 'DistractFree — Focus', icon: 'df' },
+  focus: { url: 'distractfree.site/dashboard/focus', title: 'DistractFree — Focus', icon: 'df' },
   social: { url: 'instagram.com', title: 'Instagram', icon: 'social' },
   'block-instagram': { url: 'instagram.com', title: 'Stay Focused', icon: 'shield' },
   'block-youtube': { url: 'youtube.com', title: 'Stay Focused', icon: 'shield' },
   video: { url: 'youtube.com/watch', title: 'YouTube', icon: 'video' },
-  insights: { url: 'app.distractfree.com/insights', title: 'DistractFree — AI Insights', icon: 'df' },
+  insights: { url: 'distractfree.site/dashboard/insights', title: 'DistractFree — AI Insights', icon: 'df' },
 };
 
 /* Page loads: [start, end] of the progress bar */

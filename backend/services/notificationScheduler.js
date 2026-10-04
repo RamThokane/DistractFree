@@ -8,11 +8,14 @@
  *   focus_reminder — no session yet today, after 10 AM (once per day)
  *   streak_alert   — active streak not extended today, after 6 PM (once per day)
  *   weekly_report  — summary of the last 7 days (once per 7 days)
+ *   scheduled_reminder — 10 minutes before a scheduled session (once each)
+ *   scheduled_missed   — a scheduled session's start window passed without it starting
  */
 
 const Notification = require('../models/Notification');
 const FocusSession = require('../models/FocusSession');
 const User = require('../models/User');
+const { sendScheduledReminders, processDueSchedules } = require('./scheduleService');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -46,6 +49,12 @@ async function runScheduledChecks(userId, tz = 'UTC') {
 
     const user = await User.findById(userId).select('currentStreak lastSessionDate createdAt');
     if (!user) return;
+
+    // ── Scheduled sessions ──
+    // Starting a due session is left to GET /api/session/active; here only
+    // overdue ones are marked missed and upcoming ones reminded.
+    await processDueSchedules(userId, { now, allowStart: false });
+    await sendScheduledReminders(userId, now);
 
     const lastSessionDay = user.lastSessionDate ? localDate(user.lastSessionDate, tz) : null;
     const focusedToday = lastSessionDay === today;
