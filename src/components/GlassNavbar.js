@@ -1,55 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '../context/ThemeContext';
 import { HiOutlineBars3, HiOutlineXMark } from 'react-icons/hi2';
 
 /**
- * NavItem — Individual pill button inside the glass container.
+ * NavItem — Plain text link; the active one gets a thin underline.
  */
-const NavItem = ({ label, path, isActive, onClick, isDark }) => {
+const NavItem = ({ label, path, isActive, onClick }) => {
   return (
     <button
       onClick={() => onClick(path)}
       className={`
-        relative px-5 py-2.5 rounded-full text-sm font-medium
-        transition-all duration-200 ease-in-out
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400
-        ${isActive
-          ? isDark ? 'text-hi' : 'text-fg'
-          : isDark ? 'text-fg-2 hover:text-hi' : 'text-fg-3 hover:text-fg'
-        }
+        relative px-3 py-2 text-sm font-medium whitespace-nowrap
+        transition-colors duration-150
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-current rounded-[4px]
+        ${isActive ? 'text-hi' : 'text-fg-2 hover:text-hi'}
       `}
-      style={{
-        WebkitTapHighlightColor: 'transparent',
-        letterSpacing: '0.01em',
-      }}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
       role="tab"
       aria-selected={isActive}
       tabIndex={0}
     >
-      {/* Active pill background */}
-      {isActive && (
-        <motion.div
-          className="absolute inset-0 rounded-full shadow-sm"
-          style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.7)' }}
-          layoutId="glassActiveTab"
-          transition={{ type: 'spring', bounce: 0.12, duration: 0.5 }}
-        />
-      )}
-      {/* Hover background */}
-      {!isActive && (
-        <div
-          className="absolute inset-0 rounded-full opacity-0 hover:opacity-100 transition-opacity duration-150"
-          style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.3)' }}
-        />
-      )}
       <span className="relative z-10">{label}</span>
+      {isActive && (
+        <motion.span
+          className="absolute left-3 right-3 bottom-0.5 h-px bg-current"
+          layoutId="navActiveRule"
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        />
+      )}
     </button>
   );
 };
 
 /**
- * GlassNavbar — Floating frosted glass pill navigation.
+ * GlassNavbar — Section links for the landing page bar (flat, no glass).
  */
 const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
   const [activeItem, setActiveItem] = useState(activePath);
@@ -59,8 +43,6 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
   React.useEffect(() => {
     setActiveItem(activePath);
   }, [activePath]);
-
-  const { isDark } = useTheme();
 
   const handleClick = (path) => {
     setActiveItem(path);
@@ -77,12 +59,7 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
   return (
     <>
       <div
-        className="hidden md:flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full backdrop-blur-xl border"
-        style={{
-          backgroundColor: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.6)',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.4)',
-          boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 8px 24px rgba(0,0,0,0.08)'
-        }}
+        className="hidden md:flex items-center gap-1"
         role="tablist"
         aria-label="Page navigation"
       >
@@ -93,46 +70,39 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
             path={item.path}
             isActive={activeItem === item.path}
             onClick={handleClick}
-            isDark={isDark}
           />
         ))}
       </div>
 
       <button
-        className="md:hidden p-2 rounded-xl transition-colors"
-        style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.3)' }}
+        className="md:hidden order-last -mr-2 p-2 rounded-md text-fg-2 hover:text-hi transition-colors"
         onClick={() => setMobileOpen(true)}
         aria-label="Open navigation menu"
       >
-        <HiOutlineBars3 className={`w-5 h-5 ${isDark ? 'text-fg-soft' : 'text-gray-700'}`} />
+        <HiOutlineBars3 className="w-5 h-5" />
       </button>
 
       <AnimatePresence>
         {mobileOpen && (
           <>
             <motion.div
-              className="md:hidden fixed inset-0 z-[100] bg-black/30 backdrop-blur-sm"
+              className="md:hidden fixed inset-0 z-[100] bg-black/30"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileOpen(false)}
             />
             <motion.div
-              className="md:hidden fixed top-4 left-4 right-4 z-[110] rounded-2xl p-4 backdrop-blur-2xl border"
-              style={{
-                backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.92)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.4)',
-                boxShadow: isDark ? '0 16px 48px rgba(0,0,0,0.5)' : '0 16px 48px rgba(0,0,0,0.12)'
-              }}
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="md:hidden fixed top-3 left-3 right-3 z-[110] rounded-lg p-3 border lp-sheet"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className={`${isDark ? 'text-hi' : 'text-fg'} font-semibold text-sm`}>Navigation</span>
+                <span className="text-hi font-semibold text-sm">Navigation</span>
                 <button
-                  className="p-1.5 rounded-lg hover:bg-ink/[0.05] dark:hover:bg-gray-800 transition-colors"
+                  className="p-1.5 rounded-md hover:bg-ink/[0.06] transition-colors"
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close menu"
                 >
@@ -148,11 +118,8 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
                       setMobileOpen(false);
                     }}
                     className={`
-                      w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150
-                      ${activeItem === item.path
-                        ? isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-50 text-blue-600'
-                        : isDark ? 'text-fg-2 hover:bg-gray-800' : 'text-fg-3 hover:bg-ink/[0.03]'
-                      }
+                      w-full text-left px-3 py-3 rounded-md text-sm font-medium transition-colors duration-150
+                      ${activeItem === item.path ? 'lp-sheet-active' : 'text-fg-2 hover:bg-ink/[0.05]'}
                     `}
                   >
                     {item.label}
@@ -162,8 +129,8 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
                   href="#"
                   onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); setMobileOpen(false); }}
                   className={`
-                    w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150
-                    ${isDark ? 'text-fg-2 hover:bg-gray-800' : 'text-fg-3 hover:bg-ink/[0.03]'}
+                    w-full flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium transition-colors duration-150
+                    text-fg-2 hover:bg-ink/[0.05]
                   `}
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">

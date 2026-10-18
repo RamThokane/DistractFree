@@ -64,10 +64,10 @@ const ReplayIcon = () => <Icon><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" /><
 
 const SectionHeading = () => (
   <div className="text-center mb-10 md:mb-12">
-    <p className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade" style={{ letterSpacing: '2px' }}>
+    <p className="lp-marker" data-n="01">
       The DistractFree film
     </p>
-    <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-hi section-headline-upgrade" style={{ lineHeight: 1.15 }}>
+    <h2 className="lp-display lp-h2">
       From distraction to deliberate focus
     </h2>
   </div>
@@ -261,7 +261,7 @@ const BrandFilm = () => {
   const progress = duration ? (time / duration) * 100 : 0;
 
   return (
-    <section id="how-it-works" ref={sectionRef} className="relative how-it-works-section brand-film-section py-24 px-4 sm:px-6 overflow-hidden">
+    <section id="how-it-works" ref={sectionRef} className="relative brand-film-section py-24 md:py-28 px-4 sm:px-6 overflow-hidden">
       <div className="relative z-10 max-w-[1120px] mx-auto">
         <SectionHeading />
 

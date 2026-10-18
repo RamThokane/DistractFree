@@ -661,51 +661,6 @@ html.light .hover\:text-indigo-300:hover { color: #4338CA; }
 /* ── DistractFree Visual Design Overhaul ──── */
 /* ═══════════════════════════════════════════ */
 
-/* Section custom transition styling */
-.hero-section {
-  position: relative;
-  background: radial-gradient(circle at top center, rgba(99, 82, 255, 0.12) 0%, transparent 60%), #0d0f17;
-  z-index: 1;
-}
-
-.hero-section::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.problem-section {
-  background: linear-gradient(180deg, #0d0f17 0%, #111420 100%) !important;
-}
-
-.how-it-works-section {
-  background-color: #111420 !important;
-}
-
-.smart-blocking-section {
-  background: linear-gradient(180deg, #111420 0%, #0d0f17 100%) !important;
-}
-
-.product-section {
-  background: linear-gradient(180deg, #0d0f17 0%, #111420 100%) !important;
-}
-
-.ai-transparency-section {
-  background-color: #111420 !important;
-}
-
-.research-section {
-  background: linear-gradient(180deg, #111420 0%, #0d0f17 100%) !important;
-}
-
-.final-cta-section {
-  background-color: #0d0f17 !important;
-}
-
 /* Background Blur Blobs */
 .glow-blob-purple {
   position: absolute;

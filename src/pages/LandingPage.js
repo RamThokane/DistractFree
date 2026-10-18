@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { useChartTheme } from '../context/ThemeContext';
+import { useTheme, useChartTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  BarChart, Bar, Cell, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import GlassNavbar from '../components/GlassNavbar';
@@ -11,102 +11,10 @@ import BrandFilm from '../components/BrandFilm';
 import ThemeToggle from '../components/ThemeToggle';
 import '../styles/landing.css';
 
-/* ── 6-Layer Background System ── */
-const BackgroundSystem = () => (
-  <div className="landing-bg-system">
-    <div className="landing-bg-mesh">
-      <div className="landing-orb-a" />
-      <div className="landing-orb-b" />
-      <div className="landing-orb-c" />
-      <div className="landing-noise" />
-    </div>
-  </div>
-);
-
-/* ── Upgraded Section Divider (3-layer) ── */
-const SectionDivider = () => (
-  <div className="section-divider-upgrade" style={{ position: 'relative', zIndex: 1 }}>
-    <div className="divider-glow" />
-    <div className="divider-line" />
-  </div>
-);
-
-/* ── Floating CTA Particles ── */
-const CTAParticles = () => {
-  const particles = [
-    { size: 4, color: 'rgba(123,111,238,0.6)', top: '15%', left: '8%',   dur: '3s',   delay: '0s',   drift: '8px' },
-    { size: 6, color: 'rgba(0,212,200,0.5)',    top: '70%', left: '12%',  dur: '4.5s', delay: '0.8s', drift: '-12px' },
-    { size: 4, color: 'rgba(240,192,64,0.5)',   top: '30%', left: '85%',  dur: '3.8s', delay: '1.5s', drift: '5px' },
-    { size: 5, color: 'rgba(123,111,238,0.5)',   top: '60%', left: '90%',  dur: '5s',   delay: '2.2s', drift: '-8px' },
-    { size: 3, color: 'rgba(0,212,200,0.4)',    top: '80%', left: '25%',  dur: '3.2s', delay: '0.4s', drift: '10px' },
-    { size: 7, color: 'rgba(123,111,238,0.4)',   top: '45%', left: '75%',  dur: '4.2s', delay: '1.2s', drift: '-6px' },
-    { size: 4, color: 'rgba(240,192,64,0.4)',   top: '25%', left: '60%',  dur: '5.5s', delay: '2.8s', drift: '4px' },
-    { size: 5, color: 'rgba(0,212,200,0.45)',   top: '55%', left: '40%',  dur: '3.6s', delay: '1.8s', drift: '-10px' },
-  ];
-
-  return (
-    <>
-      {particles.map((p, i) => (
-        <div
-          key={i}
-          className="cta-particle"
-          style={{
-            width: p.size,
-            height: p.size,
-            backgroundColor: p.color,
-            boxShadow: `0 0 6px ${p.color}`,
-            top: p.top,
-            left: p.left,
-            '--dur': p.dur,
-            '--delay': p.delay,
-            '--drift-x': p.drift,
-          }}
-        />
-      ))}
-    </>
-  );
-};
-
-/* ── Subtle floating background productivity visuals ── */
-const BackgroundVisuals = () => (
-  <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-    {/* Abstract dashboard card outline */}
-    <div className="absolute top-[15%] right-[8%] w-[180px] h-[110px] rounded-xl border border-ink/[0.03] opacity-[0.4] float-element-2">
-      <div className="m-3 h-2 w-16 rounded bg-ink/[0.04]" />
-      <div className="mx-3 mt-2 h-8 w-24 rounded bg-ink/[0.03]" />
-      <div className="mx-3 mt-2 flex gap-1">
-        <div className="h-1 w-8 rounded bg-ink/[0.04]" />
-        <div className="h-1 w-6 rounded bg-ink/[0.03]" />
-      </div>
-    </div>
-
-    {/* Timer ring outline */}
-    <svg className="absolute bottom-[20%] left-[6%] w-24 h-24 opacity-[0.04] float-element-3" viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="42" fill="none" stroke="#5C6BC0" strokeWidth="2" strokeDasharray="180 84" />
-      <circle cx="50" cy="50" r="30" fill="none" stroke="#7E8CF6" strokeWidth="1" strokeDasharray="120 70" />
-    </svg>
-
-    {/* Focus ring */}
-    <div className="absolute top-[45%] right-[12%] w-16 h-16 rounded-full border border-ink/[0.03] focus-ring-pulse" />
-    <div className="absolute top-[46%] right-[12.5%] w-12 h-12 rounded-full border border-ink/[0.02] focus-ring-pulse" style={{animationDelay:'1s'}} />
-
-    {/* Abstract workflow lines */}
-    <svg className="absolute top-[60%] left-[15%] w-40 h-20 opacity-[0.03] float-element" viewBox="0 0 160 80" fill="none">
-      <path d="M0 40 Q40 10 80 40 T160 40" stroke="#5C6BC0" strokeWidth="1.5" />
-      <path d="M0 50 Q40 20 80 50 T160 50" stroke="#7E8CF6" strokeWidth="1" />
-    </svg>
-
-    {/* Mini graph bars */}
-    <div className="absolute bottom-[35%] right-[5%] flex items-end gap-1 opacity-[0.04] float-element-2">
-      {[16,28,20,36,24,32,18].map((h,i) => <div key={i} className="w-2 rounded-sm bg-ink/40" style={{height:`${h}px`}} />)}
-    </div>
-  </div>
-);
-
 /* ═══════════════════════════════════════════════════════════════
    DistractFree — Landing Page
-   Design language: Apple.com × Linear × Notion × Stripe docs
-   Off-white, structured, left-aligned, calm, research-driven
+   Warm paper, one green accent, serif display type.
+   Styles live in styles/landing.css, scoped under .lp
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Mock chart data for product previews ── */
@@ -114,44 +22,48 @@ const weeklyData = [
   { d: 'Mon', m: 180 }, { d: 'Tue', m: 210 }, { d: 'Wed', m: 155 },
   { d: 'Thu', m: 240 }, { d: 'Fri', m: 195 }, { d: 'Sat', m: 130 }, { d: 'Sun', m: 170 },
 ];
+const HIGHLIGHT_DAY = 'Thu';
 
 const trendData = [
   { w: 'W1', s: 48 }, { w: 'W2', s: 55 }, { w: 'W3', s: 62 },
   { w: 'W4', s: 68 }, { w: 'W5', s: 74 }, { w: 'W6', s: 78 },
 ];
 
-/* ── Animation presets ── */
+/* Chart colours have to be real values (SVG attributes can't read CSS vars) */
+const useLandingPalette = () => {
+  const { isDark } = useTheme();
+  return isDark
+    ? { accent: '#7FC2A3', muted: '#3A3732', surface: '#201F1C', loss: '#E58C78' }
+    : { accent: '#1F5E4A', muted: '#DCD5C9', surface: '#FFFFFF', loss: '#A63D2A' };
+};
+
+/* ── Animation presets (short and quiet) ── */
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 12 },
   visible: (delay = 0) => ({
     opacity: 1, y: 0,
-    transition: { duration: 0.7, ease: [0.25, 0.1, 0.25, 1], delay },
+    transition: { duration: 0.3, ease: 'easeOut', delay },
   }),
 };
 
 const stagger = {
-  visible: { transition: { staggerChildren: 0.12 } },
+  visible: { transition: { staggerChildren: 0.06 } },
 };
 
-/* ── Mini window chrome for product mockups ── */
+/* ── Plain frame for product mockups ── */
 const WindowFrame = ({ children, className = '', title = '' }) => (
-  <div className={`window-frame window-frame-upgrade ${className}`}>
-    <div className="flex items-center gap-2 px-4 py-3 border-b border-ink/[0.06] window-titlebar-upgrade">
-      <div className="window-dot-red window-dot-red-glow" />
-      <div className="window-dot-yellow window-dot-yellow-glow" />
-      <div className="window-dot-green window-dot-green-glow" />
-      {title && <span className="text-[11px] text-fg-2 ml-3 font-medium">{title}</span>}
-    </div>
-    <div className="p-4">{children}</div>
+  <div className={`lp-frame ${className}`}>
+    {title && <div className="lp-frame-title">{title}</div>}
+    <div className="p-5">{children}</div>
   </div>
 );
 
 /* ── Small inline stat for mockup dashboards ── */
 const MiniStat = ({ label, value, sub, className = '' }) => (
-  <div className={`bg-ink/[0.06] rounded-xl p-3 ${className}`}>
-    <p className="text-[10px] text-fg-2 mb-0.5">{label}</p>
-    <p className="text-hi font-semibold text-lg leading-tight">{value}</p>
-    {sub && <p className="text-[10px] text-emerald-400 mt-0.5">{sub}</p>}
+  <div className={`lp-stat ${className}`}>
+    <p className="lp-stat-label">{label}</p>
+    <p className="lp-stat-value">{value}</p>
+    {sub && <p className="lp-stat-sub">{sub}</p>}
   </div>
 );
 
@@ -161,6 +73,7 @@ const MiniStat = ({ label, value, sub, className = '' }) => (
 
 const LandingPage = () => {
   const chart = useChartTheme();
+  const palette = useLandingPalette();
   const [scrolled, setScrolled] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState('');
 
@@ -205,22 +118,14 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen landing-bg text-hi antialiased relative overflow-clip" style={{ background: 'var(--bg-void, #03040a)' }}>
-      {/* 6-Layer Background System */}
-      <BackgroundSystem />
-      <BackgroundVisuals />
-
-      {/* All content above bg system */}
-      <div className="landing-page-root">
+    <div className="lp min-h-screen antialiased relative overflow-clip">
 
       {/* ────────────── NAV ────────────── */}
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 landing-nav-upgrade ${scrolled ? 'nav-scrolled' : ''}`}
-      >
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-xl transition-transform duration-200 group-hover:scale-105 shadow-sm" />
-            <span className="font-semibold text-hi tracking-tight">DistractFree</span>
+      <nav className={`lp-nav ${scrolled ? 'is-scrolled' : ''}`}>
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-5 sm:px-6 h-16">
+          <Link to="/" className="flex items-center gap-2.5 shrink-0">
+            <img src="/favicon.svg" alt="DistractFree Logo" className="w-7 h-7 rounded-md" />
+            <span className="font-semibold text-hi tracking-tight whitespace-nowrap max-[440px]:sr-only">DistractFree</span>
           </Link>
 
           <GlassNavbar
@@ -232,33 +137,27 @@ const LandingPage = () => {
             activePath={activeSection}
           />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <ThemeToggle />
             <a
               href="#"
               onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); }}
-              className="hidden sm:flex items-center gap-2 text-sm font-medium text-fg-soft hover:text-hi px-4 py-2 rounded-full border border-ink/[0.08] bg-ink/[0.04] hover:bg-ink/[0.08] transition-all duration-200"
+              className="lp-nav-link hidden sm:inline-flex items-center gap-2"
+              title="Add to Chrome"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
                 <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M21.17 8H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 <path d="M3.95 6.06L8.54 14.12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 <path d="M10.88 21.94L15.46 13.88" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
-              Add to Chrome
+              <span className="sr-only lg:not-sr-only">Add to Chrome</span>
             </a>
-            <Link
-              to="/login"
-              className="text-sm font-medium text-fg-2 hover:text-hi transition-colors duration-200"
-            >
+            <Link to="/login" className="lp-nav-link">
               Log in
             </Link>
-            <Link
-              to="/register"
-              className="text-sm font-medium text-white px-6 py-2.5 rounded-full landing-nav-cta"
-              style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}
-            >
+            <Link to="/register" className="lp-btn lp-btn-sm">
               Start Free
             </Link>
           </div>
@@ -269,104 +168,89 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 1 — HERO                                       */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="hero-section relative z-10 pt-24 md:pt-32 pb-24 px-6" style={{ background: 'transparent' }}>
-        {/* Dot grid — hero only */}
-        <div className="landing-dot-grid" />
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center" style={{ position: 'relative', zIndex: 1 }}>
+      <section className="lp-hero relative pt-32 md:pt-40 pb-20 md:pb-28 px-5 sm:px-6">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-14 lg:gap-8 items-start">
           {/* LEFT — Copy */}
-          <div className="flex flex-col">
-            <p
-              className="font-medium text-sm mb-5 tracking-wide uppercase animate-fade-up-headline section-label-upgrade"
-            >
-              <span className="hero-badge-upgrade inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px]" style={{background:'rgba(123,111,238,0.08)', color: '#a89fff'}}>
-                <span style={{width:8,height:8,borderRadius:'50%',background:'#a89fff',display:'inline-block',animation:'pulse 1.8s ease infinite'}} />
-                AI-Powered Focus Companion
-                <span style={{background:'var(--brand-subtle,rgba(123,111,238,0.07))',color:'var(--brand,#7b6fee)',fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:4}}>NEW</span>
-              </span>
+          <div className="lg:col-span-6 flex flex-col">
+            <p className="lp-tagline lp-in">
+              AI-Powered Focus Companion
+              <span className="lp-tag">NEW</span>
             </p>
 
-            <h1
-              className="text-4xl md:text-[3.25rem] lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-hi mb-6 animate-fade-up-headline section-headline-upgrade"
-              style={{ animationDelay: '0.1s', letterSpacing: '-2px' }}
-            >
+            <h1 className="lp-display lp-h1 mb-7 lp-in" style={{ animationDelay: '0.05s' }}>
               Focus should feel
               <br />
-              <span className="hero-shimmer-word">empowering,</span> not
+              <span className="lp-underlined">
+                <em>empowering,</em>
+                <svg className="lp-underline" viewBox="0 0 300 18" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M3 12.5c38-5.2 82-8.6 131-8.9 52-.3 101 2.4 163 6.6" />
+                  <path d="M42 15.5c49-3.4 104-4.6 168-2.3" />
+                </svg>
+              </span>{' '}not
               <br />
               restrictive.
             </h1>
 
-            <p
-              className="text-fg-2 text-lg leading-relaxed max-w-lg mb-10 animate-fade-up-subtext"
-              style={{ animationDelay: '0.3s' }}
-            >
+            <p className="lp-lede max-w-md mb-10 lp-in" style={{ animationDelay: '0.1s' }}>
               DistractFree helps you build sustainable focus habits using AI insights
               and a reward-based system — instead of forceful blocking.
             </p>
 
-            <div
-              className="flex flex-wrap gap-3 animate-fade-up-ctas"
-              style={{ animationDelay: '0.5s' }}
-            >
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-2 text-white font-medium px-8 py-3.5 rounded-full hero-btn-primary hero-pulse-ring"
-                style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)', boxShadow: '0 0 0 1px rgba(123,111,238,0.4), 0 4px 24px rgba(108,92,231,0.4), inset 0 1px 0 rgba(255,255,255,0.18)'}}
-              >
+            <div className="flex flex-wrap items-center gap-x-7 gap-y-4 lp-in" style={{ animationDelay: '0.15s' }}>
+              <Link to="/register" className="lp-btn">
                 Start Free
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </Link>
-              <a
-                href="#how-it-works"
-                className="inline-flex items-center gap-2 border border-ink/[0.1] text-fg-soft hover:border-ink/[0.2] hover:bg-ink/[0.04] font-medium px-8 py-3.5 rounded-full spring-hover hero-btn-secondary"
-              >
-                <span className="play-icon-nudge">▶</span>
+              <a href="#how-it-works" className="lp-text-link">
                 See How It Works
               </a>
             </div>
-
           </div>
 
-          {/* RIGHT — Product mockup */}
+          {/* RIGHT — Product mockup, offset and overlapping the edge */}
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.9, ease: [0.25, 0.1, 0.25, 1], delay: 0.2 }}
+            className="lg:col-span-6 lg:mt-14 lg:-mr-16 relative"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut', delay: 0.1 }}
           >
-            <div className="animate-dashboard-float hero-mockup-wrapper">
-              <WindowFrame title="DistractFree — Dashboard" className="hero-mockup-glow">
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <MiniStat label="Today's Focus" value="2h 25m" sub="+18% vs yesterday" />
-                  <MiniStat label="Focus Coins" value="340" sub="+45 today" />
-                  <MiniStat label="Streak" value="12 days" sub="Personal best!" className="hero-stat-streak" />
-                </div>
-                <div className="bg-ink/[0.04] rounded-xl p-3">
-                  <p className="text-[10px] text-fg-2 mb-2">Weekly Focus Time</p>
-                  <ResponsiveContainer width="100%" height={120}>
-                    <BarChart data={weeklyData}>
-                      <Bar dataKey="m" fill="#4A7C6F" radius={[4, 4, 0, 0]} barSize={24} />
-                      <XAxis dataKey="d" stroke={chart.axis} fontSize={9} tickLine={false} axisLine={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </WindowFrame>
-            </div>
+            <div className="lp-hero-backing" aria-hidden="true" />
+            <WindowFrame title="DistractFree — Dashboard" className="lp-hero-frame">
+              <div className="grid grid-cols-3 lp-stat-row mb-6">
+                <MiniStat label="Today's Focus" value="2h 25m" sub="+18% vs yesterday" />
+                <MiniStat label="Focus Coins" value="340" sub="+45 today" />
+                <MiniStat label="Streak" value="12 days" sub="Personal best!" />
+              </div>
+              <div className="lp-chart-block">
+                <p className="lp-stat-label mb-3">Weekly Focus Time</p>
+                <ResponsiveContainer width="100%" height={124}>
+                  <BarChart data={weeklyData}>
+                    <Bar dataKey="m" radius={[3, 3, 0, 0]} barSize={22}>
+                      {weeklyData.map((row) => (
+                        <Cell key={row.d} fill={row.d === HIGHLIGHT_DAY ? palette.accent : palette.muted} />
+                      ))}
+                    </Bar>
+                    <XAxis dataKey="d" stroke={chart.axis} fontSize={10} tickLine={false} axisLine={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </WindowFrame>
           </motion.div>
         </div>
       </section>
 
-      <SectionDivider />
+      <hr className="lp-rule" />
 
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 2 — PROBLEM STATEMENT                          */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative z-10 py-[72px] px-6 problem-section">
-        <div className="max-w-6xl mx-auto">
+      <section className="relative py-20 md:py-24 px-5 sm:px-6">
+        <div className="max-w-5xl mx-auto">
           <motion.h2
-            className="text-3xl md:text-4xl font-bold tracking-tight text-hi mb-16 max-w-2xl mx-auto text-center section-headline-upgrade"
+            className="lp-display lp-h2 mb-14 max-w-2xl"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
@@ -374,59 +258,45 @@ const LandingPage = () => {
           >
             Most website blockers punish.
             <br />
-            <span className="text-fg-2" style={{ fontStyle: 'italic', fontWeight: 300 }}>We motivate.</span>
+            <em className="lp-h2-soft">We motivate.</em>
           </motion.h2>
 
           <motion.div
-            className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto"
+            className="lp-compare"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
             variants={stagger}
-            style={{ position: 'relative' }}
           >
-            {/* VS Badge */}
-            <div className="compare-vs-badge hidden md:flex">VS</div>
-
             {/* Traditional Blockers */}
-            <motion.div
-              className="border border-ink/[0.06] rounded-2xl p-8 bg-ink/[0.03] land-card-upgrade compare-left-card"
-              variants={fadeUp}
-            >
-              <p className="text-sm font-medium text-fg-2 mb-6 uppercase tracking-wide">Traditional blockers</p>
-              <ul className="space-y-4">
+            <motion.div className="lp-compare-col lp-compare-old" variants={fadeUp}>
+              <p className="lp-compare-head">Traditional blockers</p>
+              <ul>
                 {[
                   'Harsh restrictions that create frustration',
                   'Easy to bypass — a quick incognito tab away',
                   'Short-term control with no lasting habits',
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-fg-2">
-                    <span className="mt-1 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center" style={{background:'rgba(255,80,80,0.1)'}}>
-                      <span style={{color:'rgba(255,80,80,0.8)', fontSize: 11, fontWeight: 700}}>×</span>
-                    </span>
-                    <span className="text-[15px] leading-relaxed">{item}</span>
+                  <li key={i}>
+                    <span className="lp-compare-mark" aria-hidden="true">×</span>
+                    <span className="lp-strike">{item}</span>
                   </li>
                 ))}
               </ul>
             </motion.div>
 
             {/* DistractFree */}
-            <motion.div
-              className="border border-indigo-500/20 rounded-2xl p-8 bg-indigo-500/[0.06] land-card-upgrade compare-right-card"
-              variants={fadeUp}
-            >
-              <p className="text-sm font-medium mb-6 uppercase tracking-wide section-label-upgrade">DistractFree</p>
-              <ul className="space-y-4">
+            <motion.div className="lp-compare-col lp-compare-new" variants={fadeUp}>
+              <p className="lp-compare-head">DistractFree</p>
+              <ul>
                 {[
                   'Reward-based system that makes focus feel good',
                   'AI-guided insights that adapt to your patterns',
                   'Long-term habit building, not temporary fixes',
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-gray-200">
-                    <span className="mt-1 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center" style={{background:'rgba(0,212,140,0.1)'}}>
-                      <span style={{color:'var(--teal, #00d4c8)', fontSize: 11, fontWeight: 700}}>✓</span>
-                    </span>
-                    <span className="text-[15px] leading-relaxed">{item}</span>
+                  <li key={i}>
+                    <span className="lp-compare-mark" aria-hidden="true">✓</span>
+                    <span>{item}</span>
                   </li>
                 ))}
               </ul>
@@ -435,151 +305,99 @@ const LandingPage = () => {
         </div>
       </section>
 
-      <SectionDivider />
 
-
-      {/* ═══════════════════════════════════════════════════════ */}
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3 — BRAND FILM                                 */}
       {/* ═══════════════════════════════════════════════════════ */}
       <BrandFilm />
 
-      <SectionDivider />
-
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3.5 — SMART WEBSITE BLOCKING                   */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative z-10 py-24 px-6 smart-blocking-section">
+      <section className="relative py-24 md:py-28 px-5 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div
-            className="mb-16"
+            className="mb-14 md:mb-16"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
             variants={stagger}
           >
-            <motion.p
-              className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade"
-              variants={fadeUp}
-              style={{letterSpacing:'2px'}}
-            >
+            <motion.p className="lp-marker" data-n="02" variants={fadeUp}>
               Website blocking
             </motion.p>
-            <motion.h2
-              className="text-3xl md:text-4xl font-bold tracking-tight text-hi max-w-xl mb-4 section-headline-upgrade"
-              variants={fadeUp}
-            >
+            <motion.h2 className="lp-display lp-h2 max-w-xl mb-5" variants={fadeUp}>
               Smart Website Blocking — On Your Terms
             </motion.h2>
-            <motion.p
-              className="text-fg-2 text-[15px] leading-relaxed max-w-lg"
-              variants={fadeUp}
-            >
+            <motion.p className="lp-body max-w-lg" variants={fadeUp}>
               During focus sessions, selected websites are temporarily paused.
               You stay in control — always.
             </motion.p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left — Feature list */}
-            <motion.div
+          <div className="grid lg:grid-cols-12 gap-14 lg:gap-10 items-center">
+            {/* Left — Numbered steps */}
+            <motion.ol
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
               variants={stagger}
-              className="space-y-5"
+              className="lp-steps lg:col-span-5"
             >
               {[
                 {
-                  icon: (
-                    <svg className="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
-                    </svg>
-                  ),
                   title: 'You choose what to block',
                   desc: 'Add any website to your block list. Nothing is forced — you decide what counts as a distraction.',
                 },
                 {
-                  icon: (
-                    <svg className="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
-                  ),
                   title: 'AI detects distraction risk',
                   desc: 'Our model learns your patterns and flags high-risk periods — so blocking is smarter, not stricter.',
                 },
                 {
-                  icon: (
-                    <svg className="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  ),
                   title: 'Earn Focus Coins for staying focused',
                   desc: 'Every focused minute earns coins. Consistency builds momentum and unlocks rewards.',
                 },
                 {
-                  icon: (
-                    <svg className="w-5 h-5 text-sage" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                    </svg>
-                  ),
                   title: 'Unlock sites intentionally',
                   desc: 'Need a break? Spend Focus Coins to temporarily access blocked sites. It\'s your choice, always.',
                 },
               ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  className="flex gap-4 spring-hover"
-                  variants={fadeUp}
-                >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{background:'var(--brand-subtle, rgba(123,111,238,0.07))', border:'1px solid var(--bd-brand, rgba(123,111,238,0.28))'}}>
-                    {item.icon}
-                  </div>
+                <motion.li key={i} className="lp-step" variants={fadeUp}>
+                  <span className="lp-step-num" aria-hidden="true">{i + 1}</span>
                   <div>
-                    <h3 className="text-hi font-semibold text-[15px] mb-1">{item.title}</h3>
-                    <p className="text-fg-2 text-sm leading-relaxed">{item.desc}</p>
+                    <h3 className="lp-step-title">{item.title}</h3>
+                    <p className="lp-step-desc">{item.desc}</p>
                   </div>
-                </motion.div>
+                </motion.li>
               ))}
-            </motion.div>
+            </motion.ol>
 
             {/* Right — Mock blocked screen */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              className="lg:col-span-6 lg:col-start-7 relative"
+              initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              <div className="land-card land-card-upgrade rounded-2xl overflow-hidden">
-                {/* Fake browser chrome */}
-                <div className="flex items-center gap-2 px-4 py-3 border-b window-titlebar-upgrade">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57] window-dot-red-glow" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E] window-dot-yellow-glow" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#28C840] window-dot-green-glow" />
-                  <div className="flex-1 mx-4">
-                    <div className="rounded-lg px-3 py-1.5 text-xs text-fg-2" style={{background:'var(--bg-overlay, #191d38)', border:'1px solid var(--bd-1)'}}>
-                      twitter.com
-                    </div>
+              <div className="lp-frame lp-frame-tilt overflow-hidden">
+                {/* Address bar */}
+                <div className="lp-frame-bar">
+                  <div className="lp-address">
+                    twitter.com
                   </div>
                 </div>
 
                 {/* Blocked content */}
-                <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                  {/* Shield icon */}
-                  <div className="w-14 h-14 rounded-2xl shield-glow-wrap flex items-center justify-center mb-6">
-                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="url(#shieldGrad)" strokeWidth={1.5}>
-                      <defs>
-                        <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="var(--brand, #7b6fee)" />
-                          <stop offset="100%" stopColor="var(--teal, #00d4c8)" />
-                        </linearGradient>
-                      </defs>
+                <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+                  <div className="lp-shield mb-6">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                     </svg>
                   </div>
 
-                  <h3 className="text-xl font-semibold text-hi mb-2">
+                  <h3 className="lp-display text-[1.75rem] leading-tight text-hi mb-1">
                     This site is paused
                   </h3>
                   <p className="text-fg-2 text-sm mb-8">
@@ -587,21 +405,26 @@ const LandingPage = () => {
                   </p>
 
                   {/* Timer */}
-                  <div className="mb-6">
-                    <p className="text-xs text-fg-2 uppercase tracking-wide mb-2" style={{letterSpacing:'2px'}}>Return in</p>
-                    <p className="text-3xl font-bold text-hi tracking-tight font-mono countdown-glow">
+                  <div className="mb-7">
+                    <p className="text-xs text-fg-2 mb-1.5">Return in</p>
+                    <p className="lp-countdown">
                       18:42
                     </p>
                   </div>
 
-                  {/* Divider */}
-                  <div className="w-12 h-px mb-6" style={{background:'linear-gradient(90deg, transparent, var(--bd-2, rgba(255,255,255,0.08)), transparent)'}} />
+                  <div className="w-10 h-px mb-7 bg-ink/15" />
 
-                  {/* Unlock button */}
-                  <button className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-full spring-hover" style={{background:'var(--brand-subtle)', border:'1px solid var(--bd-brand)', color:'var(--brand, #7b6fee)'}}>
-                    <span style={{width:8,height:8,borderRadius:'50%',background:'#f0c040',display:'inline-block'}} />
-                    Unlock using 10 Focus Coins
-                  </button>
+                  {/* Unlock button + hand-drawn note */}
+                  <div className="relative">
+                    <button className="lp-coin-btn">
+                      <span className="lp-coin-dot" aria-hidden="true" />
+                      Unlock using 10 Focus Coins
+                    </button>
+                    <svg className="lp-annotation" viewBox="0 0 120 90" fill="none" aria-hidden="true">
+                      <path d="M112 8c-6 22-22 40-48 52-14 6.5-29 9.5-46 10" />
+                      <path d="M30 60.5 16.5 70.4 31 78" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -609,52 +432,51 @@ const LandingPage = () => {
         </div>
       </section>
 
-      <SectionDivider />
-
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 4 — PRODUCT PREVIEW                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="product" className="relative z-10 py-24 px-6 product-section product-ambient-glow">
-        <div className="max-w-6xl mx-auto" style={{position:'relative', zIndex:1}}>
+      <section id="product" className="lp-alt relative py-24 md:py-28 px-5 sm:px-6">
+        <div className="max-w-6xl mx-auto">
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
             variants={fadeUp}
-            className="text-center mb-16"
+            className="text-center mb-14"
           >
-            <h2 className="text-3xl sm:text-4xl font-semibold text-hi tracking-tight mb-3 section-headline-upgrade">
+            <h2 className="lp-display lp-h2">
               See what you're building toward.
             </h2>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Analytics Dashboard */}
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            {/* Analytics Dashboard — outlined */}
             <motion.div
+              className="lg:col-span-7"
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
               variants={fadeUp}
             >
               <WindowFrame title="Analytics" className="h-full">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 lp-stat-row">
                     <MiniStat label="This Week" value="18.5h" sub="+3.2h vs last week" />
                     <MiniStat label="Focus Score" value="78/100" sub="+6 points" />
                   </div>
-                  <div className="bg-ink/[0.04] rounded-xl p-3">
-                    <p className="text-[10px] text-fg-2 mb-2">Improvement Trend</p>
-                    <ResponsiveContainer width="100%" height={100}>
+                  <div className="lp-chart-block">
+                    <p className="lp-stat-label mb-3">Improvement Trend</p>
+                    <ResponsiveContainer width="100%" height={120}>
                       <AreaChart data={trendData}>
                         <defs>
                           <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#00d4c8" stopOpacity={0.25} />
-                            <stop offset="100%" stopColor="#00d4c8" stopOpacity={0} />
+                            <stop offset="0%" stopColor={palette.accent} stopOpacity={0.14} />
+                            <stop offset="100%" stopColor={palette.accent} stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <Area type="monotone" dataKey="s" stroke="#00d4c8" strokeWidth={2} fill="url(#trendFill)" dot={false} />
-                        <XAxis dataKey="w" stroke={chart.axis} fontSize={9} tickLine={false} axisLine={false} />
+                        <Area type="monotone" dataKey="s" stroke={palette.accent} strokeWidth={2} fill="url(#trendFill)" dot={false} />
+                        <XAxis dataKey="w" stroke={chart.axis} fontSize={10} tickLine={false} axisLine={false} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -662,165 +484,142 @@ const LandingPage = () => {
               </WindowFrame>
             </motion.div>
 
-            {/* Focus Timer + Coins */}
-            <div className="space-y-6">
+            {/* Focus Timer + Coins — borderless, separated by rules */}
+            <div className="lg:col-span-5 lg:pt-6">
               <motion.div
+                className="lp-plain-card"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }}
                 variants={fadeUp}
               >
-                <WindowFrame title="Focus Timer">
-                  <div className="flex items-center gap-6 py-2">
-                    {/* Timer ring */}
-                    <div className="relative w-24 h-24 flex-shrink-0">
-                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
-                        {/* Glow ring */}
-                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(0,212,200,0.2)" strokeWidth="10"
-                          strokeDasharray="264" strokeDashoffset="71" strokeLinecap="round" className="ring-timer-glow" />
-                        {/* Progress ring */}
-                        <circle cx="50" cy="50" r="42" fill="none" stroke="#00d4c8" strokeWidth="6"
-                          strokeDasharray="264" strokeDashoffset="71" strokeLinecap="round" />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-[7px] font-medium" style={{color:'var(--teal, #00d4c8)'}}>In Progress</span>
-                        <span className="text-hi font-semibold text-sm" style={{fontFamily:'monospace', filter:'drop-shadow(0 0 8px rgba(0,212,200,0.4))'}}>18:32</span>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-hi font-semibold text-base">Deep Work Session</p>
-                      <p className="text-fg-2 text-[11px] mt-1">25 min &middot; Earn up to 20 coins</p>
+                <p className="lp-plain-title">Focus Timer</p>
+                <div className="flex items-center gap-6">
+                  {/* Timer ring */}
+                  <div className="relative w-24 h-24 flex-shrink-0">
+                    <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90" aria-hidden="true">
+                      <circle cx="50" cy="50" r="42" fill="none" stroke={palette.muted} strokeWidth="5" />
+                      <circle cx="50" cy="50" r="42" fill="none" stroke={palette.accent} strokeWidth="5"
+                        strokeDasharray="264" strokeDashoffset="71" strokeLinecap="round" />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-[8px] font-medium lp-accent-text">In Progress</span>
+                      <span className="text-hi font-semibold text-sm tabular-nums">18:32</span>
                     </div>
                   </div>
-                </WindowFrame>
+                  <div>
+                    <p className="lp-display text-[1.6rem] leading-tight text-hi">Deep Work Session</p>
+                    <p className="text-fg-2 text-xs mt-1">25 min &middot; Earn up to 20 coins</p>
+                  </div>
+                </div>
               </motion.div>
 
               <motion.div
+                className="lp-plain-card"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }}
                 variants={fadeUp}
-                custom={0.1}
+                custom={0.05}
               >
-                <WindowFrame title="Coin Activity">
-                  <div className="space-y-2.5">
-                    {[
-                      { desc: 'Focus session (25 min)', amt: '+20', color: 'var(--teal, #00d4c8)' },
-                      { desc: 'Unlocked 5 min break', amt: '-10', color: 'rgba(255,80,80,0.9)' },
-                      { desc: '7-day streak bonus', amt: '+50', color: 'var(--teal, #00d4c8)' },
-                    ].map((tx, i) => (
-                      <div key={i} className="flex items-center justify-between py-1.5">
-                        <span className="text-fg-2 text-[12px]">{tx.desc}</span>
-                        <span className="text-[12px] font-medium" style={{color: tx.color}}>{tx.amt}</span>
-                      </div>
-                    ))}
-                  </div>
-                </WindowFrame>
+                <p className="lp-plain-title">Coin Activity</p>
+                <div className="lp-ledger">
+                  {[
+                    { desc: 'Focus session (25 min)', amt: '+20', color: palette.accent },
+                    { desc: 'Unlocked 5 min break', amt: '-10', color: palette.loss },
+                    { desc: '7-day streak bonus', amt: '+50', color: palette.accent },
+                  ].map((tx, i) => (
+                    <div key={i} className="lp-ledger-row">
+                      <span className="text-fg-2 text-[13px]">{tx.desc}</span>
+                      <span className="text-[13px] font-semibold tabular-nums" style={{ color: tx.color }}>{tx.amt}</span>
+                    </div>
+                  ))}
+                </div>
               </motion.div>
             </div>
           </div>
         </div>
       </section>
 
-      <SectionDivider />
-
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 5 — AI TRANSPARENCY                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative z-10 py-24 px-6 ai-transparency-section">
+      <section className="relative py-24 md:py-28 px-5 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-stretch">
+          <div className="grid lg:grid-cols-12 gap-14 lg:gap-12 items-stretch">
             <motion.div
+              className="lg:col-span-5"
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-80px' }}
               variants={stagger}
             >
-              <motion.p
-                className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade"
-                variants={fadeUp}
-                style={{letterSpacing:'2px'}}
-              >
+              <motion.p className="lp-marker" data-n="03" variants={fadeUp}>
                 AI Transparency
               </motion.p>
-              <motion.h2
-                className="text-3xl md:text-4xl font-bold tracking-tight text-hi mb-6 section-headline-upgrade"
-                variants={fadeUp}
-              >
+              <motion.h2 className="lp-display lp-h2 mb-6" variants={fadeUp}>
                 AI that explains itself.
               </motion.h2>
-              <motion.p
-                className="text-fg-2 text-[15px] leading-relaxed mb-6 max-w-lg"
-                variants={fadeUp}
-              >
+              <motion.p className="lp-body mb-10 max-w-lg" variants={fadeUp}>
                 We use simple, explainable models to predict your distraction patterns.
                 Every recommendation comes with a clear reason — no black-box decisions.
               </motion.p>
-              <motion.div
-                className="space-y-4"
-                variants={fadeUp}
-              >
+              <motion.dl className="lp-tips" variants={fadeUp}>
                 {[
                   {
                     title: 'Pattern detection',
                     desc: 'Your distraction risk increases after 45 minutes. Try 40-minute sessions.',
-                    borderColor: 'var(--brand, #7b6fee)',
                   },
                   {
                     title: 'Peak hours',
                     desc: 'Your focus score peaks between 9-11 AM. Schedule deep work here.',
-                    borderColor: 'var(--teal, #00d4c8)',
                   },
                   {
                     title: 'Break timing',
                     desc: 'A 5-min break every 40 minutes reduces your afternoon distraction rate by 35%.',
-                    borderColor: 'var(--gold, #f0c040)',
                   },
                 ].map((tip, i) => (
-                  <div key={i} className="land-card land-card-upgrade rounded-xl p-4 flex gap-4 spring-hover">
-                    <div className="w-1 rounded-full flex-shrink-0" style={{background: tip.borderColor}} />
-                    <div>
-                      <p className="text-hi font-medium text-sm mb-0.5">{tip.title}</p>
-                      <p className="text-fg-2 text-[13px] leading-relaxed">{tip.desc}</p>
-                    </div>
+                  <div key={i} className="lp-tip">
+                    <dt>{tip.title}</dt>
+                    <dd>{tip.desc}</dd>
                   </div>
                 ))}
-              </motion.div>
+              </motion.dl>
             </motion.div>
 
             {/* Chart visualization */}
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              className="lg:col-span-7"
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              <div className="land-card land-card-upgrade rounded-2xl p-6 h-full flex flex-col justify-center">
-                <p className="text-sm font-medium text-hi mb-1">Distraction Risk by Time</p>
-                <p className="text-xs text-fg-2 mb-4">AI-generated from your last 30 days</p>
-                <ResponsiveContainer width="100%" height={200}>
+              <div className="lp-frame p-6 md:p-8 h-full flex flex-col justify-center">
+                <p className="text-sm font-semibold text-hi mb-1">Distraction Risk by Time</p>
+                <p className="text-xs text-fg-2 mb-5">AI-generated from your last 30 days</p>
+                <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={[
                     { h: '8am', r: 12 }, { h: '10am', r: 8 }, { h: '12pm', r: 22 },
                     { h: '2pm', r: 58 }, { h: '4pm', r: 72 }, { h: '6pm', r: 45 },
                     { h: '8pm', r: 55 }, { h: '10pm', r: 38 },
                   ]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                    <CartesianGrid strokeDasharray="2 4" stroke={chart.grid} vertical={false} />
                     <XAxis dataKey="h" stroke={chart.axis} fontSize={11} tickLine={false} />
                     <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
                     <Line
                       type="monotone"
                       dataKey="r"
-                      stroke="#00d4c8"
+                      stroke={palette.accent}
                       strokeWidth={2}
-                      dot={{ fill: '#00d4c8', r: 3, strokeWidth: 0 }}
-                      activeDot={{ r: 5, fill: '#00d4c8', stroke: '#fff', strokeWidth: 2 }}
+                      dot={{ fill: palette.accent, r: 2.5, strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: palette.accent, stroke: palette.surface, strokeWidth: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
-                <div className="mt-3 flex items-center gap-2 text-xs text-fg-2">
-                  <div className="w-3 h-0.5 rounded" style={{background:'var(--teal, #00d4c8)'}} />
+                <div className="mt-4 flex items-center gap-2 text-xs text-fg-2">
+                  <div className="w-4 h-0.5 lp-accent-bg" />
                   <span>Higher = more vulnerable to distraction</span>
                 </div>
               </div>
@@ -829,169 +628,107 @@ const LandingPage = () => {
         </div>
       </section>
 
-      <SectionDivider />
+      <hr className="lp-rule" />
 
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 6 — BUILT ON RESEARCH                          */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="research" className="relative z-10 py-24 px-6 research-section">
-        <div className="max-w-3xl mx-auto">
-          <motion.div
+      <section id="research" className="relative pt-20 pb-28 md:pt-24 md:pb-32 px-5 sm:px-6">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8">
+          <motion.article
+            className="lg:col-span-8 lg:col-start-3"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
             variants={stagger}
           >
-            <motion.p
-              className="font-medium text-sm mb-3 uppercase tracking-wide section-label-upgrade"
-              variants={fadeUp}
-              style={{letterSpacing:'2px'}}
-            >
+            <motion.p className="lp-marker" data-n="04" variants={fadeUp}>
               Built on research
             </motion.p>
-            <motion.h2
-              className="text-3xl md:text-4xl font-bold tracking-tight text-hi mb-6 section-headline-upgrade"
-              variants={fadeUp}
-            >
+            <motion.h2 className="lp-display lp-h2 mb-8" variants={fadeUp}>
               Grounded in behavioral science.
             </motion.h2>
-            <motion.div className="space-y-5" variants={fadeUp}>
-              <p className="text-fg-2 text-[15px] leading-[1.8]">
+            <motion.div className="lp-article" variants={fadeUp}>
+              <p className="lp-pull">
                 DistractFree draws on established research in habit formation, self-determination theory,
                 and digital wellbeing. The reward-based model is inspired by intrinsic motivation frameworks
                 — the same principles behind why autonomy and competence drive sustained behavior change.
               </p>
-              <p className="text-fg-2 text-[15px] leading-[1.8]">
+              <p>
                 Studies consistently show that punitive approaches to screen time (strict blocking, shame-based
                 trackers) produce short-term compliance but fail to build lasting habits. Our approach prioritizes
                 self-regulation — giving users agency, transparency, and incremental reinforcement.
               </p>
             </motion.div>
-            <motion.div
-              className="mt-8 flex flex-wrap gap-3"
-              variants={fadeUp}
-            >
+            <motion.p className="lp-refs" variants={fadeUp}>
               {['Self-Determination Theory', 'Habit Loop Framework', 'Operant Conditioning', 'Flow State Research'].map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs font-medium rounded-full px-4 py-1.5 spring-hover cursor-pointer"
-                  style={{
-                    color: 'var(--tx-2, #8f8faa)',
-                    border: '1px solid var(--bd-1, rgba(255,255,255,0.042))',
-                    background: 'rgba(255,255,255,0.025)',
-                    transition: 'all 0.2s var(--ease-spring)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'var(--brand-subtle)';
-                    e.target.style.borderColor = 'var(--bd-brand)';
-                    e.target.style.color = 'var(--tx-1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(255,255,255,0.025)';
-                    e.target.style.borderColor = 'var(--bd-1)';
-                    e.target.style.color = 'var(--tx-2)';
-                  }}
-                >
+                <span key={tag} className="lp-ref">
                   {tag}
                 </span>
               ))}
-            </motion.div>
-          </motion.div>
+            </motion.p>
+          </motion.article>
         </div>
       </section>
-
-      <SectionDivider />
 
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* FINAL CTA                                              */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="py-28 px-6 final-cta-section relative overflow-hidden cta-section-upgrade cta-bg-depth">
-        {/* Floating particles */}
-        <CTAParticles />
-
-        {/* Animated floating shapes */}
-        <div className="cta-floating-shapes">
-          <div className="cta-shape cta-shape-1" />
-          <div className="cta-shape cta-shape-2" />
-          <div className="cta-shape cta-shape-3" />
-          <div className="cta-shape cta-shape-4" />
-        </div>
-
+      <section className="px-3 sm:px-6 pb-6">
         <motion.div
-          className="max-w-2xl mx-auto text-center relative z-10"
+          className="lp-cta max-w-6xl mx-auto"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-80px' }}
           variants={stagger}
         >
-          {/* Badge */}
-          <motion.div variants={fadeUp} className="mb-6">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px]" style={{background:'var(--brand-subtle)', border:'1px solid var(--bd-brand)', color:'var(--tx-2)'}}>
-              Free to start · No credit card required
-            </span>
-          </motion.div>
+          <div className="lp-cta-inner">
+            <div>
+              <motion.div variants={fadeUp} className="mb-7">
+                <span className="lp-cta-tag">
+                  Free to start · No credit card required
+                </span>
+              </motion.div>
 
-          <motion.h2
-            className="text-3xl md:text-5xl font-bold tracking-tight text-hi mb-5"
-            variants={fadeUp}
-            style={{letterSpacing: '-2px'}}
-          >
-            <span className="section-headline-upgrade">Build better</span>
-            <br />
-            <span className="hero-shimmer-word" style={{fontSize:'inherit', fontWeight:'inherit'}}>focus habits.</span>
-          </motion.h2>
-          <motion.p
-            className="text-fg-2 text-lg mb-10 max-w-md mx-auto"
-            variants={fadeUp}
-            style={{fontWeight: 300, fontStyle: 'italic'}}
-          >
-            Free to start. No credit card required.
-          </motion.p>
-          <motion.div variants={fadeUp}>
-            <Link
-              to="/register"
-              className="inline-flex items-center gap-2 text-white font-medium px-10 py-4 rounded-full text-base hero-btn-primary hero-pulse-ring cta-btn-upgrade"
-              style={{
-                background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)',
-                boxShadow: '0 0 0 1px rgba(123,111,238,0.4), 0 4px 24px rgba(108,92,231,0.4), inset 0 1px 0 rgba(255,255,255,0.18)',
-                height: 60,
-                fontSize: 16,
-              }}
-            >
-              Create Free Account
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
-          </motion.div>
+              <motion.h2 className="lp-display lp-cta-title mb-5" variants={fadeUp}>
+                <span>Build better</span>
+                <br />
+                <em>focus habits.</em>
+              </motion.h2>
+              <motion.p className="lp-cta-sub" variants={fadeUp}>
+                Free to start. No credit card required.
+              </motion.p>
+            </div>
+            <motion.div variants={fadeUp} className="lp-cta-action">
+              <Link to="/register" className="lp-btn lp-btn-invert lp-btn-lg">
+                Create Free Account
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+            </motion.div>
+          </div>
         </motion.div>
       </section>
 
 
-
       {/* ────────────── FOOTER ────────────── */}
-      <footer className="py-8 px-6 footer-upgrade">
-        {/* Footer top divider */}
-        <div className="section-divider-upgrade mb-8">
-          <div className="divider-glow" />
-          <div className="divider-line" />
-        </div>
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="lp-footer px-5 sm:px-6">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 py-8">
           <div className="flex items-center gap-2.5">
-            <img src="/favicon.svg" alt="DistractFree Logo" className="w-6 h-6 rounded-lg footer-logo-glow" />
-            <span className="text-sm" style={{color:'var(--tx-3, #55556e)'}}>&copy; 2026 DistractFree</span>
+            <img src="/favicon.svg" alt="DistractFree Logo" className="w-6 h-6 rounded-md" />
+            <span className="text-sm text-fg-2">&copy; 2026 DistractFree</span>
           </div>
-          <div className="flex gap-6 text-sm" style={{color:'var(--tx-3, #55556e)'}}>
-            <a href="#privacy" className="hover:text-hi transition-colors duration-200">Privacy</a>
-            <a href="#terms" className="hover:text-hi transition-colors duration-200">Terms</a>
-            <a href="mailto:thokaneram@gmail.com?subject=DistractFree%20Query" className="hover:text-hi transition-colors duration-200">Contact</a>
+          <div className="flex gap-6 text-sm text-fg-2">
+            <a href="#privacy" className="lp-footer-link">Privacy</a>
+            <a href="#terms" className="lp-footer-link">Terms</a>
+            <a href="mailto:thokaneram@gmail.com?subject=DistractFree%20Query" className="lp-footer-link">Contact</a>
           </div>
         </div>
       </footer>
 
-      </div>
     </div>
   );
 };
