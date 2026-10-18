@@ -163,10 +163,83 @@ html.dark .lp::before { filter: invert(1); }
   left: 0;
   right: 0;
   background: var(--lp-bg);
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.2s ease;
+  border-bottom: 1px solid var(--lp-rule);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
-.lp-nav.is-scrolled { border-bottom-color: var(--lp-rule); }
+/* Once you scroll: a step up in tone and a faint lift */
+.lp-nav.is-scrolled {
+  background: var(--lp-surface);
+  box-shadow: 0 1px 0 var(--lp-rule), 0 8px 24px -16px rgb(0 0 0 / 0.25);
+}
+
+/* Wordmark: serif, with "Free" in italic green */
+.lp-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--lp-serif);
+  font-size: 1.55rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--lp-text);
+  white-space: nowrap;
+  border-radius: 6px;
+}
+.lp-wordmark em { font-style: italic; color: var(--lp-accent); }
+
+/* Section links: mono number + label, green rule under the active one */
+.lp-hlink {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 10px 10px;
+  border: 0;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--lp-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+.lp-hlink:hover, .lp-hlink.is-active { color: var(--lp-text); }
+.lp-hlink:focus-visible { outline: 2px solid var(--lp-accent); outline-offset: 2px; }
+.lp-hlink-num {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--lp-muted);
+  opacity: 0.7;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+.lp-hlink:hover .lp-hlink-num, .lp-hlink.is-active .lp-hlink-num { color: var(--lp-accent); opacity: 1; }
+.lp-hlink-rule { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 1.5px; border-radius: 1px; background: var(--lp-accent); }
+
+/* Right-hand actions */
+.lp-nav-divider { width: 1px; height: 20px; margin: 0 4px; background: var(--lp-rule-strong); }
+.lp-nav-icon { border: 1px solid var(--lp-rule); }
+.lp-nav-icon:hover { border-color: var(--lp-rule-strong); }
+.lp-nav-outline {
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--lp-rule-strong);
+  border-radius: 7px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--lp-text);
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.lp-nav-outline:hover { border-color: var(--lp-text); background: var(--lp-bg-2); }
+.lp-nav-outline svg { color: var(--lp-muted); }
+.lp-nav-cta { height: 36px; gap: 6px; }
+.lp-nav-cta svg { transition: transform 0.15s ease; }
+.lp-nav-cta:hover svg { transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { .lp-nav-cta svg, .lp-nav { transition: none; } }
 .lp-nav-link {
   padding: 0.5rem 0.65rem;
   font-size: 0.875rem;

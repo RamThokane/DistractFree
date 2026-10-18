@@ -5,25 +5,21 @@ import { HiOutlineBars3, HiOutlineXMark } from 'react-icons/hi2';
 /**
  * NavItem — Plain text link; the active one gets a thin underline.
  */
-const NavItem = ({ label, path, isActive, onClick }) => {
+const NavItem = ({ label, path, index, isActive, onClick }) => {
   return (
     <button
       onClick={() => onClick(path)}
-      className={`
-        relative px-3 py-2 text-sm font-medium whitespace-nowrap
-        transition-colors duration-150
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-current rounded-[4px]
-        ${isActive ? 'text-hi' : 'text-fg-2 hover:text-hi'}
-      `}
+      className={`lp-hlink ${isActive ? 'is-active' : ''}`}
       style={{ WebkitTapHighlightColor: 'transparent' }}
       role="tab"
       aria-selected={isActive}
       tabIndex={0}
     >
-      <span className="relative z-10">{label}</span>
+      <span className="lp-hlink-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+      <span>{label}</span>
       {isActive && (
         <motion.span
-          className="absolute left-3 right-3 bottom-0.5 h-px bg-current"
+          className="lp-hlink-rule"
           layoutId="navActiveRule"
           transition={{ duration: 0.2, ease: 'easeOut' }}
         />
@@ -59,15 +55,16 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
   return (
     <>
       <div
-        className="hidden md:flex items-center gap-1"
+        className="hidden md:flex items-center gap-1 lg:gap-2"
         role="tablist"
         aria-label="Page navigation"
       >
-        {items.map((item) => (
+        {items.map((item, i) => (
           <NavItem
             key={item.path}
             label={item.label}
             path={item.path}
+            index={i}
             isActive={activeItem === item.path}
             onClick={handleClick}
           />

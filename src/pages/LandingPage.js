@@ -122,10 +122,10 @@ const LandingPage = () => {
 
       {/* ────────────── NAV ────────────── */}
       <nav className={`lp-nav ${scrolled ? 'is-scrolled' : ''}`}>
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-5 sm:px-6 h-16">
-          <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <img src="/favicon.svg" alt="DistractFree Logo" className="w-7 h-7 rounded-md" />
-            <span className="font-semibold text-hi tracking-tight whitespace-nowrap max-[440px]:sr-only">DistractFree</span>
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-5 sm:px-6 h-[72px]">
+          <Link to="/" className="lp-wordmark shrink-0" aria-label="DistractFree home">
+            <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-md" />
+            <span className="max-[440px]:sr-only">Distract<em>Free</em></span>
           </Link>
 
           <GlassNavbar
@@ -137,12 +137,13 @@ const LandingPage = () => {
             activePath={activeSection}
           />
 
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <ThemeToggle />
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <ThemeToggle className="lp-nav-icon" />
+            <span className="lp-nav-divider hidden sm:block" aria-hidden="true" />
             <a
               href="#"
               onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); }}
-              className="lp-nav-link hidden sm:inline-flex items-center gap-2"
+              className="lp-nav-outline hidden sm:inline-flex"
               title="Add to Chrome"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -157,8 +158,11 @@ const LandingPage = () => {
             <Link to="/login" className="lp-nav-link">
               Log in
             </Link>
-            <Link to="/register" className="lp-btn lp-btn-sm">
+            <Link to="/register" className="lp-btn lp-btn-sm lp-nav-cta">
               Start Free
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </Link>
           </div>
         </div>
