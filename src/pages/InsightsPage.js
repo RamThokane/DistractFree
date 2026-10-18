@@ -33,49 +33,6 @@ const riskMeaning = {
 };
 const PRIORITY_TONE = { high: 'danger', medium: 'amber', low: 'accent' };
 
-/* ── Factor breakdown: diverging bars, one row per input ── */
-const FactorBreakdown = ({ reasons }) => {
-  if (!reasons?.length) return null;
-  const max = Math.max(...reasons.map((r) => Math.abs(r.delta || 0)), 0.001);
-  return (
-    <div>
-      <div className="grid grid-cols-[minmax(0,10rem)_1fr_4.5rem] sm:grid-cols-[13rem_1fr_5rem] gap-x-4 pb-2 border-b border-line df-label">
-        <span>Factor</span>
-        <span className="grid grid-cols-2"><span>← Lowers</span><span className="text-right">Raises →</span></span>
-        <span className="text-right">Effect</span>
-      </div>
-      <ul>
-        {reasons.map((r) => {
-          const d = r.delta || 0;
-          const w = `${(Math.abs(d) / max) * 50}%`;
-          const pts = Math.round(d * 1000) / 10;
-          return (
-            <li key={r.feature} className="grid grid-cols-[minmax(0,10rem)_1fr_4.5rem] sm:grid-cols-[13rem_1fr_5rem] gap-x-4 items-center py-3 border-b border-line">
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-text truncate">{r.label}</span>
-                <span className="block df-mono text-xs text-muted truncate">{r.value}{r.condition ? ` · ${r.condition}` : ''}</span>
-              </span>
-              <span className="relative h-2.5" aria-hidden="true">
-                <span className="absolute inset-y-[-6px] left-1/2 w-px bg-line-strong" />
-                {d !== 0 && (
-                  <span
-                    className={`absolute top-0 bottom-0 rounded-sm ${d > 0 ? 'bg-accent left-1/2' : 'bg-text/70 right-1/2'}`}
-                    style={{ width: w }}
-                  />
-                )}
-              </span>
-              <span className={`df-mono text-sm text-right ${d > 0 ? 'text-accent' : d < 0 ? 'text-text' : 'text-muted'}`}>
-                {d > 0 ? '+' : d < 0 ? '−' : '±'}{Math.abs(pts).toFixed(1)}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="text-xs text-muted mt-3">Effect = percentage points each factor adds to or takes from the chance of success.</p>
-    </div>
-  );
-};
-
 /* ── Next-session prediction ── */
 const PredictionPanel = ({ prediction, features, dataStatus }) => {
   const isPersonal = prediction?.source === 'model';
@@ -113,21 +70,17 @@ const PredictionPanel = ({ prediction, features, dataStatus }) => {
             <p className="text-sm text-muted py-6">{prediction?.explanation || 'No prediction available yet.'}</p>
           ) : (
             <>
-              <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-                <div>
-                  <p className="df-label">Why the model thinks so</p>
-                  <p className="text-text-2 mt-2 max-w-prose leading-relaxed">{prediction.explanation}</p>
-                </div>
-                {prediction.modelVersion && <Badge mono>{prediction.modelVersion}</Badge>}
-              </div>
+              <p className="df-label">{isPersonal ? 'Predicted success' : 'Past success rate'}</p>
+              <p className="df-mono text-t-64 leading-none mt-3 text-text">
+                {prediction.successPercent}<span className="text-t-28 text-muted">%</span>
+              </p>
+              <p className="text-sm text-muted mt-2">{riskMeaning[prediction.riskLevel]}</p>
               <ProgressBar
-                className="mb-8"
+                className="mt-6"
                 label={`Successful ${success}% · Not successful ${100 - success}%`}
-                valueLabel={riskMeaning[prediction.riskLevel]}
                 value={success}
                 tone={prediction.riskLevel === 'high' ? 'danger' : prediction.riskLevel === 'medium' ? 'amber' : 'accent'}
               />
-              <FactorBreakdown reasons={prediction.reasons} />
             </>
           )}
         </Card>

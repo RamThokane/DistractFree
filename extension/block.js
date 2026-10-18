@@ -20,10 +20,15 @@ try {
   const unlockBtn = document.getElementById('unlock-btn');
   const strictModeMsg = document.getElementById('strict-mode-msg');
   const quoteEl = document.getElementById('quote-text');
+  const actionsEl = document.getElementById('actions');
+  const confirmEl = document.getElementById('unlock-confirm');
+  const confirmYes = document.getElementById('unlock-confirm-yes');
+  const confirmNo = document.getElementById('unlock-cancel');
 
   // ── State ───────────────────────────────────────
   let isStrictMode = params.get('strict') === '1';
   let hasActiveSession = false;
+  let confirming = false; // the "spend coins?" step is open
 
   // ── Motivational Quotes ─────────────────────────
   const quotes = [
@@ -85,9 +90,13 @@ try {
       // Hide unlock button, show strict mode banner
       unlockBtn.style.display = 'none';
       if (strictModeMsg) strictModeMsg.style.display = 'flex';
+      closeConfirm();
+    } else if (confirming) {
+      // Leave the confirm step alone while it's open
+      if (strictModeMsg) strictModeMsg.style.display = 'none';
     } else {
       // Show unlock button, hide strict mode banner
-      unlockBtn.style.display = 'block';
+      unlockBtn.style.display = '';
       if (strictModeMsg) strictModeMsg.style.display = 'none';
 
       // Don't re-enable if currently processing
@@ -148,8 +157,24 @@ try {
   updateStatus();
   setInterval(updateStatus, 1000);
 
-  // ── Unlock Button ───────────────────────────────
-  unlockBtn.addEventListener('click', async () => {
+  // ── Unlock: confirm first, then spend ───────────
+  function openConfirm() {
+    confirming = true;
+    if (actionsEl) actionsEl.style.display = 'none';
+    if (confirmEl) confirmEl.hidden = false;
+    if (confirmYes) confirmYes.focus();
+  }
+  function closeConfirm() {
+    confirming = false;
+    if (confirmEl) confirmEl.hidden = true;
+    if (actionsEl) actionsEl.style.display = '';
+  }
+  unlockBtn.addEventListener('click', openConfirm);
+  if (confirmNo) confirmNo.addEventListener('click', () => { closeConfirm(); unlockBtn.focus(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && confirming) closeConfirm(); });
+
+  if (confirmYes) confirmYes.addEventListener('click', async () => {
+    closeConfirm();
     unlockBtn.disabled = true;
     unlockBtn.textContent = 'Unlocking…';
 

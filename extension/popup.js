@@ -139,7 +139,7 @@ function setLoginLoading(loading) {
     if (btnText) btnText.textContent = 'Signing in…';
     if (btnLoader) btnLoader.classList.remove('hidden');
   } else {
-    if (btnText) btnText.textContent = 'Sign In';
+    if (btnText) btnText.textContent = 'Sign in';
     if (btnLoader) btnLoader.classList.add('hidden');
   }
 }

@@ -46,18 +46,23 @@
 
     const container = document.createElement('div');
     container.id = 'df-unlock-timer';
-    container.style.position = 'fixed';
-    container.style.top = '10px';
-    container.style.right = '10px';
-    container.style.backgroundColor = 'rgba(0,0,0,0.85)';
-    container.style.color = '#fff';
-    container.style.padding = '8px 12px';
-    container.style.borderRadius = '6px';
-    container.style.zIndex = '2147483647'; // Max z-index
-    container.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-    container.style.fontSize = '14px';
-    container.style.fontWeight = '600';
-    container.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+    // DistractFree look: ink chip, mono numbers (literal values — page CSS can't see our tokens)
+    Object.assign(container.style, {
+      position: 'fixed',
+      top: '12px',
+      right: '12px',
+      background: '#1C1B19',
+      color: '#F4F0E8',
+      padding: '8px 12px',
+      borderRadius: '8px',
+      border: '1px solid rgba(244,240,232,0.14)',
+      zIndex: '2147483647', // Max z-index
+      fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      fontSize: '13px',
+      fontWeight: '500',
+      letterSpacing: '0.01em',
+      boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
+    });
     container.style.pointerEvents = 'none'; // Don't block clicks
     
     // Make sure body exists
@@ -76,7 +81,7 @@
       } else {
         const m = Math.floor(remaining / 60);
         const s = remaining % 60;
-        container.innerText = `⏳ Unlocked: ${m}:${s.toString().padStart(2, '0')}`;
+        container.innerText = `Unlocked · ${m}:${s.toString().padStart(2, '0')} left`;
       }
     };
 

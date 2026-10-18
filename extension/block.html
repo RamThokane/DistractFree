@@ -3,58 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stay Focused — DistractFree</title>
+  <title>This site is paused — DistractFree</title>
+  <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="block.css">
   <script src="theme.js"></script>
 </head>
 <body>
-  <div class="glow glow-1"></div>
-  <div class="glow glow-2"></div>
-
   <header class="topbar">
     <img src="icons/icon48.png" alt="" class="logo">
     <span class="brand">DistractFree</span>
   </header>
 
   <main class="wrap">
-    <div class="card">
-      <div class="badge-icon">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      </div>
-
-      <h1 class="title">Stay focused</h1>
+    <section class="panel" aria-labelledby="page-title">
+      <p class="kicker">Paused by DistractFree</p>
+      <h1 class="title" id="page-title">This site is <em>paused.</em></h1>
+      <p class="site" id="blocked-site">…</p>
       <p class="subtitle" id="subtitle">This site is on your block list.</p>
 
-      <div class="info">
-        <div class="info-row">
-          <span class="label">Website</span>
-          <span class="value" id="blocked-site">…</span>
-        </div>
-        <div class="info-row" id="timer-row">
-          <span class="label" id="timer-label">Session time left</span>
-          <span class="value mono" id="remaining-time">--:--</span>
-        </div>
+      <div class="info" id="timer-row">
+        <span class="label" id="timer-label">Session time left</span>
+        <span class="value mono" id="remaining-time" aria-live="polite">--:--</span>
       </div>
 
       <div id="strict-mode-msg" class="strict" style="display:none;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        <span>Strict Mode is on. Blocked sites can't be unlocked with coins.</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span>Strict mode is on. Blocked sites can't be unlocked with coins.</span>
       </div>
 
-      <div class="actions">
-        <button id="go-back-btn" class="btn btn-primary">Back to work</button>
-        <button id="unlock-btn" class="btn btn-outline">Unlock for 5 coins · 2 min</button>
+      <div class="actions" id="actions">
+        <button id="go-back-btn" class="btn btn-primary">Back to focus</button>
+        <button id="unlock-btn" class="btn btn-secondary">Unlock for 5 coins · 2 min</button>
       </div>
 
-      <div class="quote">
-        <p id="quote-text" class="quote-text">"Discipline is choosing what you want most over what you want now."</p>
+      <div class="confirm" id="unlock-confirm" role="dialog" aria-labelledby="confirm-title" hidden>
+        <p class="confirm-title" id="confirm-title">Spend <span class="mono coin">5 coins</span> on this site?</p>
+        <p class="confirm-text">You'll get 2 minutes. After that it's paused again.</p>
+        <div class="confirm-actions">
+          <button id="unlock-cancel" class="btn btn-ghost">Stay focused</button>
+          <button id="unlock-confirm-yes" class="btn btn-primary">Unlock for 2 min</button>
+        </div>
       </div>
-    </div>
 
-    <p class="foot">Every distraction you resist makes the next one easier.</p>
+      <figure class="quote">
+        <blockquote id="quote-text" class="quote-text">"Discipline is choosing what you want most over what you want now."</blockquote>
+      </figure>
+    </section>
   </main>
+
+  <p class="foot">Every distraction you resist makes the next one easier.</p>
 
   <script src="block.js"></script>
 </body>

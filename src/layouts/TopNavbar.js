@@ -19,15 +19,11 @@ import {
   LuX,
   LuBell,
   LuFlame,
-  LuPanelLeftClose,
-  LuPanelLeftOpen,
-  LuPlay,
-  LuChevronsUpDown,
 } from 'react-icons/lu';
 
 /* ═══════════════════════════════════════════════════════════════
-   App navigation — sidebar (desktop), top bar, and drawer (mobile).
-   Same paper / hairline / serif language as the landing page.
+   App navigation — a flat horizontal bar (same as the landing nav)
+   with a drawer on smaller screens.
    ═══════════════════════════════════════════════════════════════ */
 
 export const navItems = [
@@ -39,19 +35,6 @@ export const navItems = [
   { to: '/dashboard/leaderboard', icon: LuTrophy, label: 'Leaderboard' },
   { to: '/dashboard/settings', icon: LuSettings, label: 'Settings' },
 ];
-
-const EXTRA_TITLES = { '/dashboard/heatmap': 'Focus Heatmap' };
-const COLLAPSE_KEY = 'df-sidebar-collapsed';
-
-const pageTitle = (pathname) => {
-  const path = pathname.replace(/\/+$/, '') || '/dashboard';
-  if (EXTRA_TITLES[path]) return EXTRA_TITLES[path];
-  const hit = navItems.find((n) => n.to === path);
-  return hit ? hit.label : 'Dashboard';
-};
-
-const todayLabel = () =>
-  new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 
 /* Close a popover on outside click or Escape */
 function useDismiss(open, ref, close) {
@@ -70,42 +53,6 @@ function useDismiss(open, ref, close) {
   }, [open, ref, close]);
 }
 
-const NavList = ({ collapsed = false, onNavigate }) => (
-  <nav className="app-nav" aria-label="Main navigation">
-    {navItems.map(({ to, icon: Icon, label }) => (
-      <NavLink
-        key={to}
-        to={to}
-        end={to === '/dashboard'}
-        onClick={onNavigate}
-        title={collapsed ? label : undefined}
-        aria-label={collapsed ? label : undefined}
-        className={({ isActive }) => `app-nav-link ${isActive ? 'is-active' : ''}`}
-      >
-        <Icon className="app-nav-icon" aria-hidden="true" />
-        {!collapsed && <span>{label}</span>}
-      </NavLink>
-    ))}
-  </nav>
-);
-
-const CoinPanel = ({ balance, streak, collapsed }) =>
-  collapsed ? (
-    <Link to="/dashboard/coins" className="app-coin-mini" title={`${balance} Focus Coins`} aria-label={`${balance} Focus Coins`}>
-      <LuCoins aria-hidden="true" />
-      <span className="df-mono">{balance}</span>
-    </Link>
-  ) : (
-    <Link to="/dashboard/coins" className="app-coin-panel">
-      <span className="df-label">Focus Coins</span>
-      <span className="app-coin-value df-mono">{balance}</span>
-      <span className="app-coin-streak">
-        <LuFlame aria-hidden="true" />
-        <span><span className="df-mono">{streak}</span>-day streak</span>
-      </span>
-    </Link>
-  );
-
 const TopNavbar = () => {
   const { user, logout } = useAuth();
   const { balance } = useCoins();
@@ -113,9 +60,6 @@ const TopNavbar = () => {
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem(COLLAPSE_KEY) === '1'; } catch { return false; }
-  });
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -126,13 +70,6 @@ const TopNavbar = () => {
 
   useDismiss(showNotifications, notifRef, () => setShowNotifications(false));
   useDismiss(showProfile, profileRef, () => setShowProfile(false));
-
-  // The main column reads this to leave room for the sidebar
-  useEffect(() => {
-    document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
-    try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch { /* private mode */ }
-    return () => document.documentElement.classList.remove('sidebar-collapsed');
-  }, [collapsed]);
 
   const fetchNotifications = async () => {
     try {
@@ -187,105 +124,55 @@ const TopNavbar = () => {
 
   const initial = user?.name?.charAt(0)?.toUpperCase() || 'U';
   const streak = user?.currentStreak || 0;
-  const onFocusPage = pathname.startsWith('/dashboard/focus');
 
   return (
     <>
-      {/* ── Sidebar (≥1024px) ── */}
-      <aside className={`app-sidebar ${collapsed ? 'is-collapsed' : ''}`} aria-label="Sidebar">
-        <div className="app-sidebar-head">
-          <Link to="/dashboard" className="app-brand" aria-label="DistractFree dashboard">
-            <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
-            {!collapsed && <span>DistractFree</span>}
-          </Link>
-          <button
-            type="button"
-            className="app-icon-btn"
-            onClick={() => setCollapsed((c) => !c)}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? <LuPanelLeftOpen /> : <LuPanelLeftClose />}
-          </button>
-        </div>
-
-        <NavList collapsed={collapsed} />
-
-        <div className="app-sidebar-foot">
-          <CoinPanel balance={balance} streak={streak} collapsed={collapsed} />
-
-          <div className="relative" ref={profileRef}>
-            <button
-              type="button"
-              onClick={() => setShowProfile((v) => !v)}
-              className={`app-user ${collapsed ? 'is-collapsed' : ''}`}
-              aria-label="Account menu"
-              aria-expanded={showProfile}
-            >
-              <span className="app-avatar" aria-hidden="true">{initial}</span>
-              {!collapsed && (
-                <>
-                  <span className="app-user-text">
-                    <span className="app-user-name">{user?.name || 'User'}</span>
-                    {user?.email && <span className="app-user-email">{user.email}</span>}
-                  </span>
-                  <LuChevronsUpDown className="app-user-chev" aria-hidden="true" />
-                </>
-              )}
-            </button>
-
-            <AnimatePresence>
-              {showProfile && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  transition={{ duration: 0.15 }}
-                  className={`app-popover app-popover--up ${collapsed ? 'app-popover--side' : ''}`}
-                >
-                  <div className="app-popover-head">
-                    <p className="text-sm font-semibold text-text truncate">{user?.name || 'User'}</p>
-                    {user?.email && <p className="text-xs text-muted truncate mt-0.5">{user.email}</p>}
-                  </div>
-                  <button onClick={() => { setShowProfile(false); navigate('/dashboard/settings'); }} className="app-menu-item">
-                    <LuSettings aria-hidden="true" />
-                    Settings
-                  </button>
-                  <button onClick={() => { setShowProfile(false); handleLogout(); }} className="app-menu-item app-menu-item--danger">
-                    <LuLogOut aria-hidden="true" />
-                    Log out
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </aside>
-
-      {/* ── Top bar ── */}
       <header className={`app-topbar ${scrolled ? 'is-scrolled' : ''}`} role="banner">
         <div className="app-topbar-inner">
-          {/* Mobile: menu + brand */}
-          <div className="flex items-center gap-2 lg:hidden">
-            <button className="app-icon-btn -ml-2" onClick={() => setMobileOpen(true)} aria-label="Open menu">
-              <LuMenu />
-            </button>
-            <Link to="/dashboard" className="app-brand" aria-label="DistractFree dashboard">
-              <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
-            </Link>
-          </div>
+          {/* Left — logo */}
+          <Link to="/dashboard" className="app-brand shrink-0" aria-label="DistractFree dashboard">
+            <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
+            <span className="hidden sm:inline">DistractFree</span>
+          </Link>
 
-          {/* Title + date */}
-          <div className="app-title-block">
-            <span className="df-label hidden sm:block">{todayLabel()}</span>
-            <h1 className="app-title">{pageTitle(pathname)}</h1>
-          </div>
+          {/* Center — section links (≥1280px) */}
+          <nav className="app-hnav" aria-label="Main navigation">
+            {navItems.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === '/dashboard'}
+                className={({ isActive }) => `app-hnav-link ${isActive ? 'is-active' : ''}`}
+              >
+                {({ isActive }) => (
+                  <>
+                    <span>{label}</span>
+                    {isActive && (
+                      <motion.span
+                        className="app-hnav-rule"
+                        layoutId="appNavRule"
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                      />
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
 
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Link to="/dashboard/coins" className="app-coin-chip lg:hidden" aria-label={`${balance} Focus Coins`}>
+          {/* Right — status + account */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <span className="app-streak-chip hidden sm:inline-flex" title={`${streak}-day streak`}>
+              <LuFlame aria-hidden="true" />
+              <span className="df-mono">{streak}</span>
+              <span className="sr-only">day streak</span>
+            </span>
+            <Link to="/dashboard/coins" className="app-coin-chip" aria-label={`${balance} Focus Coins`} title="Focus Coins">
               <LuCoins aria-hidden="true" />
               <span className="df-mono">{balance}</span>
             </Link>
+
+            <ThemeToggle />
 
             {/* Notification Bell */}
             <div className="relative" ref={notifRef}>
@@ -360,24 +247,57 @@ const TopNavbar = () => {
               </AnimatePresence>
             </div>
 
-            <ThemeToggle />
+            {/* Profile Avatar + menu */}
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => setShowProfile((v) => !v)}
+                className="app-avatar-btn"
+                aria-label="Account menu"
+                aria-expanded={showProfile}
+              >
+                <span className="app-avatar" aria-hidden="true">{initial}</span>
+              </button>
 
-            {!onFocusPage && (
-              <Link to="/dashboard/focus" className="df-btn df-btn--primary df-btn--sm hidden sm:inline-flex">
-                <LuPlay aria-hidden="true" />
-                Start focus session
-              </Link>
-            )}
+              <AnimatePresence>
+                {showProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{ duration: 0.15 }}
+                    className="app-popover app-popover--down"
+                  >
+                    <div className="app-popover-head">
+                      <p className="text-sm font-semibold text-text truncate">{user?.name || 'User'}</p>
+                      {user?.email && <p className="text-xs text-muted truncate mt-0.5">{user.email}</p>}
+                    </div>
+                    <button onClick={() => { setShowProfile(false); navigate('/dashboard/settings'); }} className="app-menu-item">
+                      <LuSettings aria-hidden="true" />
+                      Settings
+                    </button>
+                    <button onClick={() => { setShowProfile(false); handleLogout(); }} className="app-menu-item app-menu-item--danger">
+                      <LuLogOut aria-hidden="true" />
+                      Log out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Hamburger (<1280px) */}
+            <button className="app-icon-btn app-menu-toggle -mr-2" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+              <LuMenu />
+            </button>
           </div>
         </div>
       </header>
 
-      {/* ── Mobile drawer ── */}
+      {/* ── Drawer (<1280px) ── */}
       <AnimatePresence>
         {mobileOpen && (
           <>
             <motion.div
-              className="lg:hidden fixed inset-0 z-[60] bg-black/40"
+              className="fixed inset-0 z-[60] bg-black/40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -385,34 +305,45 @@ const TopNavbar = () => {
               onClick={() => setMobileOpen(false)}
             />
             <motion.div
-              className="app-drawer lg:hidden"
+              className="app-drawer"
               role="dialog"
               aria-modal="true"
               aria-label="Menu"
-              initial={{ x: -300 }}
+              initial={{ x: 300 }}
               animate={{ x: 0 }}
-              exit={{ x: -300 }}
+              exit={{ x: 300 }}
               transition={{ duration: 0.22, ease: 'easeOut' }}
             >
-              <div className="app-sidebar-head">
-                <Link to="/dashboard" className="app-brand">
-                  <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
-                  <span>DistractFree</span>
-                </Link>
-                <button className="app-icon-btn" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+              <div className="flex items-center justify-between h-16 px-5 border-b border-line">
+                <div>
+                  <p className="text-xs text-muted">{getGreeting()}</p>
+                  <p className="text-sm font-semibold text-text">{user?.name || 'User'}</p>
+                </div>
+                <button className="app-icon-btn -mr-2" onClick={() => setMobileOpen(false)} aria-label="Close menu">
                   <LuX />
                 </button>
               </div>
 
-              <div className="px-5 pb-4">
-                <p className="text-xs text-muted">{getGreeting()}</p>
-                <p className="text-sm font-semibold text-text">{user?.name || 'User'}</p>
-              </div>
+              <nav className="flex flex-col gap-0.5 p-3" aria-label="Mobile navigation">
+                {navItems.map(({ to, icon: Icon, label }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={to === '/dashboard'}
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) => `app-drawer-link ${isActive ? 'is-active' : ''}`}
+                  >
+                    <Icon aria-hidden="true" />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+              </nav>
 
-              <NavList onNavigate={() => setMobileOpen(false)} />
-
-              <div className="app-sidebar-foot">
-                <CoinPanel balance={balance} streak={streak} />
+              <div className="mt-auto p-3 border-t border-line flex flex-col gap-2">
+                <div className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span className="text-muted flex items-center gap-1.5"><LuFlame className="text-amber" aria-hidden="true" />Streak</span>
+                  <span className="df-mono text-text">{streak} days</span>
+                </div>
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout(); }}
                   className="app-menu-item app-menu-item--danger rounded-md"

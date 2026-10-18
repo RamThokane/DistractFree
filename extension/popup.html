@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DistractFree</title>
+  <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="styles.css">
   <script src="theme.js"></script>
 </head>
@@ -32,7 +33,7 @@
         <input type="password" id="login-password" class="input" placeholder="Enter password" autocomplete="current-password">
 
         <button id="login-btn" class="btn btn-primary btn-full">
-          <span class="btn-text">Sign In</span>
+          <span class="btn-text">Sign in</span>
           <span class="btn-loader hidden">
             <svg class="spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10" stroke-linecap="round"/></svg>
           </span>
@@ -40,7 +41,7 @@
 
         <div class="divider"><span>or</span></div>
 
-        <button id="sync-dashboard-btn" class="btn btn-soft btn-full">Sync from Dashboard</button>
+        <button id="sync-dashboard-btn" class="btn btn-soft btn-full">Sync from dashboard</button>
         <p class="hint">Signed in with Google on the website? Sync your account here.</p>
 
         <button id="login-link" class="btn btn-ghost btn-full">Create an account</button>
@@ -75,7 +76,7 @@
 
       <div id="strict-badge" class="strict hidden">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        Strict Mode on — blocked sites can't be unlocked with coins
+        Strict mode on — blocked sites can't be unlocked with coins
       </div>
 
       <!-- Hidden holder kept for status styling hooks -->
@@ -85,12 +86,6 @@
       <div id="timer-section" class="card timer-card hidden">
         <div class="timer-ring">
           <svg viewBox="0 0 120 120">
-            <defs>
-              <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#7C5CFC"/>
-                <stop offset="100%" stop-color="#4F8BFF"/>
-              </linearGradient>
-            </defs>
             <circle cx="60" cy="60" r="52" class="timer-track"/>
             <circle cx="60" cy="60" r="52" class="timer-progress" id="timer-progress"/>
           </svg>
@@ -139,7 +134,7 @@
           <span class="muted">Loading sites…</span>
         </div>
 
-        <button id="start-session-btn" class="btn btn-primary btn-full">Start Focus Session</button>
+        <button id="start-session-btn" class="btn btn-primary btn-full">Start focus session</button>
       </div>
 
       <!-- Footer actions -->
