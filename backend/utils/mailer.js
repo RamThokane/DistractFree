@@ -3,9 +3,9 @@
  * Vercel Marketplace, which sets RESEND_API_KEY. Uses Resend's HTTP API
  * directly — no SDK needed.
  *
- * MAIL_FROM sets the sender, e.g. "DistractFree <no-reply@distractfree.site>"
- * (the domain must be verified in Resend). Without it, Resend's shared test
- * sender is used, which only delivers to the Resend account owner's address.
+ * Sender: MAIL_FROM if set, else no-reply@ the domain the integration set up
+ * (RESEND_EMAIL_DOMAIN, which must be verified in Resend), else Resend's
+ * shared test sender (only delivers to the Resend account owner's address).
  *
  * Without RESEND_API_KEY: in development the message is printed to the
  * console (so the reset flow can be tested locally); in production sending
@@ -13,7 +13,8 @@
  */
 
 const RESEND_URL = 'https://api.resend.com/emails';
-const DEFAULT_FROM = 'DistractFree <onboarding@resend.dev>';
+const fromAddress = () => process.env.MAIL_FROM
+  || (process.env.RESEND_EMAIL_DOMAIN ? `DistractFree <no-reply@${process.env.RESEND_EMAIL_DOMAIN}>` : 'DistractFree <onboarding@resend.dev>');
 
 const isConfigured = () => Boolean(process.env.RESEND_API_KEY);
 
@@ -32,7 +33,7 @@ async function sendEmail({ to, subject, text, html }) {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from: process.env.MAIL_FROM || DEFAULT_FROM, to: [to], subject, text, html }),
+    body: JSON.stringify({ from: fromAddress(), to: [to], subject, text, html }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
