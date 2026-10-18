@@ -6,25 +6,25 @@ TOTAL = 50.5
 
 # (pexels id, in-point s, visible duration s incl. crossfade overlap, grade)
 SHOTS = [
-    # 1 · The problem
-    ("6281213", 0.3, 3.4, "cool"),   # phone lights up beside his work
-    ("6281209", 1.5, 3.0, "cool"),   # reaches for the glowing phone
-    ("6281208", 4.0, 3.0, "cool"),   # frustration, fingers on temples
-    ("6281223", 1.0, 2.6, "cool"),   # crumpled drafts by the bin
+    # 1 · The problem: the browser keeps pulling him away
+    ("35331905", 0.3, 3.4, "cool"),    # night, alone at his laptop
+    ("38929040", 0.4, 3.0, "cool"),    # types a social site into Chrome's address bar
+    ("38929041", 6.0, 3.0, "cool"),    # scrolling the feed instead of working
+    ("35331907", 0.6, 2.6, "cool"),    # stuck, staring away from the screen
     # 2 · The turning point
-    ("6281216", 7.0, 5.0, "cool"),   # lets go, deep breath
-    ("6281074", 7.6, 5.0, "neutral"),  # puts on his glasses
+    ("35331903", 1.0, 5.0, "cool"),    # stretches it out, resets
+    ("35331911", 0.3, 5.0, "neutral"), # close-up: back in, eyes on the work
     # 3 · DistractFree in action
-    ("6281075", 2.0, 3.4, "neutral"),  # settles into the work
-    ("6281082", 10.0, 3.6, "neutral"), # deep focus under the lamp
-    ("6281215", 3.0, 3.4, "neutral"),  # writing
-    ("6281083", 5.0, 3.4, "neutral"),  # working through the plans
+    ("35331910", 0.0, 3.4, "neutral"), # typing
+    ("35331906", 1.0, 3.6, "neutral"), # deep focus, profile
+    ("35331909", 1.0, 3.4, "neutral"), # over the shoulder, work on screen
+    ("35331902", 1.0, 3.4, "neutral"), # side view, steady typing
     # 4 · The result
-    ("6281069", 33.0, 4.0, "warm"),  # smiling as it comes together
-    ("6281076", 9.0, 3.6, "warm"),   # calm, confident
-    ("6281068", 3.0, 3.6, "warm"),   # wide: alone, at ease, in the library
+    ("35331912", 2.5, 4.0, "warm"),    # a relaxed sip, back to it
+    ("35331913", 0.5, 3.6, "warm"),    # calm, in the flow
+    ("35331899", 0.0, 3.6, "warm"),    # wide: the dog wanders past, all is well
     # 5 · Brand ending
-    ("6281070", 3.0, 8.7, "warm"),   # the desk, lamp on — runs on under the end card to the final frame
+    ("35331898", 0.0, 8.7, "warm"),    # the room at night — runs on under the end card
 ]
 
 def shot_starts():

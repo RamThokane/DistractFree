@@ -16,21 +16,21 @@ There's no WebM or 4:5 mobile cut yet. The player picks those up automatically i
 
 | Layer | Source | License |
 |---|---|---|
-| Footage | 14 clips from a single Pexels shoot of one student in a library (IDs 6281213, 6281209, 6281208, 6281223, 6281216, 6281074, 6281075, 6281082, 6281215, 6281083, 6281069, 6281076, 6281068, 6281070) | [Pexels License](https://www.pexels.com/license/): free for commercial use, modification allowed, no attribution required |
+| Footage | 12 clips from one Pexels shoot of a man working at his laptop at night (IDs 35331898, 35331899, 35331902, 35331903, 35331905, 35331906, 35331907, 35331909, 35331910, 35331911, 35331912, 35331913), plus two real Chrome screen close-ups of a social feed (38929040, 38929041) | [Pexels License](https://www.pexels.com/license/): free for commercial use, modification allowed, no attribution required |
 | Voiceover | Generated with [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (voice `af_heart`, speed 0.92) via `kokoro-onnx` | Apache-2.0 |
-| Music + sound effects | Synthesised from scratch in `pipeline/audio.py` (pads, piano-like voice, reverb, phone buzz, clock ticks, whoosh, coin chime) | Original, no third-party samples |
+| Music + sound effects | Synthesised from scratch in `pipeline/audio.py` (pads, piano-like voice, reverb, notification pings, clock ticks, whoosh, coin chime) | Original, no third-party samples |
 | Typography / end card | `pipeline/overlay.html`, rendered frame by frame with Inter (Google Fonts, OFL) and the DistractFree logo | Project assets |
 
-The product overlays only show things the app really does: a 25-minute focus session countdown, a blocked site, and "+10 Focus Coins" (the reward for a 25-minute session in `src/utils/coinRules.js`).
+The film is built around the browser, where DistractFree works (it's a Chrome extension plus web dashboard). The product overlays only show things the app really does: a 25-minute focus session countdown, a blocked site (the site seen in the distraction scene), and "+10 Focus Coins" (the reward for a 25-minute session in `src/utils/coinRules.js`).
 
 ## Edit
 
 | Time | Scene | Narration |
 |---|---|---|
-| 0–10 s | Phone lights up beside his work; he reaches for it; frustration; crumpled drafts. Cool, desaturated grade, clock ticking | "Every day, distractions compete for your attention. Every interruption makes it harder to get back into the flow." |
-| 10–19 s | He lets go and breathes, then puts on his glasses | "It's time to take back control of your focus." |
-| 19–32 s | Deep focus. Focus-session, blocked-site and Focus Coins overlays | "DistractFree helps you build better focus habits, reduce digital distractions, and turn consistent effort into meaningful progress." |
-| 32–44 s | Smiling as it comes together; calm and confident. Warm grade | "Start small. Learn from your habits. Make every focused session count." |
+| 0–10 s | Night, alone at his laptop; a social site typed into Chrome's address bar; scrolling the feed; stuck, staring away. Cool grade, clock ticking, notification pings | "Every day, distractions compete for your attention. Every interruption makes it harder to get back into the flow." |
+| 10–19 s | He stretches it out and resets; close-up as he gets back into the work | "It's time to take back control of your focus." |
+| 19–32 s | Deep focus at the laptop, several angles. Focus-session, blocked-site and Focus Coins overlays | "DistractFree helps you build better focus habits, reduce digital distractions, and turn consistent effort into meaningful progress." |
+| 32–44 s | A relaxed sip, calm and in the flow; the dog wanders past. Warm grade | "Start small. Learn from your habits. Make every focused session count." |
 | 44.6–50.5 s | End card: logo draws on, "Make room for what matters." | "DistractFree. Make room for what matters." |
 
 The player overlays a clickable "Start Focusing" button from 45 s (`CTA_FROM` in `BrandFilm.js`).

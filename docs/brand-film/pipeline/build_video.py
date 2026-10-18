@@ -39,7 +39,7 @@ for k, (vid, tin, dur, grade) in enumerate(SHOTS):
     nf = round(dur * FPS)
     seg_frames.append(nf)
     run(["-y", "-ss", f"{tin}", "-i", f"{CLIPS}/{vid}.mp4", "-an",
-         "-vf", f"scale=1920:1080:flags=lanczos,setsar=1,{GRADE[grade]},fps={FPS},format=yuv420p",
+         "-vf", f"scale=1920:1080:flags=lanczos,setsar=1,{GRADE[grade]},fps={FPS},tpad=stop_mode=clone:stop_duration=4,format=yuv420p",
          "-frames:v", str(nf), "-c:v", "libx264", "-preset", "veryfast", "-crf", "12", f"seg{k:02d}.mp4"])
 
 # 2b. Crossfade the shots

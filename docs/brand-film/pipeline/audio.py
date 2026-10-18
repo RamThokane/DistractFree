@@ -178,7 +178,15 @@ def thump(t0, gain=0.25):
     f = 62 * np.exp(-tt * 1.2) + 40
     add(np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tt * 3.2), t0, gain)
 
-buzz(1.6); buzz(3.25, 0.2); buzz(6.3, 0.14)
+def ping(t0, gain=0.07):
+    """Soft two-note desktop notification."""
+    for k, (nn, g) in enumerate((("E6", 1.0), ("B5", 0.8))):
+        n = int(0.5 * SR); tt = np.arange(n) / SR
+        sig = (np.sin(2 * np.pi * hz(m(nn)) * tt) + 0.25 * np.sin(4 * np.pi * hz(m(nn)) * tt)) * np.exp(-tt * 9)
+        sig[:int(0.003 * SR)] *= np.linspace(0, 1, int(0.003 * SR))
+        add(sig * g, t0 + k * 0.11, gain, pan=0.3)
+
+ping(1.5); ping(3.4, 0.06); ping(5.2, 0.055); ping(6.6, 0.05); ping(8.4, 0.045)
 for k in range(int(10.0 / 0.5)):                      # clock ticking under the distraction
     tick(0.25 + k * 0.5, 0.05 if k % 2 == 0 else 0.035, 3800 if k % 2 == 0 else 3000)
 whoosh(9.7)
