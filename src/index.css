@@ -1,56 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import './styles/tokens.css';
+@import './styles/ui.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════
-   THEME TOKENS — the only place colours change between themes.
-   Values are RGB channels so Tailwind opacity modifiers work
-   (see tailwind.config.js). Dark is the default.
+   LEGACY THEME TOKENS → design tokens.
+   Older screens use these names through Tailwind (text-fg,
+   bg-surface, border-ink/10 …). They now point at the shared
+   palette in styles/tokens.css, so there is one source of colour.
    ═══════════════════════════════════════════════════════════ */
 :root {
-  --canvas: 6 9 24;          /* page background */
-  --canvas-2: 13 15 23;      /* alternate section background */
-  --surface: 15 19 41;       /* cards (used with opacity) */
-  --surface-2: 20 23 28;     /* inputs, raised blocks */
-  --surface-3: 26 29 36;     /* hover / popovers */
-  --hi: 255 255 255;         /* strongest text */
-  --fg: 240 238 255;         /* primary text */
-  --fg-soft: 196 193 224;    /* body copy on cards */
-  --fg-2: 156 163 175;       /* secondary text */
-  --fg-lav: 139 138 168;     /* muted labels */
-  --fg-3: 107 114 128;       /* tertiary text */
-  --fg-4: 107 106 133;       /* faint captions */
-  --ink: 255 255 255;        /* base for translucent borders / fills */
-  --card-alpha: 0.6;
-  --card-border: rgba(124, 92, 252, 0.1);
-  --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.03);
-  --nav-bg: rgba(15, 17, 21, 0.8);
-  --overlay: rgba(0, 0, 0, 0.4);
-  --ring-track: rgba(124, 92, 252, 0.08);
-}
-
-html.light {
-  --canvas: 247 248 252;
-  --canvas-2: 241 243 249;
-  --surface: 255 255 255;
-  --surface-2: 255 255 255;
-  --surface-3: 243 244 246;
-  --hi: 17 24 39;
-  --fg: 17 24 39;
-  --fg-soft: 55 65 81;
-  --fg-2: 75 85 99;
-  --fg-lav: 91 97 115;
-  --fg-3: 107 114 128;
-  --fg-4: 107 114 128;
-  --ink: 15 23 42;
+  --canvas: var(--c-paper);
+  --canvas-2: var(--c-paper-2);
+  --surface: var(--c-surface);
+  --surface-2: var(--c-surface);
+  --surface-3: var(--c-paper-3);
+  --hi: var(--c-ink);
+  --fg: var(--c-ink);
+  --fg-soft: var(--c-ink-2);
+  --fg-2: var(--c-muted);
+  --fg-lav: var(--c-muted);
+  --fg-3: var(--c-muted);
+  --fg-4: var(--c-faint);
+  --ink: var(--c-line);
   --card-alpha: 1;
-  --card-border: #E5E7EB;
-  --card-shadow: 0 8px 30px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --nav-bg: rgba(255, 255, 255, 0.78);
-  --overlay: rgba(15, 23, 42, 0.25);
-  --ring-track: rgba(99, 102, 241, 0.12);
+  --card-border: rgb(var(--c-line) / var(--line-alpha));
+  --card-shadow: none;
+  --nav-bg: rgb(var(--c-paper) / 0.9);
+  --overlay: rgb(0 0 0 / 0.35);
+  --ring-track: rgb(var(--c-paper-3));
 }
 
 /* Short colour-only transition while switching themes (class added by ThemeContext) */
@@ -75,9 +55,10 @@ html {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: rgb(var(--canvas));
-  color: rgb(var(--fg));
+  font-family: var(--font-sans);
+  background: var(--paper);
+  color: var(--text);
+  line-height: 1.5;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -91,17 +72,17 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(92, 107, 192, 0.25);
+  background: var(--line-strong);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(92, 107, 192, 0.4);
+  background: var(--faint);
 }
 
 /* ── Selection ── */
 ::selection {
-  background: rgba(92, 107, 192, 0.3);
-  color: rgb(var(--hi));
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 /* ── Theme Transition ── */

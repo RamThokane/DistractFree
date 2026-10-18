@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { CoinProvider } from './context/CoinContext';
+import { ToastProvider } from './components/ui';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './layouts/DashboardLayout';
 
@@ -20,6 +21,7 @@ import ProductivityHeatmapPage from './pages/ProductivityHeatmapPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import SettingsPage from './pages/SettingsPage';
 import CalendarPage from './pages/CalendarPage';
+import StyleguidePage from './pages/StyleguidePage';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || (() => {
   if (process.env.NODE_ENV !== 'production') {
@@ -34,6 +36,7 @@ function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <AuthProvider>
       <CoinProvider>
+      <ToastProvider>
         <Router>
           <AnimatePresence mode="wait">
             <Routes>
@@ -41,6 +44,7 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/styleguide" element={<StyleguidePage />} />
 
               {/* Protected dashboard routes */}
               <Route
@@ -66,6 +70,7 @@ function App() {
             </Routes>
           </AnimatePresence>
         </Router>
+      </ToastProvider>
       </CoinProvider>
     </AuthProvider>
     </GoogleOAuthProvider>

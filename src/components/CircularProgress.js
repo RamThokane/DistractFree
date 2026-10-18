@@ -1,52 +1,23 @@
 import React from 'react';
+import { ProgressRing } from './ui';
 
-const CircularProgress = ({ value = 0, max = 100, size = 160, strokeWidth = 10, color = '#7C5CFC', label, sublabel }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const progress = Math.min(value / max, 1);
-  const offset = circumference - progress * circumference;
+/* Old brand purples/indigos map to the accent; meaningful colours pass through. */
+const LEGACY_BRAND = ['#7c5cfc', '#7e8cf6', '#6366f1', '#5c6bc0', '#9b7fff', '#00d4c8', '#00d4aa'];
 
+/** Legacy API over the shared ProgressRing. */
+const CircularProgress = ({ value = 0, max = 100, size = 160, strokeWidth = 10, color, label, sublabel }) => {
+  const c = color && !LEGACY_BRAND.includes(String(color).toLowerCase()) ? color : undefined;
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      {/* Outer glow ring */}
-      <div
-        className="absolute inset-0 rounded-full animate-pulse-slow"
-        style={{
-          boxShadow: `0 0 ${size * 0.15}px ${color}22, 0 0 ${size * 0.3}px ${color}11`,
-        }}
-      />
-      <svg width={size} height={size} className="-rotate-90">
-        {/* Background track */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          style={{ stroke: 'var(--ring-track)' }}
-          strokeWidth={strokeWidth}
-        />
-        {/* Progress arc with glow */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{
-            transition: 'stroke-dashoffset 1s ease-in-out',
-            filter: `drop-shadow(0 0 6px ${color}66)`,
-          }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {label && <span className="text-2xl font-bold text-fg">{label}</span>}
-        {sublabel && <span className="text-xs text-fg-lav mt-1">{sublabel}</span>}
-      </div>
-    </div>
+    <ProgressRing
+      value={value}
+      max={max}
+      size={size}
+      stroke={Math.max(4, Math.round(strokeWidth * 0.7))}
+      color={c}
+      label={label}
+      sublabel={sublabel}
+      labelSize={Math.round(size * 0.16)}
+    />
   );
 };
 

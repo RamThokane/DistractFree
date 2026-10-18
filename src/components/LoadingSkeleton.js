@@ -1,27 +1,21 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { Skeleton } from './ui';
 
-const LoadingSkeleton = ({ variant = 'card', count = 1 }) => {
-  const variants = {
-    card: 'h-40 rounded-2xl',
-    line: 'h-5 rounded-xl',
-    circle: 'h-20 w-20 rounded-full',
-    stat: 'h-28 rounded-2xl',
-  };
-
-  return (
-    <>
-      {[...Array(count)].map((_, i) => (
-        <motion.div
-          key={i}
-          className={`skeleton w-full ${variants[variant]}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: i * 0.1 }}
-        />
-      ))}
-    </>
-  );
+const SHAPES = {
+  card: { height: 160, radius: 10 },
+  line: { height: 16 },
+  circle: { height: 80, width: 80, radius: '50%' },
+  stat: { height: 112, radius: 10 },
 };
+
+/** Legacy API (variant + count) over the shared Skeleton. */
+const LoadingSkeleton = ({ variant = 'card', count = 1 }) => (
+  <>
+    {Array.from({ length: count }, (_, i) => {
+      const s = SHAPES[variant] || SHAPES.card;
+      return <Skeleton key={i} width={s.width || '100%'} height={s.height} radius={s.radius} className="block" />;
+    })}
+  </>
+);
 
 export default LoadingSkeleton;

@@ -1,0 +1,160 @@
+/* ═══════════════════════════════════════════════════════════════
+   DistractFree design tokens — the single source of truth.
+   Used by the website (imported in src/index.css) and copied into
+   the extension (extension/tokens.css, `npm run sync:tokens`).
+
+   Colours are stored twice: as RGB channels (--c-*) so Tailwind can
+   apply opacity, and as ready-to-use colours (--paper, --ink, …).
+   Theme switches: html.light / html.dark (website), data-theme
+   (extension), falling back to the OS preference.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root,
+html.light,
+[data-theme='light'] {
+  --c-paper: 246 244 239;      /* page */
+  --c-paper-2: 239 235 227;    /* bands, wells, table heads */
+  --c-paper-3: 230 225 215;    /* hover / pressed fills */
+  --c-surface: 251 250 247;    /* cards and inputs, a step above paper */
+  --c-ink: 22 24 29;           /* headings, primary text */
+  --c-ink-2: 58 58 60;         /* body copy */
+  --c-muted: 106 99 89;        /* secondary text (5.3:1 on paper) */
+  --c-faint: 140 133 122;      /* placeholders, decoration only */
+  --c-line: 22 24 29;          /* used at low alpha for hairlines */
+  --c-accent: 26 92 69;        /* the one accent: deep green */
+  --c-accent-hover: 20 74 55;
+  --c-accent-soft: 225 235 228;
+  --c-on-accent: 255 255 255;
+  --c-amber: 183 121 31;       /* coins & rewards only (fills, icons) */
+  --c-amber-ink: 138 90 18;    /* amber text on paper (5.3:1) */
+  --c-amber-soft: 245 233 211;
+  --c-danger: 179 38 30;       /* real errors only */
+  --c-danger-soft: 247 225 222;
+
+  --line-alpha: 0.11;
+  --line-strong-alpha: 0.2;
+  --grain-opacity: 0.035;
+  color-scheme: light;
+}
+
+html.dark,
+[data-theme='dark'] {
+  --c-paper: 23 22 20;
+  --c-paper-2: 30 28 25;
+  --c-paper-3: 40 38 34;
+  --c-surface: 31 29 26;
+  --c-ink: 238 234 226;
+  --c-ink-2: 210 204 193;
+  --c-muted: 166 158 145;
+  --c-faint: 125 118 107;
+  --c-line: 238 234 226;
+  --c-accent: 109 191 152;
+  --c-accent-hover: 134 204 170;
+  --c-accent-soft: 34 52 43;
+  --c-on-accent: 13 34 25;
+  --c-amber: 227 170 69;
+  --c-amber-ink: 232 184 94;
+  --c-amber-soft: 52 42 25;
+  --c-danger: 240 138 126;
+  --c-danger-soft: 58 32 29;
+
+  --line-alpha: 0.1;
+  --line-strong-alpha: 0.18;
+  --grain-opacity: 0.025;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme='light']) {
+    --c-paper: 23 22 20;
+    --c-paper-2: 30 28 25;
+    --c-paper-3: 40 38 34;
+    --c-surface: 31 29 26;
+    --c-ink: 238 234 226;
+    --c-ink-2: 210 204 193;
+    --c-muted: 166 158 145;
+    --c-faint: 125 118 107;
+    --c-line: 238 234 226;
+    --c-accent: 109 191 152;
+    --c-accent-hover: 134 204 170;
+    --c-accent-soft: 34 52 43;
+    --c-on-accent: 13 34 25;
+    --c-amber: 227 170 69;
+    --c-amber-ink: 232 184 94;
+    --c-amber-soft: 52 42 25;
+    --c-danger: 240 138 126;
+    --c-danger-soft: 58 32 29;
+    --line-alpha: 0.1;
+    --line-strong-alpha: 0.18;
+    --grain-opacity: 0.025;
+    color-scheme: dark;
+  }
+}
+
+:root {
+  /* Ready-to-use colours */
+  --paper: rgb(var(--c-paper));
+  --paper-2: rgb(var(--c-paper-2));
+  --paper-3: rgb(var(--c-paper-3));
+  --card: rgb(var(--c-surface));
+  --text: rgb(var(--c-ink));
+  --text-2: rgb(var(--c-ink-2));
+  --muted: rgb(var(--c-muted));
+  --faint: rgb(var(--c-faint));
+  --line: rgb(var(--c-line) / var(--line-alpha));
+  --line-strong: rgb(var(--c-line) / var(--line-strong-alpha));
+  --accent: rgb(var(--c-accent));
+  --accent-hover: rgb(var(--c-accent-hover));
+  --accent-soft: rgb(var(--c-accent-soft));
+  --on-accent: rgb(var(--c-on-accent));
+  --amber: rgb(var(--c-amber));
+  --amber-ink: rgb(var(--c-amber-ink));
+  --amber-soft: rgb(var(--c-amber-soft));
+  --danger: rgb(var(--c-danger));
+  --danger-soft: rgb(var(--c-danger-soft));
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+
+  /* Type */
+  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-28: 1.75rem;
+  --fs-40: 2.5rem;
+  --fs-64: 4rem;
+  --fs-88: 5.5rem;
+  --lh-tight: 1.02;
+  --lh-snug: 1.25;
+  --lh-body: 1.65;
+  --tracking-display: -0.022em;
+  --tracking-label: 0.08em;
+
+  /* Space — 8px grid (4px allowed for hairline nudges) */
+  --s-half: 4px;
+  --s-1: 8px;
+  --s-2: 16px;
+  --s-3: 24px;
+  --s-4: 32px;
+  --s-5: 40px;
+  --s-6: 48px;
+  --s-8: 64px;
+  --s-10: 80px;
+  --s-12: 96px;
+
+  /* Shape & depth */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / 0.28), 0 2px 6px -2px rgb(0 0 0 / 0.12); /* overlays only */
+
+  /* Motion */
+  --dur-fast: 150ms;
+  --dur: 300ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Paper grain (SVG noise, tiled) */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}

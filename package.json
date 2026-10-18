@@ -27,6 +27,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "sync:tokens": "node -e \"require('fs').copyFileSync('src/styles/tokens.css','extension/tokens.css')\"",
     "test": "react-scripts test",
     "test:backend": "npm --prefix backend test",
     "ml:retrain": "npm --prefix backend run ml:retrain --",

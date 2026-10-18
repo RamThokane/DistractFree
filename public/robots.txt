@@ -3,5 +3,6 @@ User-agent: *
 Allow: /
 # Signed-in app pages are private
 Disallow: /dashboard
+Disallow: /styleguide
 
 Sitemap: https://distractfree.site/sitemap.xml
