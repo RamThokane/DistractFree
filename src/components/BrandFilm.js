@@ -22,7 +22,7 @@ const FILM = {
   captions: `${BASE}-captions.vtt`,
 };
 // Brand-ending scene start (seconds) — the clickable CTA appears from here on.
-const CTA_FROM = 44;
+const CTA_FROM = 45;
 const SOUND_PREF_KEY = 'df-film-sound';
 
 const readSoundPref = () => {
@@ -322,7 +322,7 @@ const BrandFilm = () => {
             {showBigPlay && (
               <button type="button" className="film-bigplay" onClick={muted ? enableSound : play} aria-label="Play the DistractFree film with sound">
                 <span className="film-bigplay-ring"><PlayIcon size={28} /></span>
-                <span className="film-bigplay-label">Watch the film · {formatClock(duration || 55)}</span>
+                <span className="film-bigplay-label">Watch the film · {formatClock(duration || 50)}</span>
               </button>
             )}
 

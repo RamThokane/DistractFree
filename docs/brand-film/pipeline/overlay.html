@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=block">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; background: transparent; overflow: hidden; }
+  body { font-family: 'Inter', sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+  .el { position: absolute; opacity: 0; will-change: opacity, transform, filter; }
+
+  .title {
+    left: 132px; bottom: 270px;
+    font-size: 58px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.12;
+    text-shadow: 0 2px 30px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.35);
+    max-width: 1100px;
+  }
+  .title small { display: block; font-size: 20px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.72); margin-bottom: 18px; }
+
+  .pill {
+    left: 132px; top: 118px;
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px 26px 16px 18px; border-radius: 999px;
+    background: rgba(9, 11, 24, 0.62); border: 1px solid rgba(255,255,255,0.16);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+    font-size: 25px; font-weight: 500;
+  }
+  .pill .k { color: rgba(255,255,255,0.62); font-weight: 500; }
+  .pill .mono { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 0.02em; }
+  .pill.second { top: 206px; }
+  .ring { width: 34px; height: 34px; }
+
+  #endcard {
+    inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background:
+      radial-gradient(ellipse 46% 52% at 50% 42%, rgba(110,123,245,0.20), transparent 70%),
+      radial-gradient(ellipse 30% 36% at 66% 70%, rgba(32,215,215,0.08), transparent 70%),
+      #05060d;
+    padding-bottom: 170px; box-sizing: border-box;
+  }
+  #endcard .logo { width: 132px; height: 132px; margin-bottom: 44px; }
+  #endcard h1 { margin: 0; font-size: 84px; font-weight: 700; letter-spacing: -0.035em; }
+  #endcard p { margin: 22px 0 0; font-size: 31px; font-weight: 400; color: rgba(255,255,255,0.68); }
+  #endcard .word { margin-top: 34px; font-size: 22px; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(168,159,255,0.85); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div id="t1" class="el title">Your attention is constantly<br>being pulled away.</div>
+  <div id="t2" class="el title">Take back control<br>of your focus.</div>
+  <div id="t3" class="el title">Build your focus.</div>
+  <div id="t4" class="el title">Break distracting habits.</div>
+  <div id="t5" class="el title">Turn consistency<br>into progress.</div>
+  <div id="t6" class="el title">Progress starts with<br>one focused session.</div>
+
+  <div id="p1" class="el pill">
+    <svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="4"/><circle id="ringArc" cx="18" cy="18" r="14" fill="none" stroke="#7E8CF6" stroke-width="4" stroke-linecap="round" stroke-dasharray="88" stroke-dashoffset="0" transform="rotate(-90 18 18)"/></svg>
+    <span>Focus session</span><span id="clock" class="mono">25:00</span>
+  </div>
+  <div id="p2" class="el pill second">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#20D7D7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+    <span>instagram.com</span><span class="k">blocked · back to work</span>
+  </div>
+  <div id="p3" class="el pill second">
+    <svg width="30" height="30" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#F5B83D"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#B9801A" stroke-width="1.6"/></svg>
+    <span class="mono" style="color:#FFD27A">+10</span><span>Focus Coins</span>
+  </div>
+
+  <div id="endcard" class="el">
+    <svg class="logo" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="120" ry="120" fill="#0E1117"/>
+      <g transform="translate(256, 256) rotate(-90)" fill="none" stroke-width="64" stroke-linecap="round">
+        <circle id="arc1" r="140" stroke="#1F2445" stroke-dasharray="300 1000" stroke-dashoffset="-650"/>
+        <circle id="arc2" r="140" stroke="#6E7BF5" stroke-dasharray="250 1000" stroke-dashoffset="-450"/>
+        <circle id="arc3" r="140" stroke="#20D7D7" stroke-dasharray="480 1000" stroke-dashoffset="0"/>
+      </g>
+      <text x="256" y="324" text-anchor="middle" font-family="Inter, sans-serif" font-size="190" font-weight="900" fill="white">D</text>
+    </svg>
+    <h1 id="endTitle">Make room for what matters.</h1>
+    <p id="endSub">Build better focus habits with DistractFree.</p>
+    <div id="endWord" class="word">DistractFree</div>
+  </div>
+
+<script>
+  // [id, in, out] seconds; every element fades/rises in over 0.7s and fades out over 0.5s
+  const CUES = [
+    ['t1', 1.2, 7.4], ['t2', 11.2, 16.6],
+    ['t3', 20.4, 23.4], ['t4', 23.9, 26.9], ['t5', 27.4, 31.2],
+    ['t6', 32.4, 38.2],
+    ['p1', 19.9, 31.4], ['p2', 23.2, 26.9], ['p3', 28.6, 31.4],
+  ];
+  const END_IN = 44.6;
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
+
+  function show(el, t, tin, tout, rise = 16, blur = 8) {
+    const a = ease((t - tin) / 0.7), b = 1 - ease((t - (tout - 0.5)) / 0.5);
+    const o = t < tin || t > tout ? 0 : Math.min(a, b);
+    el.style.opacity = o;
+    el.style.transform = `translateY(${(1 - a) * rise}px)`;
+    el.style.filter = o > 0 && a < 1 ? `blur(${(1 - a) * blur}px)` : 'none';
+  }
+
+  window.render = (t) => {
+    for (const [id, tin, tout] of CUES) show(document.getElementById(id), t, tin, tout);
+
+    // Focus-session countdown runs in real time from 25:00
+    const left = Math.max(0, 25 * 60 - Math.max(0, t - 19.9));
+    document.getElementById('clock').textContent =
+      `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+    document.getElementById('ringArc').style.strokeDashoffset = 88 * (1 - left / 1500) + 0.0;
+
+    // End card: background fades in, logo arcs draw, then the type
+    const ec = document.getElementById('endcard');
+    ec.style.opacity = ease((t - END_IN) / 0.9);
+    const draw = ease((t - (END_IN + 0.5)) / 1.4);
+    [['arc1', 300, -650], ['arc2', 250, -450], ['arc3', 480, 0]].forEach(([id, len, off]) => {
+      const c = document.getElementById(id);
+      c.setAttribute('stroke-dasharray', `${len * draw} 1000`);
+      c.setAttribute('stroke-dashoffset', off);
+    });
+    show(document.getElementById('endTitle'), t, END_IN + 1.1, 999, 18, 10);
+    show(document.getElementById('endSub'), t, END_IN + 1.7, 999, 12, 6);
+    show(document.getElementById('endWord'), t, END_IN + 2.3, 999, 8, 4);
+    return [...document.querySelectorAll('.el')].some((e) => parseFloat(e.style.opacity) > 0);
+  };
+  window.render(0);
+</script>
+</body>
+</html>
