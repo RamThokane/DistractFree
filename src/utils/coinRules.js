@@ -1,5 +1,5 @@
 /**
- * Focus Coin rules shared by the dashboard and the landing-page demo.
+ * Focus Coin rules shared across the dashboard.
  * Mirrors backend/utils/coinCalculator.js — keep the two in sync.
  */
 

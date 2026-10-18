@@ -9,7 +9,6 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'How It Works', href: '#how-it-works' },
   { label: 'Product', href: '#product' },
   { label: 'Research', href: '#research' },
 ];
@@ -45,7 +44,7 @@ export default function Navbar() {
 
     const observer = new IntersectionObserver(handleIntersection, observerOptions);
 
-    const sections = ['how-it-works', 'product', 'research'];
+    const sections = ['product', 'research'];
     sections.forEach((id) => {
       const el = document.getElementById(id);
       if (el) observer.observe(el);

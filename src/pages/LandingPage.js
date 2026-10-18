@@ -7,7 +7,7 @@ import {
   XAxis, YAxis, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import GlassNavbar from '../components/GlassNavbar';
-import HowItWorksWalkthrough from '../components/HowItWorksWalkthrough';
+import BrandFilm from '../components/BrandFilm';
 import ThemeToggle from '../components/ThemeToggle';
 import '../styles/landing.css';
 
@@ -440,9 +440,9 @@ const LandingPage = () => {
 
       {/* ═══════════════════════════════════════════════════════ */}
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* SECTION 3 — HOW IT WORKS                               */}
+      {/* SECTION 3 — BRAND FILM                                 */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <HowItWorksWalkthrough />
+      <BrandFilm />
 
       <SectionDivider />
 

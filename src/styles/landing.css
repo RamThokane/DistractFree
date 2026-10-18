@@ -1048,7 +1048,6 @@ html.light .landing-page-root .smart-blocking-section,
 html.light .landing-page-root .ai-transparency-section { background: #F5F6FA !important; }
 html.light .landing-page-root .research-section { background: #FFFFFF !important; }
 html.light .landing-page-root .final-cta-section { background: linear-gradient(180deg, #F8FAFF 0%, #F5F3FF 100%) !important; }
-html.light .how-it-works-section .bg-gradient-to-b { background: linear-gradient(180deg, #F7F8FC, #F5F7FF, #F7F8FC) !important; }
 
 /* Navbar */
 html.light .landing-nav-upgrade {

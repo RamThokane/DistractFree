@@ -87,7 +87,7 @@ export default function HeroSection() {
               </svg>
             </a>
             <a
-              href="#how-it-works"
+              href="#product"
               className="group flex items-center gap-2.5 h-14 px-8 rounded-xl font-bold bg-white/4 border border-white/10 text-text-primary spring-hover hover:bg-white/8 hover:border-white/20 active:scale-[0.97]"
             >
               <svg
@@ -97,7 +97,7 @@ export default function HeroSection() {
               >
                 <path d="M8 5v14l11-7z" />
               </svg>
-              See How It Works
+              Explore the Product
             </a>
           </motion.div>
 
