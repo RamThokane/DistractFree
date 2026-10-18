@@ -4,7 +4,7 @@ const { generateToken } = require('../middleware/authMiddleware');
 const { verifyGoogleToken } = require('../config/googleAuth');
 const { validationResult } = require('express-validator');
 const { createNotification } = require('./notificationController');
-const { syncUserStreak } = require('../services/streakService');
+const { syncUserStreak, resolveTimezone } = require('../services/streakService');
 const crypto = require('crypto');
 const { sendEmail, isConfigured: emailConfigured } = require('../utils/mailer');
 
@@ -320,14 +320,18 @@ exports.forgotPassword = async (req, res) => {
 
     const link = `${clientUrl()}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
     const name = (user.name || '').split(' ')[0] || 'there';
+    // A different subject per email stops Gmail threading them together and
+    // hiding the newest link as "trimmed content" (people then click an old one)
+    const tz = await resolveTimezone(user._id);
+    const requestedAt = new Date(now).toLocaleString('en-GB', { timeZone: tz, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     try {
       await sendEmail({
         to: user.email,
-        subject: 'Reset your DistractFree password',
-        text: `Hi ${name},\n\nSomeone (hopefully you) asked to reset the password for your DistractFree account.\n\nChoose a new password here (the link works for 30 minutes, once):\n${link}\n\nIf you didn't ask for this, ignore this email — your password stays the same.\n\n— DistractFree`,
+        subject: `Reset your DistractFree password (${requestedAt})`,
+        text: `Hi ${name},\n\nSomeone (hopefully you) asked to reset the password for your DistractFree account on ${requestedAt}.\n\nChoose a new password here (the link works for 30 minutes, once):\n${link}\n\nIf you didn't ask for this, ignore this email — your password stays the same.\n\n— DistractFree`,
         html: `<div style="font-family:Inter,Segoe UI,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1C1B19;background:#FAF8F5">
   <p style="font-size:15px;margin:0 0 16px">Hi ${name},</p>
-  <p style="font-size:15px;line-height:1.6;margin:0 0 24px">Someone (hopefully you) asked to reset the password for your DistractFree account.</p>
+  <p style="font-size:15px;line-height:1.6;margin:0 0 24px">Someone (hopefully you) asked to reset the password for your DistractFree account on ${requestedAt}.</p>
   <p style="margin:0 0 24px"><a href="${link}" style="display:inline-block;background:#1F5E4A;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:15px;padding:12px 20px;border-radius:8px">Choose a new password</a></p>
   <p style="font-size:13px;line-height:1.6;color:#6B645A;margin:0 0 8px">The link works once, for 30 minutes. If you didn't ask for this, ignore this email — your password stays the same.</p>
   <p style="font-size:13px;color:#6B645A;margin:24px 0 0">— DistractFree</p>
@@ -348,16 +352,17 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { email, token, password } = req.body;
-    const user = await User.findOne({ email }).select('+resetTokens');
+    const user = await User.findOne({ email }).select('+resetTokens +resetPasswordToken +resetPasswordExpires');
 
     const hash = Buffer.from(hashToken(token));
-    const tokens = user?.resetTokens || [];
+    const tokens = [...(user?.resetTokens || [])];
+    if (user?.resetPasswordToken) tokens.push({ hash: user.resetPasswordToken, expires: user.resetPasswordExpires });
     const match = tokens.find((t) => t.hash && crypto.timingSafeEqual(Buffer.from(t.hash), hash));
     const valid = match && match.expires && match.expires.getTime() > Date.now();
     if (!valid) {
       // Reason for the server log only (the visitor gets one generic message)
       const why = !user ? 'no account' : !tokens.length ? 'no outstanding link' : !match ? 'token does not match a recent link' : 'link expired';
-      console.warn(`[Auth] Reset rejected: ${why}`);
+      console.log(`[Auth] Reset rejected: ${why}`);
       return res.status(400).json({
         success: false,
         message: 'This reset link is invalid or has expired. Ask for a new one.',
@@ -366,6 +371,8 @@ exports.resetPassword = async (req, res) => {
 
     user.password = password; // hashed by the pre-save hook
     user.resetTokens = undefined; // every outstanding link stops working
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
     await user.save();
 
     res.json({ success: true, message: 'Password updated. You can sign in now.' });

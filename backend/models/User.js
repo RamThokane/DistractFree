@@ -34,6 +34,9 @@ const userSchema = new mongoose.Schema(
       default: undefined,
       select: false,
     },
+    // Single-link fields from the first version; still accepted until they expire
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
     avatar: {
       type: String,
       default: '',
