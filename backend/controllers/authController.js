@@ -286,6 +286,7 @@ exports.updateProfile = async (req, res) => {
 // Password reset
 // ────────────────────────────────────────────────────
 const RESET_TTL_MS = 30 * 60 * 1000;
+const RESET_TOKENS_KEPT = 3;
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 const clientUrl = () => (process.env.CLIENT_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/+$/, '');
 
@@ -307,12 +308,14 @@ exports.forgotPassword = async (req, res) => {
     }
 
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+resetTokens');
     if (!user) return reply();
 
+    // Keep the newest few unexpired links working (people often ask twice)
     const token = crypto.randomBytes(32).toString('hex');
-    user.resetPasswordToken = hashToken(token);
-    user.resetPasswordExpires = new Date(Date.now() + RESET_TTL_MS);
+    const now = Date.now();
+    const live = (user.resetTokens || []).filter((t) => t.expires && t.expires.getTime() > now);
+    user.resetTokens = [...live, { hash: hashToken(token), expires: new Date(now + RESET_TTL_MS) }].slice(-RESET_TOKENS_KEPT);
     await user.save({ validateBeforeSave: false });
 
     const link = `${clientUrl()}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
@@ -345,14 +348,16 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { email, token, password } = req.body;
-    const user = await User.findOne({ email }).select('+resetPasswordToken +resetPasswordExpires');
+    const user = await User.findOne({ email }).select('+resetTokens');
 
-    const valid = user
-      && user.resetPasswordToken
-      && user.resetPasswordExpires
-      && user.resetPasswordExpires.getTime() > Date.now()
-      && crypto.timingSafeEqual(Buffer.from(user.resetPasswordToken), Buffer.from(hashToken(token)));
+    const hash = Buffer.from(hashToken(token));
+    const tokens = user?.resetTokens || [];
+    const match = tokens.find((t) => t.hash && crypto.timingSafeEqual(Buffer.from(t.hash), hash));
+    const valid = match && match.expires && match.expires.getTime() > Date.now();
     if (!valid) {
+      // Reason for the server log only (the visitor gets one generic message)
+      const why = !user ? 'no account' : !tokens.length ? 'no outstanding link' : !match ? 'token does not match a recent link' : 'link expired';
+      console.warn(`[Auth] Reset rejected: ${why}`);
       return res.status(400).json({
         success: false,
         message: 'This reset link is invalid or has expired. Ask for a new one.',
@@ -360,8 +365,7 @@ exports.resetPassword = async (req, res) => {
     }
 
     user.password = password; // hashed by the pre-save hook
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    user.resetTokens = undefined; // every outstanding link stops working
     await user.save();
 
     res.json({ success: true, message: 'Password updated. You can sign in now.' });
