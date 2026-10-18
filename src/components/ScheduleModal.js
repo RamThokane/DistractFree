@@ -23,15 +23,15 @@ const labelClass = 'df-field-label block mb-2';
  * @param {Function} props.onClose
  * @param {Function} props.onSaved       called after a successful save
  */
-const ScheduleModal = ({ start, occurrence, onClose, onSaved }) => {
+const ScheduleModal = ({ start, occurrence, onClose, onSaved, defaultDuration, defaultTitle }) => {
   const editing = Boolean(occurrence);
   const initialStart = editing ? new Date(occurrence.startAt) : start;
 
-  const [title, setTitle] = useState(occurrence?.title || '');
+  const [title, setTitle] = useState(occurrence?.title || defaultTitle || '');
   const [subject, setSubject] = useState(occurrence?.subject || '');
   const [date, setDate] = useState(toDateInput(initialStart));
   const [time, setTime] = useState(toTimeInput(initialStart));
-  const [duration, setDuration] = useState(String(occurrence?.plannedDuration || 25));
+  const [duration, setDuration] = useState(String(occurrence?.plannedDuration || defaultDuration || 25));
   const [repeat, setRepeat] = useState(occurrence?.repeat || 'none');
   const [repeatDays, setRepeatDays] = useState(occurrence?.repeatDays?.length ? occurrence.repeatDays : [initialStart.getDay()]);
   // Editing one occurrence of a repeating session: just this one, or this and the rest

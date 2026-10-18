@@ -8,6 +8,7 @@ const {
   getHeatmap,
   getYearlyHeatmapData,
   getModelInfo,
+  getSessionRecommendation,
 } = require('../controllers/insightsController');
 const { protect } = require('../middleware/authMiddleware');
 const { validateBrowsingLog, validatePagination } = require('../middleware/validateRequest');
@@ -18,6 +19,9 @@ router.use(protect);
 
 // Full AI Insights endpoint (primary)
 router.get('/full', getFullInsights);
+
+// Best start time × length for the next session
+router.get('/recommendation', getSessionRecommendation);
 
 // Model transparency: training report + live accuracy
 router.get('/model', getModelInfo);

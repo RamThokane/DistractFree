@@ -9,6 +9,7 @@ import { LuSparkles } from 'react-icons/lu';
 import PageTransition from '../components/PageTransition';
 import { Button, Card, Badge, ProgressBar, Skeleton, SkeletonText, EmptyState, ErrorState } from '../components/ui';
 import api from '../services/api';
+import SessionRecommendation from '../components/SessionRecommendation';
 
 /* ── Tooltip ── */
 const ChartTooltip = ({ active, payload, label }) => {
@@ -177,6 +178,11 @@ const InsightsPage = () => {
 
   return (
     <PageTransition>
+      {/* Best next session — the actionable answer first */}
+      <div className="mb-12">
+        <SessionRecommendation compact />
+      </div>
+
       {/* A. AI prediction — shown even with no recent sessions */}
       <PredictionPanel prediction={prediction} features={features} dataStatus={dataStatus} />
 

@@ -17,6 +17,7 @@ const BrowsingLog = require('../models/BrowsingLog');
 const FocusSession = require('../models/FocusSession');
 const { getModelState, getModelInfo, computeFeatureImportances } = require('../ml/activeModel');
 const { getTrainingReport, AUTO_RETRAIN_NEW_SESSIONS } = require('../ml/trainModel');
+const { recommendForUser } = require('../services/sessionRecommender');
 const {
   predictForUser,
   toClientPrediction,
@@ -368,6 +369,19 @@ exports.getYearlyHeatmapData = async (req, res) => {
     res.json({ success: true, ...heatmap });
   } catch (error) {
     console.error('[Insights] Yearly Heatmap error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ────────────────────────────────────────────────────
+// GET /api/insights/recommendation — best start time × length in the next 24h
+// ────────────────────────────────────────────────────
+exports.getSessionRecommendation = async (req, res) => {
+  try {
+    const recommendation = await recommendForUser(req.user._id, { timezone: req.query.tz });
+    res.json({ success: true, recommendation });
+  } catch (error) {
+    console.error('[Insights] Recommendation error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

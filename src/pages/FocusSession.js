@@ -41,13 +41,22 @@ const countsOf = (session) => ({
 // The extension marks the page when it is installed; it is what counts tab switches
 const hasExtension = () => document.documentElement.getAttribute('data-distractfree-extension') === '1';
 
+const initialFromQuery = () => {
+  const m = parseInt(new URLSearchParams(window.location.search).get('minutes'), 10);
+  if (!m || m < 25 || m > 180) return null;
+  const idx = SESSION_PRESETS.findIndex((p) => !p.isCustom && p.seconds === m * 60);
+  return idx !== -1 ? { preset: idx, minutes: m } : { preset: SESSION_PRESETS.findIndex((p) => p.isCustom), minutes: m };
+};
+
 const FocusSession = () => {
   const { refreshCoins } = useCoins();
   const { user } = useAuth();
   const toast = useToast();
-  const [selectedPreset, setSelectedPreset] = useState(0);
-  const [customMinutes, setCustomMinutes] = useState(30);
-  const [timeLeft, setTimeLeft] = useState(SESSION_PRESETS[0].seconds);
+  // A suggested length can arrive as ?minutes=40 (from "Best next session")
+  const [suggested] = useState(initialFromQuery);
+  const [selectedPreset, setSelectedPreset] = useState(suggested ? suggested.preset : 0);
+  const [customMinutes, setCustomMinutes] = useState(suggested ? suggested.minutes : 30);
+  const [timeLeft, setTimeLeft] = useState(suggested ? suggested.minutes * 60 : SESSION_PRESETS[0].seconds);
   const [isRunning, setIsRunning] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [quote, setQuote] = useState(() => getRandomQuote(motivationalQuotes));

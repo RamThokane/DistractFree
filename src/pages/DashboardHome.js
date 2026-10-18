@@ -10,6 +10,7 @@ import { LuTarget, LuArrowUpRight, LuArrowDownRight, LuTimer } from 'react-icons
 import AnimatedCounter from '../components/AnimatedCounter';
 import PageTransition from '../components/PageTransition';
 import NextScheduledCard from '../components/NextScheduledCard';
+import SessionRecommendation from '../components/SessionRecommendation';
 import { Button, Card, Input, Modal, ProgressBar, Skeleton, SkeletonText, ErrorState, EmptyState, Badge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -320,8 +321,13 @@ const DashboardHome = () => {
         </div>
       </div>
 
-      {/* ── Next scheduled session ── */}
+      {/* ── Best next session (time × length) ── */}
       <div className="mt-10">
+        <SessionRecommendation />
+      </div>
+
+      {/* ── Next scheduled session ── */}
+      <div className="mt-8">
         <NextScheduledCard />
       </div>
 
