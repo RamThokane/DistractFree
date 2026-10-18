@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="120" ry="120" fill="#0E1117" />
+  <g transform="translate(256, 256) rotate(-90)" fill="none" stroke-width="64" stroke-linecap="round">
+    <!-- Dark blue arc (bottom layer) -->
+    <circle cx="0" cy="0" r="140" stroke="#1F2445" stroke-dasharray="300 1000" stroke-dashoffset="-650" />
+    <!-- Purple arc (middle layer) -->
+    <circle cx="0" cy="0" r="140" stroke="#6E7BF5" stroke-dasharray="250 1000" stroke-dashoffset="-450" />
+    <!-- Cyan arc (top layer) -->
+    <circle cx="0" cy="0" r="140" stroke="#20D7D7" stroke-dasharray="480 1000" stroke-dashoffset="0" />
+  </g>
+  <text x="256" y="324" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="190" font-weight="900" fill="white">D</text>
+</svg>

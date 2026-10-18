@@ -273,6 +273,23 @@ html.dark .lp::before { filter: invert(1); }
   color: var(--lp-text);
 }
 
+/* Trust line under the hero buttons */
+.lp-trust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 0;
+  margin-top: 2.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--lp-rule);
+  max-width: 28rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--lp-muted);
+}
+.lp-trust span + span::before { content: '·'; margin: 0 0.7rem; color: var(--lp-rule-strong); }
+
 .lp-hero-frame { transform: rotate(0.8deg); }
 .lp-hero-backing {
   position: absolute;

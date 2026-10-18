@@ -172,7 +172,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 1 — HERO                                       */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="lp-hero relative pt-32 md:pt-40 pb-20 md:pb-28 px-5 sm:px-6">
+      <section className="lp-hero relative pt-28 md:pt-32 pb-14 md:pb-16 px-5 sm:px-6">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-14 lg:gap-8 items-start">
           {/* LEFT — Copy */}
           <div className="lg:col-span-6 flex flex-col">
@@ -211,6 +211,12 @@ const LandingPage = () => {
                 See How It Works
               </a>
             </div>
+
+            <p className="lp-trust lp-in" style={{ animationDelay: '0.2s' }}>
+              <span>Free to start</span>
+              <span>Chrome extension</span>
+              <span>No credit card</span>
+            </p>
           </div>
 
           {/* RIGHT — Product mockup, offset and overlapping the edge */}
@@ -251,10 +257,10 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 2 — PROBLEM STATEMENT                          */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative py-20 md:py-24 px-5 sm:px-6">
+      <section className="relative py-14 md:py-16 px-5 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <motion.h2
-            className="lp-display lp-h2 mb-14 max-w-2xl"
+            className="lp-display lp-h2 mb-10 max-w-2xl"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
@@ -319,10 +325,11 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 3.5 — SMART WEBSITE BLOCKING                   */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative py-24 md:py-28 px-5 sm:px-6">
-        <div className="max-w-6xl mx-auto">
+      <section className="relative py-16 md:py-20 px-5 sm:px-6">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-14 lg:gap-10 items-center">
+          <div className="lg:col-span-5">
           <motion.div
-            className="mb-14 md:mb-16"
+            className="mb-10"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
@@ -340,14 +347,13 @@ const LandingPage = () => {
             </motion.p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-12 gap-14 lg:gap-10 items-center">
-            {/* Left — Numbered steps */}
+            {/* Numbered steps */}
             <motion.ol
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: '-60px' }}
               variants={stagger}
-              className="lp-steps lg:col-span-5"
+              className="lp-steps"
             >
               {[
                 {
@@ -376,6 +382,7 @@ const LandingPage = () => {
                 </motion.li>
               ))}
             </motion.ol>
+          </div>
 
             {/* Right — Mock blocked screen */}
             <motion.div
@@ -432,7 +439,6 @@ const LandingPage = () => {
                 </div>
               </div>
             </motion.div>
-          </div>
         </div>
       </section>
 
@@ -440,14 +446,14 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 4 — PRODUCT PREVIEW                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="product" className="lp-alt relative py-24 md:py-28 px-5 sm:px-6">
+      <section id="product" className="lp-alt relative py-16 md:py-20 px-5 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-60px' }}
             variants={fadeUp}
-            className="text-center mb-14"
+            className="text-center mb-10"
           >
             <h2 className="lp-display lp-h2">
               See what you're building toward.
@@ -549,7 +555,7 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 5 — AI TRANSPARENCY                            */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section className="relative py-24 md:py-28 px-5 sm:px-6">
+      <section className="relative py-16 md:py-20 px-5 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-12 gap-14 lg:gap-12 items-stretch">
             <motion.div
@@ -638,22 +644,22 @@ const LandingPage = () => {
       {/* ═══════════════════════════════════════════════════════ */}
       {/* SECTION 6 — BUILT ON RESEARCH                          */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <section id="research" className="relative pt-20 pb-28 md:pt-24 md:pb-32 px-5 sm:px-6">
+      <section id="research" className="relative pt-16 pb-20 md:pt-20 md:pb-24 px-5 sm:px-6">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8">
           <motion.article
-            className="lg:col-span-8 lg:col-start-3"
+            className="lg:col-span-12 grid lg:grid-cols-12 lg:gap-x-12"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
             variants={stagger}
           >
-            <motion.p className="lp-marker" data-n="04" variants={fadeUp}>
+            <motion.p className="lp-marker lg:col-span-4 lg:row-start-1 lg:self-end" data-n="04" variants={fadeUp}>
               Built on research
             </motion.p>
-            <motion.h2 className="lp-display lp-h2 mb-8" variants={fadeUp}>
+            <motion.h2 className="lp-display lp-h2 mb-8 lg:col-span-4 lg:row-start-2 lg:self-start" variants={fadeUp}>
               Grounded in behavioral science.
             </motion.h2>
-            <motion.div className="lp-article" variants={fadeUp}>
+            <motion.div className="lp-article lg:col-start-5 lg:col-span-8 lg:row-start-1 lg:row-span-3" variants={fadeUp}>
               <p className="lp-pull">
                 DistractFree draws on established research in habit formation, self-determination theory,
                 and digital wellbeing. The reward-based model is inspired by intrinsic motivation frameworks
@@ -665,7 +671,7 @@ const LandingPage = () => {
                 self-regulation — giving users agency, transparency, and incremental reinforcement.
               </p>
             </motion.div>
-            <motion.p className="lp-refs" variants={fadeUp}>
+            <motion.p className="lp-refs lg:col-start-5 lg:col-span-8" variants={fadeUp}>
               {['Self-Determination Theory', 'Habit Loop Framework', 'Operant Conditioning', 'Flow State Research'].map((tag) => (
                 <span key={tag} className="lp-ref">
                   {tag}

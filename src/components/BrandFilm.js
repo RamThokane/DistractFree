@@ -261,7 +261,7 @@ const BrandFilm = () => {
   const progress = duration ? (time / duration) * 100 : 0;
 
   return (
-    <section id="how-it-works" ref={sectionRef} className="relative brand-film-section py-24 md:py-28 px-4 sm:px-6 overflow-hidden">
+    <section id="how-it-works" ref={sectionRef} className="relative brand-film-section py-16 md:py-20 px-4 sm:px-6 overflow-hidden">
       <div className="relative z-10 max-w-[1120px] mx-auto">
         <SectionHeading />
 

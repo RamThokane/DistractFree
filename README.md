@@ -20,7 +20,7 @@ A focus-session app with three parts. The Chrome extension blocks distracting si
 |---|---|---|
 | Web dashboard (React, Tailwind) | `src/` | `npm start` |
 | API (Express + MongoDB) | `backend/` | `cd backend && npm run dev` |
-| Chrome extension (Manifest V3, v1.3.0) | `extension/` | load unpacked in `chrome://extensions`, or use `distractfree-extension.zip` |
+| Chrome extension (Manifest V3, v1.3.1) | `extension/` | load unpacked in `chrome://extensions`, or use `distractfree-extension.zip` |
 | Marketing site (Next.js) | `landing/` | `cd landing && npm run dev` |
 | ML training (Python, scikit-learn) | `backend/ml/` | `cd backend && npm run ml:retrain` |
 

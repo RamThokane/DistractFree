@@ -29,9 +29,11 @@ body::before {
 :root[data-theme='dark'] body::before { filter: invert(1); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) body::before { filter: invert(1); } }
 
-.topbar { display: flex; align-items: center; gap: 10px; padding: 24px 32px; }
-.logo { width: 28px; height: 28px; border-radius: 6px; }
-.brand { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+.topbar { display: flex; align-items: center; gap: 10px; padding: 0 32px; height: 72px; border-bottom: 1px solid var(--line); }
+.logo { width: 32px; height: 32px; border-radius: 6px; }
+/* Same wordmark as the website: serif, italic "Free" in green */
+.brand { font-family: var(--font-display); font-size: 1.55rem; line-height: 1; letter-spacing: -0.01em; }
+.brand em { font-style: italic; color: var(--accent); }
 
 .wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 24px 48px; }
 .panel { width: 100%; max-width: 560px; animation: rise var(--dur) var(--ease) both; }
@@ -131,7 +133,7 @@ body::before {
 .foot { padding: 0 32px 28px; color: var(--muted); font-size: var(--fs-12); text-align: center; }
 
 @media (max-width: 480px) {
-  .topbar { padding: 18px 20px; }
+  .topbar { padding: 0 20px; height: 64px; }
   .actions .btn { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
