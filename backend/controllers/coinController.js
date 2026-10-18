@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const CoinTransaction = require('../models/CoinTransaction');
 const FocusSession = require('../models/FocusSession');
+const { syncUserStreak } = require('../services/streakService');
 
 // ────────────────────────────────────────────────────
 // GET /api/coins/balance
@@ -8,6 +9,7 @@ const FocusSession = require('../models/FocusSession');
 exports.getBalance = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    await syncUserStreak(user, req.query.tz);
 
     res.json({
       success: true,

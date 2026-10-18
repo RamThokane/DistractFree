@@ -100,7 +100,7 @@ const WeekStrip = ({ days, todayIndex }) => (
     {days.map((d, i) => {
       const on = d.minutes > 0;
       return (
-        <div key={d.day} role="listitem" className="flex flex-col items-center gap-1.5">
+        <div key={d.date || d.day} role="listitem" className="flex flex-col items-center gap-1.5">
           <div
             className={`w-full aspect-square max-h-14 rounded-md flex items-center justify-center df-mono text-xs border ${
               on ? 'bg-accent text-on-accent border-transparent' : 'bg-paper-2 text-muted border-line'
@@ -253,7 +253,8 @@ const DashboardHome = () => {
   const distractionTrend = data?.distractionTrend || [];
   const coinsEarnedWeekly = data?.coinsEarnedWeekly || [];
   const progressPercent = goalMinutes > 0 ? Math.min(100, (todayFocusMinutes / goalMinutes) * 100) : 0;
-  const todayIndex = (new Date().getDay() + 6) % 7; // weeks run Mon → Sun
+  // The server sends the last 7 days in your timezone, oldest first — today is the last one
+  const todayIndex = weeklyFocusData.length - 1;
   const firstName = (user?.name || 'there').split(' ')[0];
 
   return (
@@ -308,7 +309,7 @@ const DashboardHome = () => {
 
           {weeklyFocusData.length === 7 && (
             <div className="mt-8">
-              <p className="df-label mb-3">This week</p>
+              <p className="df-label mb-3">Last 7 days</p>
               <WeekStrip days={weeklyFocusData} todayIndex={todayIndex} />
             </div>
           )}
@@ -330,7 +331,7 @@ const DashboardHome = () => {
           <div className="flex items-baseline justify-between gap-4 mb-5">
             <div>
               <h3 className="pg-h2">Weekly focus</h3>
-              <p className="pg-note">Minutes per day this week</p>
+              <p className="pg-note">Minutes per day, last 7 days · today on the right</p>
             </div>
           </div>
           {weeklyFocusData.some((d) => d.minutes > 0) ? (
@@ -342,7 +343,7 @@ const DashboardHome = () => {
                 <Tooltip content={<ChartTooltip unit=" min" />} cursor={{ fill: chart.cursor }} />
                 <Bar dataKey="minutes" radius={[3, 3, 0, 0]} barSize={28}>
                   {weeklyFocusData.map((d, i) => (
-                    <Cell key={d.day} fill={i === todayIndex ? chart.accent : chart.accentMuted} />
+                    <Cell key={d.date || d.day} fill={i === todayIndex ? chart.accent : chart.accentMuted} />
                   ))}
                 </Bar>
               </BarChart>

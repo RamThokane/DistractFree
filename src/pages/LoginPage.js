@@ -69,8 +69,8 @@ const LoginPage = () => {
             autoComplete="current-password"
             error={fieldErrors.password}
           />
-          <p className="text-xs text-muted mt-2" title="Password reset isn't available yet">
-            Forgot your password? Reset isn’t available yet — contact support.
+          <p className="mt-2 text-right">
+            <Link to="/forgot-password" className="df-link text-sm">Forgot password?</Link>
           </p>
         </div>
 

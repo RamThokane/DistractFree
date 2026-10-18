@@ -110,6 +110,15 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
+// Reset emails: count every request (the endpoint always answers 200)
+const resetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProduction ? 5 : 50,
+  message: { success: false, message: 'Too many reset requests. Try again in 15 minutes.' },
+});
+app.use('/api/auth/forgot-password', resetLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+
 // ── Routes ─────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/session', sessionRoutes);

@@ -4,7 +4,7 @@ import api from './api';
 export const authService = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/register', data),
-  getMe: () => api.get('/auth/me'),
+  getMe: () => api.get('/auth/me', { params: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } }),
   updateProfile: (data) => api.put('/auth/profile', data),
 };
 
@@ -33,7 +33,7 @@ export const scheduleService = {
 
 /* ── Coins ── */
 export const coinService = {
-  getBalance: () => api.get('/coins/balance'),
+  getBalance: () => api.get('/coins/balance', { params: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } }),
   getHistory: (params) => api.get('/coins/history', { params }),
   getSummary: () => api.get('/coins/summary'),
   unlock: (data) => api.post('/coins/unlock', data),

@@ -1,7 +1,7 @@
 const express = require('express');
-const { register, login, googleAuth, getMe, updateProfile } = require('../controllers/authController');
+const { register, login, googleAuth, getMe, updateProfile, forgotPassword, resetPassword } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
-const { validateRegister, validateLogin } = require('../middleware/validateRequest');
+const { validateRegister, validateLogin, validateForgotPassword, validateResetPassword } = require('../middleware/validateRequest');
 
 const router = express.Router();
 
@@ -11,6 +11,9 @@ router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
 
 router.post('/google', googleAuth);
+
+router.post('/forgot-password', validateForgotPassword, forgotPassword);
+router.post('/reset-password', validateResetPassword, resetPassword);
 
 // ── Protected routes ───────────────────────────────
 

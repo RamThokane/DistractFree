@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const res = await api.get('/auth/me');
+        const res = await api.get('/auth/me', { params: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
         if (res.data.success) {
           setUser(res.data.user);
         } else {

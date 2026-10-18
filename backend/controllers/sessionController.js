@@ -14,6 +14,8 @@ const {
 } = require('../services/predictionService');
 const { safePredict, createFocusSession } = require('../services/focusSessionService');
 const { processDueSchedules, scheduleSummary } = require('../services/scheduleService');
+const { computeStreak, streakAfterCompletion, resolveTimezone } = require('../services/streakService');
+const { localDayNumber, dayFromNumber, zonedTimeToUtc } = require('../utils/timezone');
 
 // ────────────────────────────────────────────────────
 // POST /api/session/start
@@ -81,11 +83,13 @@ exports.endSession = async (req, res) => {
     } else {
       session.status = 'completed';
 
-      // Calculate coins
+      // Calculate coins — the streak bonus uses the streak as it stood before this
+      // session, counted in the user's timezone from their completed sessions
       const user = await User.findById(userId);
+      const streakBefore = await computeStreak(userId, session.timezone, { excludeSessionId: session._id });
       const { baseCoins, streakMultiplier, distractionPenalty, totalCoins } = calculateCoins(
         session.duration,
-        user.currentStreak,
+        streakBefore.current,
         session.distractionAttempts
       );
 
@@ -97,7 +101,9 @@ exports.endSession = async (req, res) => {
       // Credit coins — add total (after penalty) to user balance
       const preEarnBalance = user.focusCoins;
       user.focusCoins += totalCoins;
-      user.updateStreak();
+      user.currentStreak = streakAfterCompletion(streakBefore);
+      user.longestStreak = Math.max(user.longestStreak || 0, streakBefore.longest, user.currentStreak);
+      user.lastSessionDate = session.endTime;
       await user.save();
 
       // Record transaction — one entry for gross earned, one for penalty deducted
@@ -135,8 +141,10 @@ exports.endSession = async (req, res) => {
       // Daily goal reached — only on the session that crosses the goal
       const goal = user.settings?.dailyGoalMinutes || 0;
       if (goal > 0) {
-        const dayStart = new Date(session.endTime);
-        dayStart.setHours(0, 0, 0, 0);
+        // Start of the user's local day (not the server's)
+        const tz = streakBefore.timezone;
+        const today = dayFromNumber(localDayNumber(session.endTime, tz));
+        const dayStart = zonedTimeToUtc({ year: today.year, month: today.month, day: today.day, hour: 0, minute: 0 }, tz);
         const [todayAgg] = await FocusSession.aggregate([
           { $match: { userId: session.userId, status: 'completed', startTime: { $gte: dayStart }, _id: { $ne: session._id } } },
           { $group: { _id: null, minutes: { $sum: '$duration' } } },
@@ -325,7 +333,8 @@ exports.getSessionStats = async (req, res) => {
       },
     ]);
 
-    // Last 7 days daily breakdown
+    // Last 7 days daily breakdown, in the user's timezone
+    const statsTz = await resolveTimezone(userId, req.query.tz);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -339,7 +348,7 @@ exports.getSessionStats = async (req, res) => {
       },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime' } },
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime', timezone: statsTz } },
           sessions: { $sum: 1 },
           minutes: { $sum: '$duration' },
           coins: { $sum: '$coinsEarned' },
@@ -372,11 +381,21 @@ exports.getDashboard = async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user._id);
 
-    // Today boundaries
+    // Everything is counted in the user's local days. The server runs in UTC,
+    // so without this a session at 00:30 in India landed on the previous day.
+    const tz = await resolveTimezone(userId, req.query.tz);
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    const todayNum = localDayNumber(now, tz);
+    const dayStart = (n) => {
+      const d = dayFromNumber(n);
+      return zonedTimeToUtc({ year: d.year, month: d.month, day: d.day, hour: 0, minute: 0 }, tz);
+    };
+    const dayKey = (n) => {
+      const d = dayFromNumber(n);
+      return `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
+    };
+    const todayStart = dayStart(todayNum);
+    const todayEnd = dayStart(todayNum + 1);
 
     // Today's stats
     const todayAgg = await FocusSession.aggregate([
@@ -394,42 +413,35 @@ exports.getDashboard = async (req, res) => {
 
     const today = todayAgg[0] || { focusMinutes: 0, coinsEarned: 0, sessions: 0, distractions: 0 };
 
-    // User for streak and goal
+    // User for goal; streak computed from sessions in the user's days
     const user = await User.findById(userId);
+    const streak = await computeStreak(userId, tz, { now });
 
-    // Weekly data (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
+    // Last 7 local days, oldest first, ending today
     const weeklyRaw = await FocusSession.aggregate([
-      { $match: { userId, status: 'completed', startTime: { $gte: sevenDaysAgo } } },
+      { $match: { userId, status: 'completed', startTime: { $gte: dayStart(todayNum - 6), $lt: todayEnd } } },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime' } },
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$startTime', timezone: tz } },
           minutes: { $sum: '$duration' },
           coins: { $sum: '$coinsEarned' },
           distractions: { $sum: '$distractionAttempts' },
         },
       },
-      { $sort: { _id: 1 } },
     ]);
 
-    // Fill in missing days
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyFocusData = [];
     const distractionTrend = [];
     const coinsEarnedWeekly = [];
 
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayName = dayNames[d.getDay()];
-      const found = weeklyRaw.find((r) => r._id === dateStr);
-
-      weeklyFocusData.push({ day: dayName, minutes: found ? found.minutes : 0 });
-      coinsEarnedWeekly.push({ day: dayName, coins: found ? found.coins : 0 });
-      distractionTrend.push({ day: dayName, score: found ? found.distractions : 0 });
+    for (let n = todayNum - 6; n <= todayNum; n++) {
+      const found = weeklyRaw.find((r) => r._id === dayKey(n));
+      const day = dayNames[dayFromNumber(n).weekday];
+      const date = dayKey(n);
+      weeklyFocusData.push({ day, date, minutes: found ? found.minutes : 0 });
+      coinsEarnedWeekly.push({ day, date, coins: found ? found.coins : 0 });
+      distractionTrend.push({ day, date, score: found ? found.distractions : 0 });
     }
 
     // Forward-looking: the model's estimate for a session started right now.
@@ -442,7 +454,9 @@ exports.getDashboard = async (req, res) => {
       todayFocusMinutes: today.focusMinutes,
       coinsEarnedToday: today.coinsEarned,
       sessionsToday: today.sessions,
-      currentStreak: user.currentStreak || 0,
+      currentStreak: streak.current,
+      longestStreak: Math.max(user.longestStreak || 0, streak.longest),
+      timezone: tz,
       nextSessionPrediction: client,
       // Compact form for the dashboard tile
       mlPrediction: client && {

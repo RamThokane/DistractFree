@@ -38,6 +38,7 @@ export const friendlyAuthError = (err, fallback) => {
   if (!err?.response) return 'We couldn’t reach DistractFree. Check your connection and try again.';
   const { status, data } = err.response;
   if (status === 429) return 'Too many attempts. Wait a minute, then try again.';
+  if (status === 503 && data?.message) return data.message; // e.g. reset email not set up yet
   if (status >= 500) return 'Something went wrong on our side. Try again in a moment.';
   return data?.errors?.[0]?.message || data?.message || fallback;
 };

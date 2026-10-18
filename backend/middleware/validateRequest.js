@@ -49,6 +49,26 @@ const validateLogin = [
   handleValidationErrors,
 ];
 
+const validateForgotPassword = [
+  body('email')
+    .isEmail().withMessage('Valid email is required')
+    .normalizeEmail(),
+  handleValidationErrors,
+];
+
+const validateResetPassword = [
+  body('email')
+    .isEmail().withMessage('Valid email is required')
+    .normalizeEmail(),
+  body('token')
+    .isString().isLength({ min: 64, max: 64 }).withMessage('This reset link is invalid'),
+  body('password')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/\d/).withMessage('Password must contain a number')
+    .matches(/[a-zA-Z]/).withMessage('Password must contain a letter'),
+  handleValidationErrors,
+];
+
 // ── Session validators ─────────────────────────────
 
 const validateStartSession = [
@@ -188,6 +208,8 @@ module.exports = {
   handleValidationErrors,
   validateRegister,
   validateLogin,
+  validateForgotPassword,
+  validateResetPassword,
   validateStartSession,
   validateEndSession,
   validateAddWebsite,

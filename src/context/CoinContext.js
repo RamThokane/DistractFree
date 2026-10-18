@@ -26,7 +26,7 @@ export const CoinProvider = ({ children }) => {
   const refreshBalance = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const res = await api.get('/coins/balance');
+      const res = await api.get('/coins/balance', { params: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
       if (res.data.success) {
         setBalance(res.data.focusCoins);
       }

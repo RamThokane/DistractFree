@@ -27,6 +27,9 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       unique: true,
     },
+    // Password reset: SHA-256 of the emailed token, and when it stops working
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
     avatar: {
       type: String,
       default: '',

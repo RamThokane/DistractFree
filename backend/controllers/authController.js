@@ -4,6 +4,9 @@ const { generateToken } = require('../middleware/authMiddleware');
 const { verifyGoogleToken } = require('../config/googleAuth');
 const { validationResult } = require('express-validator');
 const { createNotification } = require('./notificationController');
+const { syncUserStreak } = require('../services/streakService');
+const crypto = require('crypto');
+const { sendEmail, isConfigured: emailConfigured } = require('../utils/mailer');
 
 // ────────────────────────────────────────────────────
 // POST /api/auth/register
@@ -203,6 +206,7 @@ exports.googleAuth = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    await syncUserStreak(user, req.query.tz);
 
     res.json({
       success: true,
@@ -274,6 +278,95 @@ exports.updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('[Auth] UpdateProfile error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ────────────────────────────────────────────────────
+// Password reset
+// ────────────────────────────────────────────────────
+const RESET_TTL_MS = 30 * 60 * 1000;
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+const clientUrl = () => (process.env.CLIENT_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/+$/, '');
+
+// POST /api/auth/forgot-password — always the same answer, so it can't be used
+// to find out which emails have accounts.
+exports.forgotPassword = async (req, res) => {
+  const reply = () => res.json({
+    success: true,
+    message: 'If an account exists for that email, a reset link is on its way.',
+  });
+  try {
+    // Be honest when email can't go out (same answer for every address)
+    if (!emailConfigured() && process.env.NODE_ENV === 'production') {
+      console.error('[Auth] Password reset requested but RESEND_API_KEY is not set');
+      return res.status(503).json({
+        success: false,
+        message: 'Password reset by email isn’t set up yet. Contact support to reset your password.',
+      });
+    }
+
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return reply();
+
+    const token = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken = hashToken(token);
+    user.resetPasswordExpires = new Date(Date.now() + RESET_TTL_MS);
+    await user.save({ validateBeforeSave: false });
+
+    const link = `${clientUrl()}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
+    const name = (user.name || '').split(' ')[0] || 'there';
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Reset your DistractFree password',
+        text: `Hi ${name},\n\nSomeone (hopefully you) asked to reset the password for your DistractFree account.\n\nChoose a new password here (the link works for 30 minutes, once):\n${link}\n\nIf you didn't ask for this, ignore this email — your password stays the same.\n\n— DistractFree`,
+        html: `<div style="font-family:Inter,Segoe UI,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1C1B19;background:#FAF8F5">
+  <p style="font-size:15px;margin:0 0 16px">Hi ${name},</p>
+  <p style="font-size:15px;line-height:1.6;margin:0 0 24px">Someone (hopefully you) asked to reset the password for your DistractFree account.</p>
+  <p style="margin:0 0 24px"><a href="${link}" style="display:inline-block;background:#1F5E4A;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:15px;padding:12px 20px;border-radius:8px">Choose a new password</a></p>
+  <p style="font-size:13px;line-height:1.6;color:#6B645A;margin:0 0 8px">The link works once, for 30 minutes. If you didn't ask for this, ignore this email — your password stays the same.</p>
+  <p style="font-size:13px;color:#6B645A;margin:24px 0 0">— DistractFree</p>
+</div>`,
+      });
+    } catch (mailErr) {
+      // Don't tell the visitor; the server log has the reason
+      console.error('[Auth] Reset email failed:', mailErr.message);
+    }
+    return reply();
+  } catch (error) {
+    console.error('[Auth] Forgot password error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// POST /api/auth/reset-password — { email, token, password }
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, token, password } = req.body;
+    const user = await User.findOne({ email }).select('+resetPasswordToken +resetPasswordExpires');
+
+    const valid = user
+      && user.resetPasswordToken
+      && user.resetPasswordExpires
+      && user.resetPasswordExpires.getTime() > Date.now()
+      && crypto.timingSafeEqual(Buffer.from(user.resetPasswordToken), Buffer.from(hashToken(token)));
+    if (!valid) {
+      return res.status(400).json({
+        success: false,
+        message: 'This reset link is invalid or has expired. Ask for a new one.',
+      });
+    }
+
+    user.password = password; // hashed by the pre-save hook
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated. You can sign in now.' });
+  } catch (error) {
+    console.error('[Auth] Reset password error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
