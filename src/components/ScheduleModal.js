@@ -11,9 +11,8 @@ import {
 } from '../utils/schedule';
 
 const DURATION_CHIPS = [25, 50, 90];
-const inputClass =
-  'w-full bg-ink/[0.03] border border-ink/[0.1] text-fg rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/40';
-const labelClass = 'block text-xs font-medium text-fg-2 mb-1.5';
+const inputClass = 'df-input';
+const labelClass = 'df-field-label block mb-2';
 
 /**
  * Create a scheduled session, or edit one.
@@ -97,11 +96,11 @@ const ScheduleModal = ({ start, occurrence, onClose, onSaved }) => {
               ].map(([value, label]) => (
                 <label
                   key={value}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer ${
-                    scope === value ? 'border-indigo-500 bg-indigo-500/10 text-fg' : 'border-ink/[0.1] text-fg-2'
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer ${
+                    scope === value ? 'border-accent bg-accent-soft text-text' : 'border-line-strong text-muted'
                   }`}
                 >
-                  <input type="radio" name="scope" value={value} checked={scope === value} onChange={() => setScope(value)} className="text-indigo-500 focus:ring-indigo-500" />
+                  <input type="radio" name="scope" value={value} checked={scope === value} onChange={() => setScope(value)} className="accent-[rgb(var(--c-accent))]" />
                   {label}
                 </label>
               ))}
@@ -115,7 +114,7 @@ const ScheduleModal = ({ start, occurrence, onClose, onSaved }) => {
         </div>
 
         <div>
-          <label htmlFor="schedule-subject" className={labelClass}>Subject <span className="text-fg-4">(optional)</span></label>
+          <label htmlFor="schedule-subject" className={labelClass}>Subject <span className="text-muted font-normal">(optional)</span></label>
           <input id="schedule-subject" className={inputClass} value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={60} placeholder="e.g. Physics" />
         </div>
 
@@ -150,9 +149,7 @@ const ScheduleModal = ({ start, occurrence, onClose, onSaved }) => {
                 type="button"
                 onClick={() => setDuration(String(m))}
                 aria-pressed={Number(duration) === m}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                  Number(duration) === m ? 'bg-indigo-500 text-white border-indigo-500' : 'border-ink/[0.1] text-fg-2 hover:text-fg'
-                }`}
+                className={`df-btn df-btn--sm ${Number(duration) === m ? 'df-btn--primary' : 'df-btn--secondary'} df-mono font-medium`}
               >
                 {m} min
               </button>
@@ -182,40 +179,38 @@ const ScheduleModal = ({ start, occurrence, onClose, onSaved }) => {
                         onClick={() => !isStartDay && toggleDay(day)}
                         aria-pressed={on}
                         aria-label={`${label}${isStartDay ? ' (start date)' : ''}`}
-                        className={`w-11 py-1.5 rounded-lg text-xs font-medium border focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                          on ? 'bg-indigo-500 text-white border-indigo-500' : 'border-ink/[0.1] text-fg-2 hover:text-fg'
-                        } ${isStartDay ? 'cursor-default' : ''}`}
+                        className={`df-btn df-btn--sm w-12 ${on ? 'df-btn--primary' : 'df-btn--secondary'} ${isStartDay ? 'cursor-default' : ''}`}
                       >
                         {label}
                       </button>
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-fg-4 mt-1.5">The start date's weekday is always included.</p>
+                <p className="text-xs text-muted mt-2">The start date's weekday is always included.</p>
               </fieldset>
             )}
           </div>
         ) : (
-          <p className="text-xs text-fg-2">Only this session changes; the rest of the series stays as it is.</p>
+          <p className="text-xs text-muted">Only this session changes; the rest of the series stays as it is.</p>
         )}
 
-        <p className="text-[11px] text-fg-4">
+        <p className="text-xs text-muted">
           Times are in your timezone ({browserTimezone()}). The session starts automatically at this time — keep the website or the
           DistractFree extension open.
         </p>
 
         {error && (
-          <p role="alert" className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>
+          <p role="alert" className="text-sm text-danger bg-danger-soft rounded-md px-3 py-2">{error}</p>
         )}
 
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-fg-2 hover:bg-ink/[0.05] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+          <button type="button" onClick={onClose} className="df-btn df-btn--ghost">
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            className="df-btn df-btn--primary"
           >
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Schedule session'}
           </button>

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import GlassCard from '../components/GlassCard';
+import { Link } from 'react-router-dom';
 import AnimatedCounter from '../components/AnimatedCounter';
 import PageTransition from '../components/PageTransition';
 import { useCoins } from '../context/CoinContext';
 import api from '../services/api';
 import { formatRelativeTime } from '../utils/helpers';
-import { HiOutlineArrowUp, HiOutlineArrowDown, HiOutlineStar, HiOutlineExclamationTriangle } from 'react-icons/hi2';
+import { LuCoins } from 'react-icons/lu';
+import { Button, Badge, Skeleton, EmptyState, ErrorState } from '../components/ui';
 
 const CoinsPage = () => {
   const { balance, refreshBalance } = useCoins();
@@ -21,6 +21,7 @@ const CoinsPage = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const [historyRes, summaryRes] = await Promise.all([
         api.get('/coins/history'),
         api.get('/coins/summary'),
@@ -66,150 +67,100 @@ const CoinsPage = () => {
     }
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'earned': return <HiOutlineArrowUp className="w-4 h-4 text-sage" />;
-      case 'spent': return <HiOutlineArrowDown className="w-4 h-4 text-orange-500" />;
-      case 'bonus': return <HiOutlineStar className="w-4 h-4 text-amber-500" />;
-      case 'penalty': return <HiOutlineExclamationTriangle className="w-4 h-4 text-red-400" />;
-      default: return null;
-    }
-  };
-
-  const getTypeBg = (type) => {
-    switch (type) {
-      case 'earned': return 'bg-sage-50';
-      case 'spent': return 'bg-orange-50';
-      case 'bonus': return 'bg-amber-50';
-      case 'penalty': return 'bg-red-50';
-      default: return 'bg-ink/[0.03]';
-    }
-  };
+  const TYPE_LABEL = { earned: 'Earned', spent: 'Unlock', bonus: 'Bonus', penalty: 'Penalty' };
+  const TYPE_TONE = { earned: 'accent', spent: 'neutral', bonus: 'amber', penalty: 'danger' };
+  const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const fmtClock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
   return (
     <PageTransition>
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* ── Balance Card ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <GlassCard className="text-center py-8">
-            <span className="text-5xl mb-3 block">🪙</span>
-            <p className="text-dash-muted text-sm mb-1">Your Focus Coin Balance</p>
-            <AnimatedCounter
-              value={balance}
-              className="text-5xl font-bold text-dash-text"
-              duration={1}
-            />
-            <p className="text-dash-muted text-sm mt-2">Earn coins through focus sessions, spend them on controlled breaks</p>
-          </GlassCard>
-        </motion.div>
+      <div className="max-w-5xl">
+        {/* ── Balance ── */}
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-end">
+          <section className="lg:col-span-6" aria-labelledby="balance-label">
+            <p id="balance-label" className="pg-kicker">Your Focus Coin balance</p>
+            <p className="df-mono text-t-64 md:text-t-88 leading-none text-amber-ink">
+              <AnimatedCounter value={balance} duration={0.9} />
+            </p>
+            <p className="pg-sub">Earn coins through focus sessions, spend them on controlled breaks.</p>
+          </section>
 
-        {/* ── Summary Cards ── */}
-        {summary && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4"
-          >
-            <GlassCard className="text-center">
-              <p className="text-dash-muted text-xs mb-1">Total Earned</p>
-              <p className="text-sage font-bold text-xl">+{summary.earned?.total || 0}</p>
-              <p className="text-dash-muted text-xs">{summary.earned?.count || 0} transactions</p>
-            </GlassCard>
-            <GlassCard className="text-center">
-              <p className="text-dash-muted text-xs mb-1">Total Spent</p>
-              <p className="text-orange-500 font-bold text-xl">-{summary.spent?.total || 0}</p>
-              <p className="text-dash-muted text-xs">{summary.spent?.count || 0} unlocks</p>
-            </GlassCard>
-            <GlassCard className="text-center">
-              <p className="text-dash-muted text-xs mb-1">Bonuses</p>
-              <p className="text-amber-500 font-bold text-xl">+{summary.bonus?.total || 0}</p>
-              <p className="text-dash-muted text-xs">{summary.bonus?.count || 0} bonuses</p>
-            </GlassCard>
-            <GlassCard className="text-center">
-              <p className="text-dash-muted text-xs mb-1">Penalties</p>
-              <p className="text-red-400 font-bold text-xl">-{summary.penalty?.total || 0}</p>
-              <p className="text-dash-muted text-xs">{summary.penalty?.count || 0} penalties</p>
-            </GlassCard>
-          </motion.div>
-        )}
+          {/* ── Summary ── */}
+          <dl className="lg:col-span-6 pg-stats" aria-label="Summary">
+            {[
+              ['Total earned', summary ? `+${summary.earned?.total || 0}` : '—', summary ? `${summary.earned?.count || 0} transactions` : '', 'text-amber-ink'],
+              ['Total spent', summary ? `−${summary.spent?.total || 0}` : '—', summary ? `${summary.spent?.count || 0} unlocks` : '', 'text-text'],
+              ['Bonuses', summary ? `+${summary.bonus?.total || 0}` : '—', summary ? `${summary.bonus?.count || 0} bonuses` : '', 'text-amber-ink'],
+              ['Penalties', summary ? `−${summary.penalty?.total || 0}` : '—', summary ? `${summary.penalty?.count || 0} penalties` : '', 'text-danger'],
+            ].map(([label, value, sub, tone]) => (
+              <div key={label}>
+                <dt className="df-label">{label}</dt>
+                <dd className={`df-mono text-t-28 mt-1 ${tone}`}>{value}</dd>
+                <dd className="text-xs text-muted mt-0.5">{sub}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
 
-        {/* ── Transaction History ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <GlassCard>
-            <h2 className="text-dash-text font-semibold text-xl mb-5">Transaction History</h2>
-
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 py-3 px-4 animate-pulse">
-                    <div className="w-9 h-9 bg-ink/[0.08] rounded-xl" />
-                    <div className="flex-1">
-                      <div className="h-4 w-48 bg-ink/[0.08] rounded mb-1" />
-                      <div className="h-3 w-20 bg-ink/[0.08] rounded" />
-                    </div>
-                    <div className="h-4 w-12 bg-ink/[0.08] rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="text-center py-8">
-                <p className="text-fg-2 mb-3">{error}</p>
-                <button onClick={fetchData} className="text-indigo-500 font-medium hover:underline">
-                  Retry
-                </button>
-              </div>
-            ) : transactions.length === 0 ? (
-              <div className="text-center py-12">
-                <span className="text-4xl block mb-3">🪙</span>
-                <p className="text-fg-2 text-sm">No transactions yet.</p>
-                <p className="text-fg-2 text-xs mt-1">Complete your first focus session to earn coins!</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {transactions.map((tx) => (
-                  <motion.div
-                    key={tx._id}
-                    className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-dash-hover transition-colors"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${getTypeBg(tx.type)}`}>
-                        {getTypeIcon(tx.type)}
-                      </div>
-                      <div>
-                        <p className="text-dash-text text-sm font-medium">{tx.description || tx.type}</p>
-                        <p className="text-dash-muted text-xs">{formatRelativeTime(tx.createdAt)}</p>
-                      </div>
-                    </div>
-                    <span className={`font-semibold text-sm ${
-                      tx.amount > 0 ? 'text-sage' : 'text-orange-500'
-                    }`}>
-                      {tx.amount > 0 ? '+' : ''}{tx.amount}
-                    </span>
-                  </motion.div>
-                ))}
-                {hasMore && (
-                  <button
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                    className="w-full mt-2 py-2.5 rounded-xl text-sm font-medium text-dash-muted hover:bg-dash-hover transition-colors disabled:opacity-50"
-                  >
-                    {loadingMore ? 'Loading…' : 'Load older transactions'}
-                  </button>
-                )}
-              </div>
+        {/* ── Ledger ── */}
+        <section className="pg-section" aria-labelledby="ledger-title">
+          <div className="pg-section-head">
+            <h2 id="ledger-title" className="pg-h2">Transaction history</h2>
+            {!loading && !error && transactions.length > 0 && (
+              <span className="df-mono text-xs text-muted">{transactions.length} shown</span>
             )}
-          </GlassCard>
-        </motion.div>
+          </div>
+
+          {loading ? (
+            <div aria-busy="true" aria-label="Loading transactions">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="pg-row">
+                  <div className="flex-1"><Skeleton width="45%" height={14} /><Skeleton className="mt-2" width="22%" height={10} /></div>
+                  <Skeleton width={48} height={14} />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <ErrorState title="Your coin history didn’t load" action={<Button variant="secondary" size="sm" onClick={fetchData}>Try again</Button>}>
+              {error} Your balance is safe; this is only the list.
+            </ErrorState>
+          ) : transactions.length === 0 ? (
+            <EmptyState icon={LuCoins} title="No transactions yet" action={<Button as={Link} to="/dashboard/focus" size="sm">Start a session</Button>}>
+              Complete your first focus session to earn coins. Every coin you earn or spend will be listed here.
+            </EmptyState>
+          ) : (
+            <>
+              {/* Column labels (desktop) */}
+              <div className="hidden md:grid grid-cols-[7rem_1fr_7rem_6rem] gap-4 pb-2 df-label">
+                <span>Date</span><span>Reason</span><span>Type</span><span className="text-right">Amount</span>
+              </div>
+              <ul className="pg-rows">
+                {transactions.map((tx) => (
+                  <li key={tx._id} className="grid grid-cols-[1fr_auto] md:grid-cols-[7rem_1fr_7rem_6rem] items-center gap-x-4 gap-y-1 py-3.5 border-b border-line">
+                    <span className="hidden md:block df-mono text-xs text-muted" title={formatRelativeTime(tx.createdAt)}>
+                      {fmtDate(tx.createdAt)} <span className="opacity-70">{fmtClock(tx.createdAt)}</span>
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-text truncate">{tx.description || TYPE_LABEL[tx.type] || tx.type}</span>
+                      <span className="md:hidden block df-mono text-xs text-muted mt-0.5">{fmtDate(tx.createdAt)} · {fmtClock(tx.createdAt)}</span>
+                    </span>
+                    <span className="hidden md:block"><Badge tone={TYPE_TONE[tx.type] || 'neutral'}>{TYPE_LABEL[tx.type] || tx.type}</Badge></span>
+                    <span className={`pg-amount text-right ${tx.amount > 0 ? 'pg-amount--coin' : 'pg-amount--minus'}`}>
+                      {tx.amount > 0 ? '+' : '−'}{Math.abs(tx.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {hasMore && (
+                <div className="mt-5">
+                  <Button variant="secondary" onClick={loadMore} loading={loadingMore}>
+                    Load older transactions
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
       </div>
     </PageTransition>
   );

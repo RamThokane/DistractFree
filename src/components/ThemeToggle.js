@@ -15,7 +15,7 @@ const ThemeToggle = ({ className = '' }) => {
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      className={`group relative w-9 h-9 rounded-xl flex items-center justify-center text-fg-2 hover:text-hi hover:bg-ink/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors duration-200 ${className}`}
+      className={`group relative w-9 h-9 rounded-md flex items-center justify-center text-muted hover:text-text hover:bg-paper-2 focus:outline-none focus-visible:shadow-[var(--focus-ring)] transition-colors duration-200 ${className}`}
     >
       {/* Sun — shown in dark mode (click for light) */}
       <svg

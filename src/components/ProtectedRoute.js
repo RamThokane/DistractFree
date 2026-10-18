@@ -7,13 +7,11 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-canvas flex items-center justify-center">
+      <div className="min-h-screen bg-paper flex items-center justify-center" aria-busy="true">
         <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-2 border-[rgba(124,92,252,0.2)] border-t-[#7C5CFC] rounded-full animate-spin" />
-            <div className="absolute inset-0 rounded-full animate-pulse-slow" style={{ boxShadow: '0 0 20px rgba(124,92,252,0.2)' }} />
-          </div>
-          <span className="text-fg-lav text-sm font-medium">Loading...</span>
+          <img src="/favicon.svg" alt="" className="w-10 h-10 rounded-lg" />
+          <span className="df-skel" style={{ width: 120, height: 3 }} />
+          <span className="text-muted text-sm">Loading your dashboard…</span>
         </div>
       </div>
     );

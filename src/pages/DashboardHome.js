@@ -1,218 +1,167 @@
 import React, { memo, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useChartTheme } from '../context/ThemeContext';
 import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  BarChart, Bar, Cell, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import CircularProgress from '../components/CircularProgress';
+import { LuTarget, LuArrowUpRight, LuArrowDownRight, LuTimer } from 'react-icons/lu';
 import AnimatedCounter from '../components/AnimatedCounter';
 import PageTransition from '../components/PageTransition';
 import NextScheduledCard from '../components/NextScheduledCard';
+import { Button, Card, Input, Modal, ProgressBar, Skeleton, SkeletonText, ErrorState, EmptyState, Badge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { formatMinutesToHours, getGreeting } from '../utils/helpers';
-import {
-  HiOutlineClock,
-  HiOutlineFire,
-  HiOutlineSparkles,
-} from 'react-icons/hi2';
 
-/* ── Custom Recharts Tooltip ── */
-const CustomTooltip = memo(({ active, payload, label }) => {
-  if (active && payload?.length) {
-    return (
-      <div className="bg-surface-2/90 backdrop-blur-md border border-ink/[0.08] rounded-2xl px-5 py-4 shadow-glass">
-        <p className="text-fg-2 text-xs mb-1.5 uppercase tracking-wide">{label}</p>
-        {payload.map((p, i) => (
-          <p key={i} className="text-hi text-sm font-semibold flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }}></span>
-            {p.name}: {p.value}{p.name === 'minutes' ? ' min' : ''}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-});
-CustomTooltip.displayName = 'CustomTooltip';
-
-/* ── Metric Card Component ── */
-const MetricCard = memo(({ icon: Icon, iconBg, iconColor, label, sublabel, value, suffix, delay }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay, duration: 0.5 }}
-    className="df-card-bg rounded-2xl p-6 border border-ink/[0.06] shadow-card-soft hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 group"
-  >
-    <div className="flex items-center gap-4">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${iconBg}`}>
-        <Icon className={`w-5 h-5 ${iconColor}`} />
-      </div>
-      <div>
-        <p className="text-sm text-fg-2 mb-0.5">{label}</p>
-        {sublabel && <p className="text-[10px] text-fg-2 -mt-1 mb-1">{sublabel}</p>}
-        <div className="flex items-baseline gap-1">
-          <AnimatedCounter value={value} className="text-2xl font-bold text-fg" />
-          {suffix && <span className="text-fg-2 text-sm font-medium">{suffix}</span>}
-        </div>
-      </div>
-    </div>
-  </motion.div>
-));
-MetricCard.displayName = 'MetricCard';
-
-/* ── AI Prediction tile: forecast for the next session ── */
-const RISK_TEXT = { low: 'text-green-600', medium: 'text-amber-500', high: 'text-red-500' };
-
-const PredictionTile = memo(({ prediction, delay }) => {
-  const known = prediction?.riskLevel;
-  const isModel = prediction?.source === 'model';
+/* ── Chart tooltip in the shared style ── */
+const ChartTooltip = memo(({ active, payload, label, unit = '' }) => {
+  if (!active || !payload?.length) return null;
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.5 }}>
-      <Link
-        to="/dashboard/insights"
-        className="block df-card-bg rounded-2xl p-6 border border-ink/[0.06] shadow-card-soft hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-full"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-indigo-50 flex-shrink-0">
-            <HiOutlineSparkles className="w-5 h-5 text-indigo-500" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm text-fg-2 mb-0.5">AI Prediction — Next session</p>
-            {known ? (
-              <p className="text-fg">
-                <span className={`text-2xl font-bold capitalize ${RISK_TEXT[prediction.riskLevel]}`}>{prediction.riskLevel}</span>
-                <span className="text-fg-2 text-sm font-medium"> risk ({Math.round(prediction.confidence * 100)}%)</span>
-              </p>
-            ) : (
-              <p className="text-2xl font-bold text-fg">—</p>
-            )}
-            <p className="text-[10px] text-fg-2 mt-0.5">
-              {!prediction
-                ? 'Prediction unavailable right now'
-                : isModel
-                  ? `${prediction.successPercent}% chance of success${prediction.isColdStart ? ' · not personalised yet' : ''}`
-                  : 'Based on your past sessions so far'}
-            </p>
-          </div>
-        </div>
-      </Link>
-    </motion.div>
+    <div className="df-card px-3 py-2 shadow-pop">
+      <p className="df-label mb-1">{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} className="df-mono text-sm text-text">
+          {p.value}{unit}
+        </p>
+      ))}
+    </div>
   );
 });
-PredictionTile.displayName = 'PredictionTile';
+ChartTooltip.displayName = 'ChartTooltip';
 
-/* ── Chart Card Wrapper ── */
-const ChartCard = memo(({ title, subtitle, children, className = '', delay = 0 }) => (
-  <motion.div
-    className={className}
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay, duration: 0.5 }}
-  >
-    <div className="df-card-bg rounded-2xl p-7 border border-ink/[0.06] shadow-card-soft hover:shadow-card-hover transition-all duration-300 h-full">
-      {title && <h3 className="text-fg font-bold text-lg mb-1">{title}</h3>}
-      {subtitle && <p className="text-fg-2 text-sm mb-6">{subtitle}</p>}
-      {children}
-    </div>
-  </motion.div>
-));
-ChartCard.displayName = 'ChartCard';
+/* ── Big "h m" number that counts up ── */
+const Duration = ({ minutes }) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return (
+    <span className="df-mono">
+      {h > 0 && (<><AnimatedCounter value={h} /><span className="text-muted text-[0.5em] ml-1 mr-3">h</span></>)}
+      <AnimatedCounter value={m} /><span className="text-muted text-[0.5em] ml-1">m</span>
+    </span>
+  );
+};
+
+/* ── AI risk card: level, odds, and the model's own explanation ── */
+const RISK_TONE = { low: 'text-accent', medium: 'text-amber-ink', high: 'text-danger' };
+const RISK_BAR = { low: 'accent', medium: 'amber', high: 'danger' };
+
+const RiskCard = memo(({ prediction, details }) => {
+  const level = prediction?.riskLevel;
+  const isModel = prediction?.source === 'model';
+  const reasons = (details?.reasons || []).slice(0, 3);
+  return (
+    <Card variant="band" padding="p-6 md:p-7" className="h-full flex flex-col">
+      <p className="df-label">AI forecast · next session</p>
+      {level ? (
+        <>
+          <p className={`df-display text-t-40 mt-3 ${RISK_TONE[level] || 'text-text'}`}><span className="capitalize">{level}</span> risk</p>
+          {isModel && (
+            <ProgressBar
+              className="mt-4"
+              label="Chance it goes to plan"
+              valueLabel={`${prediction.successPercent}%`}
+              value={prediction.successPercent}
+              tone={RISK_BAR[level]}
+            />
+          )}
+          {details?.explanation && <p className="mt-4 text-sm text-text-2 leading-relaxed">{details.explanation}</p>}
+          {reasons.length > 0 && (
+            <ul className="mt-4 space-y-2.5">
+              {reasons.map((r) => (
+                <li key={r.feature} className="flex gap-2.5 text-sm text-text-2 leading-snug">
+                  {r.effect === 'raises'
+                    ? <LuArrowUpRight className="mt-0.5 flex-shrink-0 text-accent" aria-label="raises the chance" />
+                    : <LuArrowDownRight className="mt-0.5 flex-shrink-0 text-muted" aria-label="lowers the chance" />}
+                  <span>{r.text.replace(/\s*→.*$/, '')}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-muted mt-4">
+            {isModel
+              ? prediction.isColdStart ? 'Not personalised yet — it learns from your sessions.' : 'Personalised from your past sessions.'
+              : 'Based on your past sessions so far.'}
+          </p>
+        </>
+      ) : (
+        <p className="mt-3 text-sm text-muted">Prediction unavailable right now. Finish a few sessions and it will appear here.</p>
+      )}
+      <Link to="/dashboard/insights" className="df-link df-link--arrow text-sm mt-auto pt-5 self-start">Full breakdown</Link>
+    </Card>
+  );
+});
+RiskCard.displayName = 'RiskCard';
+
+/* ── 7-day strip: one cell per day, filled when you focused ── */
+const WeekStrip = ({ days, todayIndex }) => (
+  <div className="grid grid-cols-7 gap-1.5 sm:gap-2" role="list" aria-label="Focus minutes this week">
+    {days.map((d, i) => {
+      const on = d.minutes > 0;
+      return (
+        <div key={d.day} role="listitem" className="flex flex-col items-center gap-1.5">
+          <div
+            className={`w-full aspect-square max-h-14 rounded-md flex items-center justify-center df-mono text-xs border ${
+              on ? 'bg-accent text-on-accent border-transparent' : 'bg-paper-2 text-muted border-line'
+            } ${i === todayIndex ? 'ring-2 ring-offset-2 ring-offset-paper ring-text/60' : ''}`}
+            title={`${d.day}: ${d.minutes} min`}
+          >
+            {on ? d.minutes : '·'}
+          </div>
+          <span className={`text-[11px] ${i === todayIndex ? 'text-text font-semibold' : 'text-muted'}`}>{d.day}</span>
+        </div>
+      );
+    })}
+  </div>
+);
 
 /* ── Goal Setting Modal ── */
 const GoalModal = ({ onSave, onClose }) => {
   const [goalMinutes, setGoalMinutes] = useState(120);
   const [goalSessions, setGoalSessions] = useState(4);
+  const [saving, setSaving] = useState(false);
 
   return (
-    <motion.div
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <Modal
+      title="Set today’s focus goal"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Skip for now</Button>
+          <Button
+            loading={saving}
+            onClick={async () => { setSaving(true); await onSave({ focusMinutes: goalMinutes, sessions: goalSessions }); setSaving(false); }}
+          >
+            Set goal
+          </Button>
+        </>
+      }
     >
-      <motion.div
-        className="df-card-bg rounded-2xl p-8 shadow-2xl w-full max-w-md mx-4 border border-ink/[0.06]"
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-      >
-        <h2 className="text-xl font-bold text-fg mb-2">🎯 Set Today's Focus Goal</h2>
-        <p className="text-fg-2 text-sm mb-6">What do you want to achieve today?</p>
-
-        <div className="space-y-5">
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Focus Time Target (minutes)
-            </label>
-            <input
-              type="number"
-              min="15"
-              max="480"
-              value={goalMinutes}
-              onChange={(e) => setGoalMinutes(Number(e.target.value))}
-              className="w-full px-4 py-3 border border-ink/[0.08] rounded-xl text-fg bg-ink/[0.03] focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Target Sessions
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              value={goalSessions}
-              onChange={(e) => setGoalSessions(Number(e.target.value))}
-              className="w-full px-4 py-3 border border-ink/[0.08] rounded-xl text-fg bg-ink/[0.03] focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-3 mt-8">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-xl border border-ink/[0.08] text-fg-3 hover:bg-ink/[0.03] transition-colors font-medium"
-          >
-            Skip for now
-          </button>
-          <button
-            onClick={() => onSave({ focusMinutes: goalMinutes, sessions: goalSessions })}
-            className="flex-1 px-4 py-3 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors font-semibold shadow-lg shadow-indigo-200"
-          >
-            Set Goal
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
+      <p className="text-sm text-muted mb-5">What do you want to get done today?</p>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Input label="Focus time (minutes)" type="number" min="15" max="480" value={goalMinutes} onChange={(e) => setGoalMinutes(Number(e.target.value))} />
+        <Input label="Sessions" type="number" min="1" max="20" value={goalSessions} onChange={(e) => setGoalSessions(Number(e.target.value))} />
+      </div>
+    </Modal>
   );
 };
 
-/* ── Loading Skeleton ── */
+/* ── Loading Skeleton (same shape as the page) ── */
 const DashboardSkeleton = () => (
-  <div className="space-y-8 animate-pulse">
-    <div>
-      <div className="h-4 w-24 bg-ink/[0.08] rounded mb-2" />
-      <div className="h-7 w-48 bg-ink/[0.08] rounded mb-1" />
-      <div className="h-4 w-64 bg-ink/[0.08] rounded" />
+  <div aria-busy="true" aria-label="Loading dashboard">
+    <Skeleton width={120} height={12} />
+    <Skeleton className="mt-3" width="min(420px, 80%)" height={44} />
+    <div className="grid lg:grid-cols-12 gap-6 mt-10">
+      <div className="lg:col-span-7"><Skeleton width={90} height={12} /><Skeleton className="mt-4" width={260} height={64} /><Skeleton className="mt-6" height={6} /><SkeletonText className="mt-8" lines={2} /></div>
+      <div className="lg:col-span-5"><Skeleton height={300} radius={10} /></div>
     </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="df-card-bg rounded-2xl p-6 border border-ink/[0.06]">
-          <div className="h-11 w-11 bg-ink/[0.08] rounded-xl mb-3" />
-          <div className="h-4 w-20 bg-ink/[0.08] rounded mb-2" />
-          <div className="h-6 w-16 bg-ink/[0.08] rounded" />
-        </div>
-      ))}
-    </div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="df-card-bg rounded-2xl p-7 border border-ink/[0.06] h-[340px]" />
-      <div className="df-card-bg rounded-2xl p-7 border border-ink/[0.06] h-[340px]" />
-    </div>
+    <Skeleton className="mt-10" height={260} radius={10} />
   </div>
 );
+
+const fmtDay = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 /* ════════════ DASHBOARD HOME ════════════ */
 const DashboardHome = () => {
@@ -222,11 +171,13 @@ const DashboardHome = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [recent, setRecent] = useState({ sessions: null, coins: null });
 
   // Fetch dashboard data from backend
   const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const res = await api.get(`/session/dashboard?tz=${encodeURIComponent(tz)}`);
       if (res.data.success) {
@@ -243,6 +194,19 @@ const DashboardHome = () => {
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
+
+  // Recent activity (read-only, same endpoints the Focus and Coins pages use)
+  useEffect(() => {
+    let alive = true;
+    Promise.allSettled([api.get('/session/history'), api.get('/coins/history')]).then(([s, c]) => {
+      if (!alive) return;
+      setRecent({
+        sessions: s.status === 'fulfilled' ? (s.value.data.sessions || []).slice(0, 5) : [],
+        coins: c.status === 'fulfilled' ? (c.value.data.transactions || []).slice(0, 5) : [],
+      });
+    });
+    return () => { alive = false; };
+  }, []);
 
   // Save goal
   const handleSaveGoal = async (goal) => {
@@ -270,12 +234,12 @@ const DashboardHome = () => {
   if (error) {
     return (
       <PageTransition>
-        <div className="flex flex-col items-center justify-center py-20">
-          <p className="text-fg-2 text-lg mb-4">{error}</p>
-          <button onClick={fetchDashboard} className="px-6 py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors font-medium">
-            Retry
-          </button>
-        </div>
+        <ErrorState
+          title="Your dashboard didn’t load"
+          action={<Button variant="secondary" onClick={fetchDashboard}>Try again</Button>}
+        >
+          {error} Check your connection, then try again.
+        </ErrorState>
       </PageTransition>
     );
   }
@@ -289,186 +253,203 @@ const DashboardHome = () => {
   const distractionTrend = data?.distractionTrend || [];
   const coinsEarnedWeekly = data?.coinsEarnedWeekly || [];
   const progressPercent = goalMinutes > 0 ? Math.min(100, (todayFocusMinutes / goalMinutes) * 100) : 0;
+  const todayIndex = (new Date().getDay() + 6) % 7; // weeks run Mon → Sun
+  const firstName = (user?.name || 'there').split(' ')[0];
 
   return (
     <PageTransition>
-      <div className="space-y-8">
-        {/* Goal Modal */}
-        <AnimatePresence>
-          {showGoalModal && (
-            <GoalModal
-              onSave={handleSaveGoal}
-              onClose={() => setShowGoalModal(false)}
-            />
-          )}
-        </AnimatePresence>
+      <AnimatePresence>
+        {showGoalModal && (
+          <GoalModal onSave={handleSaveGoal} onClose={() => setShowGoalModal(false)} />
+        )}
+      </AnimatePresence>
 
-        {/* ── Greeting Section ── */}
-        <motion.div
-          className="flex flex-col md:flex-row md:items-end justify-between gap-4"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <div>
-            <p className="text-sm text-fg-2 mb-1">{getGreeting()}</p>
-            <h1 className="text-2xl md:text-[1.75rem] font-semibold text-fg tracking-tight">
-              {user?.name || 'User'}
-            </h1>
-            <p className="text-sm text-fg-2 mt-1">Here's your productivity overview today.</p>
-          </div>
-          <button
-            onClick={() => setShowGoalModal(true)}
-            className="px-5 py-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl font-medium text-sm transition-colors flex items-center gap-2 border border-indigo-100"
-          >
-            🎯 Set Today's Goal
-          </button>
-        </motion.div>
+      {/* ── Greeting ── */}
+      <div className="pg-head">
+        <div>
+          <p className="pg-kicker">Today</p>
+          <h2 className="pg-title">{getGreeting()}, <em>{firstName}</em>.</h2>
+          <p className="pg-sub">Here's your productivity overview today.</p>
+        </div>
+        <Button variant="secondary" icon={<LuTarget size={16} aria-hidden="true" />} onClick={() => setShowGoalModal(true)}>
+          Set today's goal
+        </Button>
+      </div>
 
-        {/* ── Metric Cards Grid ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <MetricCard
-            icon={HiOutlineClock}
-            iconBg="bg-blue-50"
-            iconColor="text-blue-500"
-            label="Today's Focus Time"
+      {/* ── Today + AI forecast ── */}
+      <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
+        <section className="lg:col-span-7 flex flex-col" aria-labelledby="today-focus">
+          <p id="today-focus" className="df-label">Focused today</p>
+          <p className="text-t-64 md:text-t-88 leading-none mt-3 text-text">
+            <Duration minutes={todayFocusMinutes} />
+          </p>
+          <ProgressBar
+            className="mt-6 max-w-xl"
+            label={`Daily goal · ${formatMinutesToHours(goalMinutes)}`}
+            valueLabel={`${Math.round(progressPercent)}%`}
             value={todayFocusMinutes}
-            suffix="min"
-            delay={0}
+            max={goalMinutes}
           />
-          <MetricCard
-            icon={() => <span className="text-xl">🪙</span>}
-            iconBg="bg-amber-50"
-            iconColor="text-amber-500"
-            label="Coins Earned Today"
-            value={coinsEarnedToday}
-            delay={0.08}
-          />
-          <MetricCard
-            icon={HiOutlineFire}
-            iconBg="bg-orange-50"
-            iconColor="text-orange-500"
-            label="Current Streak"
-            value={currentStreak}
-            suffix="days"
-            delay={0.16}
-          />
-          <PredictionTile prediction={data?.mlPrediction} delay={0.24} />
-        </div>
 
-        {/* ── Next scheduled session ── */}
-        <NextScheduledCard delay={0.28} />
-
-        {/* ── Analytics Row: Progress Ring + Weekly Focus ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Circular Progress */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="df-card-bg rounded-2xl p-7 border border-ink/[0.06] shadow-card-soft hover:shadow-card-hover transition-all duration-300 flex flex-col items-center justify-center h-full min-h-[340px]">
-              <CircularProgress
-                value={todayFocusMinutes}
-                max={goalMinutes}
-                size={220}
-                strokeWidth={16}
-                color="#6366F1"
-                label={formatMinutesToHours(todayFocusMinutes)}
-                sublabel={`of ${formatMinutesToHours(goalMinutes)} goal`}
-              />
-              <p className="text-fg-2 text-sm mt-6 font-medium">Daily Focus Progress</p>
-              <div className="mt-3 bg-indigo-50 border border-indigo-100 rounded-full px-6 py-2">
-                <span className="text-primary font-semibold text-sm">
-                  {Math.round(progressPercent)}% Complete
-                </span>
-              </div>
+          <div className="pg-stats pg-stats--3 mt-8">
+            <div>
+              <p className="df-label">Coins today</p>
+              <p className="df-mono text-t-28 text-amber-ink mt-1">+<AnimatedCounter value={coinsEarnedToday} /></p>
             </div>
-          </motion.div>
+            <div>
+              <p className="df-label">Sessions</p>
+              <p className="df-mono text-t-28 text-text mt-1"><AnimatedCounter value={data?.sessionsToday || 0} /></p>
+            </div>
+            <div>
+              <p className="df-label">Streak</p>
+              <p className="df-mono text-t-28 text-text mt-1"><AnimatedCounter value={currentStreak} /><span className="text-sm text-muted ml-1.5">days</span></p>
+            </div>
+          </div>
 
-          {/* Weekly Focus Bar Chart */}
-          <ChartCard
-            title="Weekly Focus Time"
-            subtitle="Minutes per day this week"
-            delay={0.3}
-          >
-            {weeklyFocusData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={weeklyFocusData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                  <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
-                  <Bar dataKey="minutes" fill="#6366F1" radius={[8, 8, 0, 0]} barSize={36} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[240px] text-fg-2 text-sm">
-                Complete your first focus session to see weekly data.
-              </div>
-            )}
-          </ChartCard>
+          {weeklyFocusData.length === 7 && (
+            <div className="mt-8">
+              <p className="df-label mb-3">This week</p>
+              <WeekStrip days={weeklyFocusData} todayIndex={todayIndex} />
+            </div>
+          )}
+        </section>
+
+        <div className="lg:col-span-5">
+          <RiskCard prediction={data?.mlPrediction} details={data?.nextSessionPrediction} />
         </div>
+      </div>
 
-        {/* ── Secondary Analytics: Distraction Trend + Coins Earned ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartCard title="Distraction Trend" subtitle="Score = blocked-site attempts during your focus sessions each day. Lower is better." delay={0.4}>
-            {distractionTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={distractionTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                  <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    name="Blocked attempts"
-                    stroke="#EF4444"
-                    strokeWidth={2.5}
-                    dot={{ fill: '#EF4444', r: 4, strokeWidth: 0 }}
-                    activeDot={{ r: 6, stroke: '#EF4444', strokeWidth: 2, fill: '#FFFFFF' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[220px] text-fg-2 text-sm">
-                No distraction data yet.
-              </div>
-            )}
-          </ChartCard>
+      {/* ── Next scheduled session ── */}
+      <div className="mt-10">
+        <NextScheduledCard />
+      </div>
 
-          <ChartCard title="Coins Earned" subtitle="Weekly Focus Coin accumulation" delay={0.5}>
+      {/* ── Weekly focus + recent sessions ── */}
+      <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 mt-10">
+        <Card className="lg:col-span-7" padding="p-6 md:p-7">
+          <div className="flex items-baseline justify-between gap-4 mb-5">
+            <div>
+              <h3 className="pg-h2">Weekly focus</h3>
+              <p className="pg-note">Minutes per day this week</p>
+            </div>
+          </div>
+          {weeklyFocusData.some((d) => d.minutes > 0) ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={weeklyFocusData} margin={{ left: -18, right: 4 }}>
+                <CartesianGrid vertical={false} stroke={chart.grid} />
+                <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip unit=" min" />} cursor={{ fill: chart.cursor }} />
+                <Bar dataKey="minutes" radius={[3, 3, 0, 0]} barSize={28}>
+                  {weeklyFocusData.map((d, i) => (
+                    <Cell key={d.day} fill={i === todayIndex ? chart.accent : chart.accentMuted} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState icon={LuTimer} title="No focus time this week yet" action={<Button as={Link} to="/dashboard/focus" size="sm">Start a session</Button>}>
+              Finish one session and this chart starts filling in.
+            </EmptyState>
+          )}
+        </Card>
+
+        <section className="lg:col-span-5" aria-labelledby="recent-sessions">
+          <div className="pg-section-head">
+            <h3 id="recent-sessions" className="pg-h2">Recent sessions</h3>
+            <Link to="/dashboard/insights" className="df-link text-sm">History</Link>
+          </div>
+          {recent.sessions === null ? (
+            <SkeletonText lines={5} />
+          ) : recent.sessions.length === 0 ? (
+            <p className="pg-note">No sessions yet. Your first one will show up here.</p>
+          ) : (
+            <div>
+              {recent.sessions.map((s) => (
+                <div key={s._id} className="pg-row">
+                  <div className="pg-row-main">
+                    <p className="pg-row-title">{s.duration} of {s.plannedDuration} min</p>
+                    <p className="pg-row-meta">{fmtDay(s.startTime)} · {fmtTime(s.startTime)}</p>
+                  </div>
+                  {s.status === 'completed'
+                    ? <Badge tone="accent">Completed</Badge>
+                    : s.status === 'active' ? <Badge tone="accent" dot>Running</Badge> : <Badge>Ended early</Badge>}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ── Coins + distraction ── */}
+      <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 mt-10">
+        <section className="lg:col-span-5" aria-labelledby="coin-activity">
+          <div className="pg-section-head">
+            <h3 id="coin-activity" className="pg-h2">Coin activity</h3>
+            <Link to="/dashboard/coins" className="df-link text-sm">Wallet</Link>
+          </div>
+          {recent.coins === null ? (
+            <SkeletonText lines={5} />
+          ) : recent.coins.length === 0 ? (
+            <p className="pg-note">No coins yet. A finished 25-minute session earns your first ones.</p>
+          ) : (
+            <div>
+              {recent.coins.map((t) => (
+                <div key={t._id} className="pg-row">
+                  <div className="pg-row-main">
+                    <p className="pg-row-title truncate">{t.description || (t.amount > 0 ? 'Earned' : 'Spent')}</p>
+                    <p className="pg-row-meta">{fmtDay(t.createdAt)} · {fmtTime(t.createdAt)}</p>
+                  </div>
+                  <span className={`pg-amount ${t.amount > 0 ? 'pg-amount--coin' : 'pg-amount--minus'}`}>
+                    {t.amount > 0 ? '+' : '−'}{Math.abs(t.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <div className="lg:col-span-7 grid sm:grid-cols-2 gap-8">
+          <div>
+            <h3 className="pg-h3">Coins earned</h3>
+            <p className="pg-note mb-4">Per day this week</p>
             {coinsEarnedWeekly.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={coinsEarnedWeekly}>
+              <ResponsiveContainer width="100%" height={180}>
+                <AreaChart data={coinsEarnedWeekly} margin={{ left: -24, right: 4 }}>
                   <defs>
-                    <linearGradient id="coinGradientNew" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
+                    <linearGradient id="coinFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={chart.amber} stopOpacity={0.18} />
+                      <stop offset="100%" stopColor={chart.amber} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                  <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
-                  <Area
-                    type="monotone"
-                    dataKey="coins"
-                    stroke="#8B5CF6"
-                    strokeWidth={3}
-                    fill="url(#coinGradientNew)"
-                    dot={{ fill: '#8B5CF6', r: 4, strokeWidth: 0 }}
-                    activeDot={{ r: 6, stroke: '#8B5CF6', strokeWidth: 2, fill: '#FFFFFF' }}
-                  />
+                  <CartesianGrid vertical={false} stroke={chart.grid} />
+                  <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip content={<ChartTooltip unit=" coins" />} cursor={{ stroke: chart.grid }} />
+                  <Area type="monotone" dataKey="coins" stroke={chart.amber} strokeWidth={2} fill="url(#coinFill)" dot={false} activeDot={{ r: 4, fill: chart.amber, stroke: chart.surface, strokeWidth: 2 }} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[220px] text-fg-2 text-sm">
-                No coin data yet.
-              </div>
+              <p className="pg-note">No coin data yet.</p>
             )}
-          </ChartCard>
+          </div>
+          <div>
+            <h3 className="pg-h3">Distraction trend</h3>
+            <p className="pg-note mb-4">Blocked-site attempts during sessions. Lower is better.</p>
+            {distractionTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={distractionTrend} margin={{ left: -24, right: 4 }}>
+                  <CartesianGrid vertical={false} stroke={chart.grid} />
+                  <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip content={<ChartTooltip unit=" attempts" />} cursor={{ stroke: chart.grid }} />
+                  <Line type="monotone" dataKey="score" name="Blocked attempts" stroke={chart.text} strokeWidth={1.75} dot={{ fill: chart.text, r: 2.5, strokeWidth: 0 }} activeDot={{ r: 4, fill: chart.text, stroke: chart.surface, strokeWidth: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="pg-note">No distraction data yet.</p>
+            )}
+          </div>
         </div>
       </div>
     </PageTransition>

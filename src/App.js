@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -37,6 +37,7 @@ function App() {
     <AuthProvider>
       <CoinProvider>
       <ToastProvider>
+        <MotionConfig reducedMotion="user">
         <Router>
           <AnimatePresence mode="wait">
             <Routes>
@@ -70,6 +71,7 @@ function App() {
             </Routes>
           </AnimatePresence>
         </Router>
+        </MotionConfig>
       </ToastProvider>
       </CoinProvider>
     </AuthProvider>

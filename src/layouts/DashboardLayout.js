@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import TopNavbar from './TopNavbar';
+import '../styles/app.css';
 import RewardPopup from '../components/RewardPopup';
 import api from '../services/api';
 import { announceSessionStarted } from '../utils/schedule';
@@ -41,16 +42,12 @@ const DashboardLayout = () => {
   useScheduledAutoStart();
 
   return (
-    <div className="min-h-screen bg-dash-bg dark:bg-land-dark-bg text-dash-text dark:text-land-dark-text antialiased theme-transition">
+    <div className="app-shell df-grain">
       <TopNavbar />
       <RewardPopup />
 
-      {/* Main content area — offset for fixed navbar */}
-      <main
-        className="pt-[80px] pb-12"
-        style={{ minHeight: 'calc(100vh - 64px)' }}
-      >
-        <div className="max-w-[1280px] mx-auto px-6">
+      <main id="main" className="app-main">
+        <div className="app-content">
           <Outlet />
         </div>
       </main>

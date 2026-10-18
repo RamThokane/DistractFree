@@ -34,7 +34,7 @@ function applyTheme(theme, animate) {
   root.classList.toggle('light', theme === 'light');
   root.setAttribute('data-theme', theme);
   root.style.colorScheme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F7F8FC' : '#03040a');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#FAF8F5' : '#151412');
 }
 
 export const ThemeProvider = ({ children }) => {
@@ -98,11 +98,14 @@ export const useTheme = () => {
 /** Colours for Recharts / SVG props, which can't read CSS variables. */
 export const useChartTheme = () => {
   const { isDark } = useTheme();
+  // Mirrors styles/tokens.css — SVG chart attributes need literal colours
   return useMemo(
     () =>
       isDark
-        ? { axis: '#6B6A85', grid: 'rgba(255,255,255,0.04)', label: '#8B8AA8', tooltipBg: '#14171C', tooltipBorder: 'rgba(255,255,255,0.08)', tooltipText: '#F0EEFF', cursor: 'rgba(255,255,255,0.04)', track: 'rgba(124,92,252,0.08)' }
-        : { axis: '#6B7280', grid: 'rgba(15,23,42,0.07)', label: '#4B5563', tooltipBg: '#111827', tooltipBorder: 'rgba(15,23,42,0.1)', tooltipText: '#FFFFFF', cursor: 'rgba(15,23,42,0.04)', track: 'rgba(99,102,241,0.12)' },
+        ? { axis: '#A39C90', grid: 'rgba(237,233,225,0.08)', label: '#A39C90', tooltipBg: '#201F1C', tooltipBorder: 'rgba(237,233,225,0.12)', tooltipText: '#EDE9E1', cursor: 'rgba(237,233,225,0.05)', track: '#282622',
+            accent: '#7FC2A3', accentMuted: '#3A3732', amber: '#E0B04A', danger: '#E58C78', text: '#EDE9E1', muted: '#A39C90', surface: '#201F1C' }
+        : { axis: '#6B645A', grid: 'rgba(28,27,25,0.08)', label: '#6B645A', tooltipBg: '#FFFFFF', tooltipBorder: 'rgba(28,27,25,0.12)', tooltipText: '#1C1B19', cursor: 'rgba(28,27,25,0.04)', track: '#E8E2D8',
+            accent: '#1F5E4A', accentMuted: '#DCD5C9', amber: '#C8901E', danger: '#A63D2A', text: '#1C1B19', muted: '#6B645A', surface: '#FFFFFF' },
     [isDark]
   );
 };

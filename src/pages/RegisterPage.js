@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { LuCheck, LuCircleAlert, LuDot } from 'react-icons/lu';
 import { useAuth } from '../context/AuthContext';
 import GoogleAuthButton from '../components/GoogleAuthButton';
-import AuthShowcase from '../components/AuthShowcase';
-import ThemeToggle from '../components/ThemeToggle';
+import AuthLayout, { friendlyAuthError, isEmail } from '../components/AuthLayout';
+import { Button, Input } from '../components/ui';
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (delay = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.6, ease: [0.25, 0.1, 0.25, 1], delay },
-  }),
-};
+/* Same rules the form enforces on submit */
+const PASSWORD_RULES = [
+  ['At least 8 characters', (p) => p.length >= 8],
+  ['A letter', (p) => /[a-zA-Z]/.test(p)],
+  ['A number', (p) => /\d/.test(p)],
+];
 
 const RegisterPage = () => {
   const { register } = useAuth();
@@ -23,47 +22,38 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const clear = (key) => setFieldErrors((f) => ({ ...f, [key]: undefined }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-    if (!/\d/.test(password)) {
-      setError('Password must contain at least one number');
-      return;
-    }
-    if (!/[a-zA-Z]/.test(password)) {
-      setError('Password must contain at least one letter');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+    const errs = {};
+    if (!name.trim()) errs.name = 'Tell us what to call you.';
+    if (!email) errs.email = 'Enter your email.';
+    else if (!isEmail(email)) errs.email = 'That doesn’t look like an email address.';
+    if (!password) errs.password = 'Choose a password.';
+    else if (password.length < 8) errs.password = 'Password must be at least 8 characters';
+    else if (!/\d/.test(password)) errs.password = 'Password must contain at least one number';
+    else if (!/[a-zA-Z]/.test(password)) errs.password = 'Password must contain at least one letter';
+    if (!confirmPassword) errs.confirm = 'Type your password again.';
+    else if (password !== confirmPassword) errs.confirm = 'Passwords do not match';
+    setFieldErrors(errs);
+    if (Object.keys(errs).length) return;
+
     setLoading(true);
     setError('');
     try {
       await register(name, email, password);
       navigate('/dashboard');
     } catch (err) {
-      const msg =
-        err?.response?.data?.errors?.[0]?.message ||
-        err?.response?.data?.message ||
-        err?.message ||
-        'Registration failed. Please try again.';
-      setError(msg);
+      setError(friendlyAuthError(err, 'Registration failed. Please try again.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSuccess = async (tokenResponse) => {
+  const handleGoogleSuccess = async () => {
     try {
       navigate('/dashboard');
     } catch {
@@ -71,138 +61,80 @@ const RegisterPage = () => {
     }
   };
 
+  const passed = PASSWORD_RULES.filter(([, test]) => test(password)).length;
+
   return (
-    <div className="min-h-screen flex bg-canvas text-hi selection:bg-indigo-500/30 font-sans">
-      
-      {/* ── Left: Form Side ── */}
-      <div className="w-full lg:w-[45%] flex flex-col relative z-10 shadow-2xl shadow-black/50">
-        
-        {/* Top Logo */}
-        <div className="p-8 sm:px-12 lg:px-16 pt-12 flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2.5">
-            <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-lg" />
-            <span className="font-semibold text-hi text-lg tracking-tight">DistractFree</span>
-          </Link>
-          <ThemeToggle />
+    <AuthLayout
+      title="Create your account"
+      subtitle="Start building sustainable focus habits."
+      footer={<>Already have an account? <Link to="/login" className="df-link">Sign in</Link></>}
+    >
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <Input label="Full name" value={name} onChange={(e) => { setName(e.target.value); clear('name'); }} placeholder="Alex Rivera" autoComplete="name" error={fieldErrors.name} />
+        <Input label="Email" type="email" value={email} onChange={(e) => { setEmail(e.target.value); clear('email'); }} placeholder="you@example.com" autoComplete="email" error={fieldErrors.email} />
+
+        <div>
+          <Input
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); clear('password'); }}
+            autoComplete="new-password"
+            error={fieldErrors.password}
+          />
+          {/* Strength hint */}
+          <div className="mt-3" aria-live="polite">
+            <div className="grid grid-cols-3 gap-1.5" aria-hidden="true">
+              {PASSWORD_RULES.map((_, i) => (
+                <span key={i} className={`h-1 rounded-full ${i < passed ? (passed === 3 ? 'bg-accent' : 'bg-amber') : 'bg-paper-3'}`} />
+              ))}
+            </div>
+            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {PASSWORD_RULES.map(([label, test]) => {
+                const ok = test(password);
+                return (
+                  <li key={label} className={`flex items-center gap-1 text-xs ${ok ? 'text-accent' : 'text-muted'}`}>
+                    {ok ? <LuCheck aria-hidden="true" /> : <LuDot aria-hidden="true" />}
+                    {label}<span className="sr-only">{ok ? ' — done' : ' — not yet'}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
 
-        {/* Form Container */}
-        <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-16 pb-12">
-          <motion.div className="w-full max-w-[380px] mx-auto" initial="hidden" animate="visible">
-            
-            <motion.div variants={fadeUp} custom={0} className="mb-8">
-              <h1 className="text-3xl font-semibold text-hi mb-2 tracking-tight">Create an account</h1>
-              <p className="text-fg-2 text-[15px]">Start building sustainable focus habits.</p>
-            </motion.div>
+        <Input
+          label="Confirm password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => { setConfirmPassword(e.target.value); clear('confirm'); }}
+          autoComplete="new-password"
+          error={fieldErrors.confirm || (confirmPassword && password && confirmPassword.length >= password.length && confirmPassword !== password ? 'Passwords do not match' : undefined)}
+        />
 
-            <motion.form onSubmit={handleSubmit} className="space-y-4" variants={fadeUp} custom={0.1}>
-              <div>
-                <label className="block text-fg-2 text-sm font-medium mb-1.5 pl-1">Full Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Alex Rivera"
-                  className="w-full bg-surface-2 border border-ink/[0.06] rounded-2xl px-5 py-3.5 text-hi text-[15px] placeholder-fg-3 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-sm"
-                  autoComplete="name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-fg-2 text-sm font-medium mb-1.5 pl-1">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full bg-surface-2 border border-ink/[0.06] rounded-2xl px-5 py-3.5 text-hi text-[15px] placeholder-fg-3 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-sm"
-                  autoComplete="email"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-fg-2 text-sm font-medium mb-1.5 pl-1">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-surface-2 border border-ink/[0.06] rounded-2xl px-5 py-3.5 text-hi text-[15px] placeholder-fg-3 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-sm"
-                  autoComplete="new-password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-fg-2 text-sm font-medium mb-1.5 pl-1">Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-surface-2 border border-ink/[0.06] rounded-2xl px-5 py-3.5 text-hi text-[15px] placeholder-fg-3 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-sm"
-                  autoComplete="new-password"
-                />
-              </div>
-
-              {error && (
-                <p className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 rounded-xl py-2.5">
-                  {error}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full text-white font-medium text-[15px] py-3.5 px-4 rounded-2xl transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 mt-4"
-                style={{background:'linear-gradient(135deg, #5C6BC0, #7E8CF6)'}}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Creating account...
-                  </span>
-                ) : (
-                  'Create account'
-                )}
-              </button>
-            </motion.form>
-
-            <motion.div variants={fadeUp} custom={0.2} className="mt-8">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="flex-1 h-px bg-ink/[0.06]" />
-                <span className="text-xs text-fg-2 font-medium uppercase tracking-wider">or continue with</span>
-                <div className="flex-1 h-px bg-ink/[0.06]" />
-              </div>
-
-              {/* Simplified Google Auth Container */}
-              <div className="flex justify-center bg-surface-2 hover:bg-surface-3 border border-ink/[0.06] rounded-2xl p-1 transition-colors overflow-hidden">
-                 <GoogleAuthButton
-                  onSuccess={handleGoogleSuccess}
-                  onError={(err) => setError(err?.response?.data?.message || err?.message || 'Google sign-in failed')}
-                />
-              </div>
-            </motion.div>
-
-          </motion.div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-8 sm:px-12 lg:px-16 pb-8 text-center lg:text-left">
-           <p className="text-fg-2 text-sm">
-            Already have an account?{' '}
-            <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-              Sign in
-            </Link>
+        {error && (
+          <p role="alert" className="flex items-start gap-2 text-sm text-danger bg-danger-soft rounded-md px-3 py-2.5">
+            <LuCircleAlert className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+            {error}
           </p>
-        </div>
+        )}
+
+        <Button type="submit" size="lg" block loading={loading}>
+          Create account
+        </Button>
+      </form>
+
+      <div className="flex items-center gap-4 my-7" role="separator">
+        <span className="flex-1 h-px bg-line" />
+        <span className="text-xs text-muted">or</span>
+        <span className="flex-1 h-px bg-line" />
       </div>
 
-      {/* ── Right: Visual Side ── */}
-      <AuthShowcase />
-    </div>
+      <GoogleAuthButton
+        onSuccess={handleGoogleSuccess}
+        onError={(err) => setError(friendlyAuthError(err, 'Google sign-in failed. Try again, or use your email.'))}
+      />
+    </AuthLayout>
   );
 };
 

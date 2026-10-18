@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useCoins } from '../context/CoinContext';
@@ -7,36 +7,115 @@ import { getGreeting } from '../utils/helpers';
 import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
 import {
-  HiOutlineHome,
-  HiOutlineClock,
-  HiOutlineCalendarDays,
-  HiOutlineCurrencyDollar,
-  HiOutlineLightBulb,
-  HiOutlineTrophy,
-  HiOutlineCog6Tooth,
-  HiOutlineArrowRightOnRectangle,
-  HiOutlineBars3,
-  HiOutlineXMark,
-  HiOutlineBell,
-  HiOutlineFire,
-} from 'react-icons/hi2';
+  LuLayoutDashboard,
+  LuTimer,
+  LuCalendarDays,
+  LuCoins,
+  LuSparkles,
+  LuTrophy,
+  LuSettings,
+  LuLogOut,
+  LuMenu,
+  LuX,
+  LuBell,
+  LuFlame,
+  LuPanelLeftClose,
+  LuPanelLeftOpen,
+  LuPlay,
+  LuChevronsUpDown,
+} from 'react-icons/lu';
 
-const navItems = [
-  { to: '/dashboard', icon: HiOutlineHome, label: 'Dashboard' },
-  { to: '/dashboard/focus', icon: HiOutlineClock, label: 'Focus Session' },
-  { to: '/dashboard/calendar', icon: HiOutlineCalendarDays, label: 'Calendar' },
-  { to: '/dashboard/coins', icon: HiOutlineCurrencyDollar, label: 'Coins' },
-  { to: '/dashboard/insights', icon: HiOutlineLightBulb, label: 'AI Insights' },
-  { to: '/dashboard/leaderboard', icon: HiOutlineTrophy, label: 'Leaderboard' },
-  { to: '/dashboard/settings', icon: HiOutlineCog6Tooth, label: 'Settings' },
+/* ═══════════════════════════════════════════════════════════════
+   App navigation — sidebar (desktop), top bar, and drawer (mobile).
+   Same paper / hairline / serif language as the landing page.
+   ═══════════════════════════════════════════════════════════════ */
+
+export const navItems = [
+  { to: '/dashboard', icon: LuLayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard/focus', icon: LuTimer, label: 'Focus Session' },
+  { to: '/dashboard/calendar', icon: LuCalendarDays, label: 'Calendar' },
+  { to: '/dashboard/coins', icon: LuCoins, label: 'Coins' },
+  { to: '/dashboard/insights', icon: LuSparkles, label: 'AI Insights' },
+  { to: '/dashboard/leaderboard', icon: LuTrophy, label: 'Leaderboard' },
+  { to: '/dashboard/settings', icon: LuSettings, label: 'Settings' },
 ];
+
+const EXTRA_TITLES = { '/dashboard/heatmap': 'Focus Heatmap' };
+const COLLAPSE_KEY = 'df-sidebar-collapsed';
+
+const pageTitle = (pathname) => {
+  const path = pathname.replace(/\/+$/, '') || '/dashboard';
+  if (EXTRA_TITLES[path]) return EXTRA_TITLES[path];
+  const hit = navItems.find((n) => n.to === path);
+  return hit ? hit.label : 'Dashboard';
+};
+
+const todayLabel = () =>
+  new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+
+/* Close a popover on outside click or Escape */
+function useDismiss(open, ref, close) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) close(); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, ref, close]);
+}
+
+const NavList = ({ collapsed = false, onNavigate }) => (
+  <nav className="app-nav" aria-label="Main navigation">
+    {navItems.map(({ to, icon: Icon, label }) => (
+      <NavLink
+        key={to}
+        to={to}
+        end={to === '/dashboard'}
+        onClick={onNavigate}
+        title={collapsed ? label : undefined}
+        aria-label={collapsed ? label : undefined}
+        className={({ isActive }) => `app-nav-link ${isActive ? 'is-active' : ''}`}
+      >
+        <Icon className="app-nav-icon" aria-hidden="true" />
+        {!collapsed && <span>{label}</span>}
+      </NavLink>
+    ))}
+  </nav>
+);
+
+const CoinPanel = ({ balance, streak, collapsed }) =>
+  collapsed ? (
+    <Link to="/dashboard/coins" className="app-coin-mini" title={`${balance} Focus Coins`} aria-label={`${balance} Focus Coins`}>
+      <LuCoins aria-hidden="true" />
+      <span className="df-mono">{balance}</span>
+    </Link>
+  ) : (
+    <Link to="/dashboard/coins" className="app-coin-panel">
+      <span className="df-label">Focus Coins</span>
+      <span className="app-coin-value df-mono">{balance}</span>
+      <span className="app-coin-streak">
+        <LuFlame aria-hidden="true" />
+        <span><span className="df-mono">{streak}</span>-day streak</span>
+      </span>
+    </Link>
+  );
 
 const TopNavbar = () => {
   const { user, logout } = useAuth();
   const { balance } = useCoins();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(COLLAPSE_KEY) === '1'; } catch { return false; }
+  });
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -45,28 +124,15 @@ const TopNavbar = () => {
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Close dropdowns on click outside or Escape
+  useDismiss(showNotifications, notifRef, () => setShowNotifications(false));
+  useDismiss(showProfile, profileRef, () => setShowProfile(false));
+
+  // The main column reads this to leave room for the sidebar
   useEffect(() => {
-    if (!showNotifications && !showProfile) return undefined;
-    const onPointerDown = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifications(false);
-      if (profileRef.current && !profileRef.current.contains(e.target)) setShowProfile(false);
-    };
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        setShowNotifications(false);
-        setShowProfile(false);
-      }
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('touchstart', onPointerDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('touchstart', onPointerDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [showNotifications, showProfile]);
+    document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+    try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch { /* private mode */ }
+    return () => document.documentElement.classList.remove('sidebar-collapsed');
+  }, [collapsed]);
 
   const fetchNotifications = async () => {
     try {
@@ -111,128 +177,150 @@ const TopNavbar = () => {
   };
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close the drawer when the route changes
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  const initial = user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const streak = user?.currentStreak || 0;
+  const onFocusPage = pathname.startsWith('/dashboard/focus');
+
   return (
     <>
-      {/* ── Desktop Top Navigation ── */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled 
-            ? 'bg-canvas/80 backdrop-blur-xl border-b border-ink/[0.06] shadow-lg shadow-black/[0.05] dark:shadow-black/20' 
-            : 'bg-transparent border-b border-transparent'
-        }`}
-        style={{ height: 64 }}
-        role="banner"
-      >
-        <div className="relative max-w-[1280px] mx-auto h-full px-6 flex items-center justify-between">
-          {/* Left — Logo + Brand */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-lg shadow-sm" />
-            <span className="text-hi font-semibold text-base tracking-tight hidden sm:block">
-              DistractFree
-            </span>
+      {/* ── Sidebar (≥1024px) ── */}
+      <aside className={`app-sidebar ${collapsed ? 'is-collapsed' : ''}`} aria-label="Sidebar">
+        <div className="app-sidebar-head">
+          <Link to="/dashboard" className="app-brand" aria-label="DistractFree dashboard">
+            <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
+            {!collapsed && <span>DistractFree</span>}
+          </Link>
+          <button
+            type="button"
+            className="app-icon-btn"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <LuPanelLeftOpen /> : <LuPanelLeftClose />}
+          </button>
+        </div>
+
+        <NavList collapsed={collapsed} />
+
+        <div className="app-sidebar-foot">
+          <CoinPanel balance={balance} streak={streak} collapsed={collapsed} />
+
+          <div className="relative" ref={profileRef}>
+            <button
+              type="button"
+              onClick={() => setShowProfile((v) => !v)}
+              className={`app-user ${collapsed ? 'is-collapsed' : ''}`}
+              aria-label="Account menu"
+              aria-expanded={showProfile}
+            >
+              <span className="app-avatar" aria-hidden="true">{initial}</span>
+              {!collapsed && (
+                <>
+                  <span className="app-user-text">
+                    <span className="app-user-name">{user?.name || 'User'}</span>
+                    {user?.email && <span className="app-user-email">{user.email}</span>}
+                  </span>
+                  <LuChevronsUpDown className="app-user-chev" aria-hidden="true" />
+                </>
+              )}
+            </button>
+
+            <AnimatePresence>
+              {showProfile && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.15 }}
+                  className={`app-popover app-popover--up ${collapsed ? 'app-popover--side' : ''}`}
+                >
+                  <div className="app-popover-head">
+                    <p className="text-sm font-semibold text-text truncate">{user?.name || 'User'}</p>
+                    {user?.email && <p className="text-xs text-muted truncate mt-0.5">{user.email}</p>}
+                  </div>
+                  <button onClick={() => { setShowProfile(false); navigate('/dashboard/settings'); }} className="app-menu-item">
+                    <LuSettings aria-hidden="true" />
+                    Settings
+                  </button>
+                  <button onClick={() => { setShowProfile(false); handleLogout(); }} className="app-menu-item app-menu-item--danger">
+                    <LuLogOut aria-hidden="true" />
+                    Log out
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Top bar ── */}
+      <header className={`app-topbar ${scrolled ? 'is-scrolled' : ''}`} role="banner">
+        <div className="app-topbar-inner">
+          {/* Mobile: menu + brand */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <button className="app-icon-btn -ml-2" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+              <LuMenu />
+            </button>
+            <Link to="/dashboard" className="app-brand" aria-label="DistractFree dashboard">
+              <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
+            </Link>
           </div>
 
-          {/* Center — Navigation Pills */}
-          <nav
-            className={`hidden md:flex items-center gap-1 px-2 py-1.5 rounded-full transition-all duration-300 ${
-              scrolled ? 'bg-ink/[0.03]' : ''
-            }`}
-            role="navigation"
-            aria-label="Main navigation"
-          >
-            {navItems.map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/dashboard'}
-                className={({ isActive }) =>
-                  `relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                    isActive
-                      ? 'text-hi'
-                      : 'text-fg-2 hover:text-hi hover:bg-ink/[0.04]'
-                  }`
-                }
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-              >
-                {({ isActive }) => (
-                  <>
-                    <span className="relative z-10">{label}</span>
-                    {isActive && (
-                      <motion.div
-                        className="absolute inset-0 bg-ink/[0.08] rounded-full shadow-sm"
-                        layoutId="activeNavPill"
-                        transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
-                        style={{ zIndex: 0 }}
-                      />
-                    )}
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </nav>
+          {/* Title + date */}
+          <div className="app-title-block">
+            <span className="df-label hidden sm:block">{todayLabel()}</span>
+            <h1 className="app-title">{pageTitle(pathname)}</h1>
+          </div>
 
-          {/* Right — Status + Profile */}
-          <div className="flex items-center gap-2">
-            {/* Streak Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full px-3 py-1.5">
-              <HiOutlineFire className="w-3.5 h-3.5 text-orange-400" />
-              <span className="text-orange-400 text-xs font-semibold">{user?.currentStreak || 0}</span>
-            </div>
-
-            {/* Coins Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1.5">
-              <span className="text-sm">🪙</span>
-              <span className="text-amber-400 text-xs font-semibold">{balance}</span>
-            </div>
-
-            <ThemeToggle />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Link to="/dashboard/coins" className="app-coin-chip lg:hidden" aria-label={`${balance} Focus Coins`}>
+              <LuCoins aria-hidden="true" />
+              <span className="df-mono">{balance}</span>
+            </Link>
 
             {/* Notification Bell */}
             <div className="relative" ref={notifRef}>
               <button
-                className="relative p-2 rounded-xl hover:bg-ink/[0.06] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="app-icon-btn relative"
                 onClick={() => setShowNotifications(!showNotifications)}
-                aria-label="Notifications"
+                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+                aria-expanded={showNotifications}
               >
-                <HiOutlineBell className="w-[18px] h-[18px] text-fg-2" />
+                <LuBell />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-[14px] h-[14px] bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white px-0.5 border-2 border-[#0F1115]">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+                  <span className="app-badge-dot df-mono" aria-hidden="true">{unreadCount > 9 ? '9+' : unreadCount}</span>
                 )}
               </button>
 
-              {/* Dropdown */}
               <AnimatePresence>
                 {showNotifications && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-80 bg-surface-2 border border-ink/[0.08] rounded-2xl shadow-2xl overflow-hidden z-50"
+                    className="app-popover app-popover--down w-[min(20rem,calc(100vw-2rem))]"
                   >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-ink/[0.06]">
-                      <h3 className="text-sm font-semibold text-hi">Notifications</h3>
+                    <div className="app-popover-head flex items-center justify-between">
+                      <h2 className="text-sm font-semibold text-text">Notifications</h2>
                       {unreadCount > 0 && (
-                        <button
-                          onClick={handleMarkAllAsRead}
-                          className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
-                        >
+                        <button onClick={handleMarkAllAsRead} className="df-link text-xs">
                           Mark all as read
                         </button>
                       )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-sm text-fg-2">
+                        <div className="px-4 py-8 text-center text-sm text-muted">
                           No notifications yet.
                         </div>
                       ) : (
@@ -240,27 +328,26 @@ const TopNavbar = () => {
                           <div
                             key={notif._id}
                             onClick={() => !notif.read && handleMarkAsRead(notif._id)}
-                            className={`cursor-pointer px-4 py-3 border-b border-ink/[0.04] last:border-0 hover:bg-ink/[0.02] transition-colors ${
-                              !notif.read ? 'bg-indigo-500/[0.03]' : ''
-                            }`}
+                            className={`app-notif ${!notif.read ? 'is-unread' : ''}`}
                           >
-                            <div className="flex justify-between items-start gap-2">
-                              <div>
-                                <p className={`text-sm font-medium ${!notif.read ? 'text-hi' : 'text-fg-soft'}`}>
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="min-w-0">
+                                <p className={`text-sm font-medium ${!notif.read ? 'text-text' : 'text-text-2'}`}>
                                   {notif.title}
                                 </p>
-                                <p className="text-xs text-fg-2 mt-1 line-clamp-2">
+                                <p className="text-xs text-muted mt-1 line-clamp-2">
                                   {notif.message}
                                 </p>
-                                <span className="text-[10px] text-fg-3 mt-1.5 block">
+                                <span className="df-mono text-[11px] text-muted mt-1.5 block">
                                   {new Date(notif.createdAt).toLocaleDateString()} {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               </div>
                               {!notif.read && (
                                 <button
                                   onClick={() => handleMarkAsRead(notif._id)}
-                                  className="w-2.5 h-2.5 rounded-full bg-indigo-500 flex-shrink-0 mt-1 hover:bg-indigo-400"
+                                  className="app-unread-dot"
                                   title="Mark as read"
+                                  aria-label="Mark as read"
                                 />
                               )}
                             </div>
@@ -273,147 +360,65 @@ const TopNavbar = () => {
               </AnimatePresence>
             </div>
 
-            {/* Profile Avatar + menu */}
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={() => setShowProfile((v) => !v)}
-                className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center hover:bg-indigo-500/30 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                aria-label="Profile menu"
-                aria-expanded={showProfile}
-              >
-                <span className="text-indigo-300 text-xs font-semibold">
-                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                </span>
-              </button>
+            <ThemeToggle />
 
-              <AnimatePresence>
-                {showProfile && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-60 bg-surface-2 border border-ink/[0.08] rounded-2xl shadow-2xl overflow-hidden z-50"
-                  >
-                    <div className="px-4 py-3 border-b border-ink/[0.06]">
-                      <p className="text-sm font-semibold text-hi truncate">{user?.name || 'User'}</p>
-                      {user?.email && <p className="text-xs text-fg-2 truncate mt-0.5">{user.email}</p>}
-                    </div>
-                    <button
-                      onClick={() => { setShowProfile(false); navigate('/dashboard/settings'); }}
-                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-fg-soft hover:bg-ink/[0.04] transition-colors"
-                    >
-                      <HiOutlineCog6Tooth className="w-4 h-4" />
-                      Settings
-                    </button>
-                    <button
-                      onClick={() => { setShowProfile(false); handleLogout(); }}
-                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                    >
-                      <HiOutlineArrowRightOnRectangle className="w-4 h-4" />
-                      Log out
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Mobile Hamburger */}
-            <button
-              className="md:hidden p-2 rounded-xl hover:bg-ink/[0.06] transition-colors text-fg-2"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Open menu"
-            >
-              <HiOutlineBars3 className="w-5 h-5" />
-            </button>
+            {!onFocusPage && (
+              <Link to="/dashboard/focus" className="df-btn df-btn--primary df-btn--sm hidden sm:inline-flex">
+                <LuPlay aria-hidden="true" />
+                Start focus session
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
-      {/* ── Mobile Drawer ── */}
+      {/* ── Mobile drawer ── */}
       <AnimatePresence>
         {mobileOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
-              className="md:hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+              className="lg:hidden fixed inset-0 z-[60] bg-black/40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               onClick={() => setMobileOpen(false)}
             />
-            {/* Drawer Panel */}
             <motion.div
-              className="md:hidden fixed right-0 top-0 bottom-0 w-72 z-[70] bg-surface-2 border-l border-ink/[0.06] shadow-2xl"
-              initial={{ x: 300 }}
+              className="app-drawer lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu"
+              initial={{ x: -300 }}
               animate={{ x: 0 }}
-              exit={{ x: 300 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              exit={{ x: -300 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
             >
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-ink/[0.06]">
-                <div className="flex items-center gap-2.5">
-                  <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-lg" />
-                  <span className="text-hi font-semibold text-sm">DistractFree</span>
-                </div>
-                <button
-                  className="p-2 rounded-xl hover:bg-ink/[0.06] transition-colors text-fg-2"
-                  onClick={() => setMobileOpen(false)}
-                  aria-label="Close menu"
-                >
-                  <HiOutlineXMark className="w-5 h-5" />
+              <div className="app-sidebar-head">
+                <Link to="/dashboard" className="app-brand">
+                  <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
+                  <span>DistractFree</span>
+                </Link>
+                <button className="app-icon-btn" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+                  <LuX />
                 </button>
               </div>
 
-              {/* User Info */}
-              <div className="px-5 py-4 border-b border-ink/[0.06]">
-                <p className="text-xs text-fg-2 mb-0.5">{getGreeting()}</p>
-                <p className="text-sm font-semibold text-hi">{user?.name || 'User'}</p>
-                <div className="flex items-center gap-3 mt-2">
-                  <div className="flex items-center gap-1 text-xs">
-                    <HiOutlineFire className="w-3.5 h-3.5 text-orange-400" />
-                    <span className="text-orange-400 font-medium">{user?.currentStreak || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    <span>🪙</span>
-                    <span className="text-amber-400 font-medium">{balance}</span>
-                  </div>
-                </div>
+              <div className="px-5 pb-4">
+                <p className="text-xs text-muted">{getGreeting()}</p>
+                <p className="text-sm font-semibold text-text">{user?.name || 'User'}</p>
               </div>
 
-              {/* Nav Links */}
-              <nav className="px-3 py-3 space-y-0.5" aria-label="Mobile navigation">
-                {navItems.map(({ to, icon: Icon, label }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={to === '/dashboard'}
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                        isActive
-                          ? 'bg-indigo-500/10 text-indigo-400'
-                          : 'text-fg-2 hover:bg-ink/[0.04] hover:text-hi'
-                      }`
-                    }
-                  >
-                    <Icon className="w-[18px] h-[18px]" />
-                    <span>{label}</span>
-                  </NavLink>
-                ))}
-              </nav>
+              <NavList onNavigate={() => setMobileOpen(false)} />
 
-              {/* Logout */}
-              <div className="absolute bottom-0 left-0 right-0 px-3 py-4 border-t border-ink/[0.06]">
+              <div className="app-sidebar-foot">
+                <CoinPanel balance={balance} streak={streak} />
                 <button
-                  onClick={() => {
-                    setMobileOpen(false);
-                    handleLogout();
-                  }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-fg-2 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150 w-full"
+                  onClick={() => { setMobileOpen(false); handleLogout(); }}
+                  className="app-menu-item app-menu-item--danger rounded-md"
                 >
-                  <HiOutlineArrowRightOnRectangle className="w-[18px] h-[18px]" />
-                  <span>Logout</span>
+                  <LuLogOut aria-hidden="true" />
+                  Log out
                 </button>
               </div>
             </motion.div>

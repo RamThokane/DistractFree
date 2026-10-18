@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 
-const AnimatedCounter = ({ value, duration = 1.5, prefix = '', suffix = '', className = '' }) => {
+const AnimatedCounter = ({ value, duration = 0.9, prefix = '', suffix = '', className = '' }) => {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (v) => Math.round(v));
   const displayRef = useRef(null);
@@ -11,7 +11,8 @@ const AnimatedCounter = ({ value, duration = 1.5, prefix = '', suffix = '', clas
     if (displayRef.current && !displayRef.current.textContent) {
       displayRef.current.textContent = `${prefix}${Math.round(count.get()).toLocaleString()}${suffix}`;
     }
-    const controls = animate(count, value, { duration });
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const controls = animate(count, value, { duration: reduce ? 0 : duration, ease: 'easeOut' });
     return controls.stop;
   }, [value, count, duration, prefix, suffix]);
 

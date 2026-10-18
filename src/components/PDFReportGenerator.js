@@ -431,20 +431,20 @@ const PDFReportGenerator = ({ user }) => {
   };
 
   return (
-    <div className="ml-4 flex flex-col items-end">
+    <div className="flex flex-col items-start">
       <button
         onClick={generatePDF}
         disabled={loading}
-        className="text-xs text-white bg-indigo-500 hover:bg-indigo-600 px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-colors disabled:opacity-50"
+        className="df-btn df-btn--secondary df-btn--sm"
       >
         {loading ? (
-          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <span className="w-3 h-3 border-2 border-current border-r-transparent rounded-full animate-spin" aria-hidden="true" />
         ) : (
           <HiOutlineDownload className="w-3.5 h-3.5" />
         )}
         {loading ? 'Generating...' : 'Download PDF Report'}
       </button>
-      {error && <p className="text-[11px] text-red-400 mt-1">{error}</p>}
+      {error && <p className="text-xs text-danger mt-1" role="alert">{error}</p>}
     </div>
   );
 };

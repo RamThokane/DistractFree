@@ -1,21 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import GlassCard from './GlassCard';
+import { Card, Select, Skeleton, EmptyState } from './ui';
+import { LuGrid3X3 } from 'react-icons/lu';
 import api from '../services/api';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/* ── Color scale (dark theme) ── */
+/* ── One-hue scale: deeper green = more productive ── */
 const scoreToColor = (score, hasData) => {
-  if (!hasData) return 'rgb(var(--ink) / 0.04)';
-  if (score === 0) return 'rgba(239,107,107,0.15)';
-  if (score < 20) return 'rgba(239,107,107,0.35)';
-  if (score < 40) return 'rgba(245,182,56,0.3)';
-  if (score < 60) return 'rgba(245,182,56,0.5)';
-  if (score < 75) return 'rgba(63,174,106,0.4)';
-  if (score < 90) return 'rgba(63,174,106,0.6)';
-  return 'rgba(63,174,106,0.85)';
+  if (!hasData) return 'var(--paper-3)';
+  const steps = [[20, 0.14], [40, 0.28], [60, 0.45], [75, 0.62], [90, 0.8]];
+  const alpha = (steps.find(([max]) => score < max) || [0, 1])[1];
+  return `rgb(var(--c-accent) / ${alpha})`;
 };
 
 /* ── Tooltip ── */
@@ -23,48 +19,36 @@ const HeatmapTooltip = ({ cell, x, y }) => {
   if (!cell) return null;
   const d = new Date(cell.date);
   const formattedDate = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const rows = [
+    ['Productivity', `${cell.score}%`],
+    ['Distraction', `${cell.distractionScore}%`],
+    ['Sessions', cell.completedSessions],
+    ['Focus', `${cell.focusMinutes} min`],
+  ];
+  if (cell.blockedAttempts > 0) rows.push(['Blocked', cell.blockedAttempts]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="fixed z-[100] pointer-events-none"
-      style={{ left: x + 12, top: y - 10 }}
-    >
-      <div className="bg-surface-2/95 backdrop-blur-md border border-ink/10 rounded-xl px-4 py-3 shadow-2xl min-w-[180px]">
-        <p className="text-hi font-semibold text-sm mb-1">{formattedDate}</p>
-        <div className="space-y-1 text-xs">
-          <div className="flex justify-between"><span className="text-fg-2">Productivity</span><span className="text-hi font-medium">{cell.score}%</span></div>
-          <div className="flex justify-between"><span className="text-fg-2">Distraction</span><span className="text-red-400 font-medium">{cell.distractionScore}%</span></div>
-          <div className="flex justify-between"><span className="text-fg-2">Sessions</span><span className="text-hi">{cell.completedSessions}</span></div>
-          <div className="flex justify-between"><span className="text-fg-2">Focus</span><span className="text-hi">{cell.focusMinutes} min</span></div>
-          {cell.blockedAttempts > 0 && (
-            <div className="flex justify-between"><span className="text-fg-2">Blocked</span><span className="text-red-400">{cell.blockedAttempts}</span></div>
-          )}
-        </div>
+    <div className="fixed z-[100] pointer-events-none" style={{ left: x + 12, top: y - 10 }}>
+      <div className="df-card shadow-pop px-4 py-3 min-w-[180px]">
+        <p className="text-sm font-semibold text-text mb-1.5">{formattedDate}</p>
+        <dl className="space-y-1 text-xs">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-4"><dt className="text-muted">{k}</dt><dd className="df-mono text-text">{v}</dd></div>
+          ))}
+        </dl>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
-/* ── Summary Card ── */
-const SummaryCard = ({ icon, label, value, sublabel, color = 'rgb(var(--fg))' }) => (
-  <GlassCard padding="p-4" className="text-center h-full">
-    <span className="text-2xl">{icon}</span>
-    <p className="text-fg-lav text-[10px] mt-2 uppercase tracking-wider">{label}</p>
-    <p className="font-bold text-xl mt-0.5" style={{ color }}>{value || 'N/A'}</p>
-    {sublabel && <p className="text-fg-4 text-[10px] mt-1">{sublabel}</p>}
-  </GlassCard>
-);
-
 /* ── Legend ── */
 const Legend = () => (
-  <div className="flex items-center gap-2 justify-end">
-    <span className="text-fg-4 text-xs">Less</span>
-    {[0, 15, 35, 55, 72, 85, 95].map((s, i) => (
-      <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: scoreToColor(s, true) }} />
+  <div className="flex items-center gap-1.5 justify-end" aria-hidden="true">
+    <span className="text-muted text-xs mr-1">Less</span>
+    {[[0, false], [10, true], [30, true], [50, true], [70, true], [85, true], [95, true]].map(([s, has], i) => (
+      <span key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: scoreToColor(s, has) }} />
     ))}
-    <span className="text-fg-4 text-xs">More</span>
+    <span className="text-muted text-xs ml-1">More</span>
   </div>
 );
 
@@ -89,27 +73,43 @@ const ProductivityHeatmap = () => {
 
   useEffect(() => { fetchHeatmap(); }, [fetchHeatmap]);
 
+  const yearPicker = (
+    <Select
+      label="Year"
+      fieldClassName="w-32"
+      value={selectedYear}
+      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+      options={[...Array(5)].map((_, i) => { const y = new Date().getFullYear() - i; return { value: y, label: String(y) }; })}
+    />
+  );
+  const head = (
+    <div className="pg-head">
+      <div>
+        <p className="pg-kicker">Heatmap</p>
+        <h2 className="pg-title">Your year in <em>focus</em></h2>
+        <p className="pg-sub">Your productivity across the year</p>
+      </div>
+      {yearPicker}
+    </div>
+  );
+
   if (loading && !heatmap) {
     return (
-      <div className="animate-pulse">
-        <div className="bg-ink/[0.03] rounded-2xl border border-ink/[0.04] h-[280px] mb-4" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[...Array(6)].map((_, i) => <div key={i} className="bg-ink/[0.03] rounded-2xl border border-ink/[0.04] h-24" />)}
-        </div>
+      <div aria-busy="true" aria-label="Loading heatmap">
+        {head}
+        <Skeleton height={200} radius={10} />
       </div>
     );
   }
 
   if (!heatmap || heatmap.cells?.length === 0) {
     return (
-      <GlassCard>
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <span className="text-4xl mb-3">📊</span>
-          <p className="text-fg-lav text-sm max-w-sm leading-relaxed">
-            No heatmap data found for {selectedYear}.
-          </p>
-        </div>
-      </GlassCard>
+      <div>
+        {head}
+        <EmptyState icon={LuGrid3X3} title={`Nothing for ${selectedYear} yet`}>
+          No heatmap data found for {selectedYear}. Each day you focus adds a square here.
+        </EmptyState>
+      </div>
     );
   }
 
@@ -155,51 +155,28 @@ const ProductivityHeatmap = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-fg font-semibold text-2xl mb-1 flex items-center gap-2">🗓️ Productivity Heatmap</h2>
-          <p className="text-fg-lav text-sm">Your productivity across the year</p>
-        </div>
-        <div className="flex items-center gap-2 bg-surface-2/50 px-3 py-1.5 rounded-lg border border-ink/5">
-          <span className="text-fg-lav text-xs">Year:</span>
-          <select 
-            value={selectedYear} 
-            onChange={e => setSelectedYear(parseInt(e.target.value))}
-            className="bg-transparent text-fg text-sm font-semibold outline-none cursor-pointer"
-          >
-            {[...Array(5)].map((_, i) => {
-              const y = new Date().getFullYear() - i;
-              return <option key={y} value={y} className="bg-surface-2 text-fg">{y}</option>;
-            })}
-          </select>
-        </div>
-      </div>
+    <div>
+      {head}
 
       {/* Grid */}
-      <GlassCard padding="p-6">
-        <div className="overflow-x-auto overflow-y-hidden custom-scrollbar pb-4">
+      <Card padding="p-6">
+        <div className="overflow-x-auto overflow-y-hidden pb-2">
           <div className="min-w-max">
             {/* Month labels */}
-            <div className="flex mb-2" style={{ paddingLeft: '40px' }}>
+            <div className="relative h-5 mb-1" style={{ marginLeft: 40 }} aria-hidden="true">
               {monthLabels.map((m, i) => (
-                <div 
-                  key={i} 
-                  className="absolute text-xs text-fg-lav font-medium"
-                  style={{ left: `${m.index * 16 + 40}px` }}
-                >
+                <span key={i} className="absolute df-mono text-[11px] text-muted" style={{ left: m.index * 18 }}>
                   {m.label}
-                </div>
+                </span>
               ))}
-              <div className="h-4" /> {/* Spacer for absolute labels */}
             </div>
 
             {/* Grid Area */}
             <div className="flex gap-1">
               {/* Day Labels */}
-              <div className="flex flex-col gap-1 pr-2 mt-[2px]">
+              <div className="flex flex-col gap-1 pr-2" aria-hidden="true">
                 {DAY_LABELS.map((day, i) => (
-                  <div key={day} className="h-[14px] text-[10px] text-fg-4 font-medium flex items-center justify-end w-6">
+                  <div key={day} className="h-[14px] df-mono text-[10px] text-muted flex items-center justify-end w-6">
                     {i % 2 !== 0 ? day : ''}
                   </div>
                 ))}
@@ -209,15 +186,11 @@ const ProductivityHeatmap = () => {
               {weeks.map((week, weekIdx) => (
                 <div key={weekIdx} className="flex flex-col gap-1">
                   {week.map((cell, dayIdx) => (
-                    <motion.div
+                    <div
                       key={dayIdx}
-                      className="w-[14px] h-[14px] rounded-[3px] transition-all relative"
-                      style={{
-                        backgroundColor: scoreToColor(cell?.score || 0, cell?.hasData),
-                        outline: cell ? 'none' : '1px solid rgb(var(--ink) / 0.04)',
-                        cursor: cell ? 'pointer' : 'default'
-                      }}
-                      whileHover={cell ? { scale: 1.3, zIndex: 10 } : {}}
+                      className={`w-[14px] h-[14px] rounded-[3px] ${cell ? 'cursor-pointer hover:outline hover:outline-1 hover:outline-offset-1 hover:outline-text' : ''}`}
+                      style={{ backgroundColor: cell ? scoreToColor(cell.score || 0, cell.hasData) : 'transparent' }}
+                      title={cell ? `${cell.date.slice(0, 10)}: ${cell.score}% productive` : undefined}
                       onMouseEnter={(e) => cell && setTooltip({ cell, x: e.clientX, y: e.clientY })}
                       onMouseMove={(e) => tooltip && setTooltip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : null)}
                       onMouseLeave={() => setTooltip(null)}
@@ -227,25 +200,31 @@ const ProductivityHeatmap = () => {
               ))}
             </div>
 
-            <div className="mt-5 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <span className="text-fg-4 text-xs font-medium">Data Coverage: <span className="text-[#3FAE6A]">{heatmap.coverage}%</span></span>
-              </div>
+            <div className="mt-5 flex justify-between items-center gap-6">
+              <span className="text-xs text-muted">Data coverage: <span className="df-mono text-text">{heatmap.coverage}%</span></span>
               <Legend />
             </div>
           </div>
         </div>
-      </GlassCard>
+      </Card>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4">
-        <SummaryCard icon="🏆" label="Best Month" value={heatmap.bestMonth} color="#3FAE6A" />
-        <SummaryCard icon="📅" label="Best Week" value={heatmap.bestWeek} color="#7C5CFC" />
-        <SummaryCard icon="🔥" label="Most Productive Day" value={heatmap.mostProductiveDay} color="#3FAE6A" sublabel="Highest focus score" />
-        <SummaryCard icon="⚠️" label="Highest Distraction" value={heatmap.highestDistractionDay} color="#EF6B6B" sublabel="Most blocked attempts" />
-        <SummaryCard icon="⚡" label="Longest Streak" value={`${heatmap.longestStreak} days`} color="#F5B638" sublabel="Consecutive focused days" />
-        <SummaryCard icon="📊" label="Data Coverage" value={`${heatmap.coverage}%`} color="#60A5FA" sublabel="Of the selected year" />
-      </div>
+      {/* Summary */}
+      <dl className="pg-stats pg-stats--3 mt-10">
+        {[
+          ['Best month', heatmap.bestMonth, null, 'text-accent'],
+          ['Best week', heatmap.bestWeek, null, 'text-text'],
+          ['Most productive day', heatmap.mostProductiveDay, 'Highest focus score', 'text-accent'],
+          ['Highest distraction', heatmap.highestDistractionDay, 'Most blocked attempts', 'text-text'],
+          ['Longest streak', `${heatmap.longestStreak} days`, 'Consecutive focused days', 'text-amber-ink'],
+          ['Data coverage', `${heatmap.coverage}%`, 'Of the selected year', 'text-text'],
+        ].map(([label, value, sub, tone], i) => (
+          <div key={label} className={i >= 3 ? 'md:border-t md:border-line' : ''}>
+            <dt className="df-label">{label}</dt>
+            <dd className={`df-mono text-lg mt-1 ${tone}`}>{value || 'N/A'}</dd>
+            {sub && <dd className="text-xs text-muted mt-0.5">{sub}</dd>}
+          </div>
+        ))}
+      </dl>
 
       {/* Tooltip */}
       {tooltip && <HeatmapTooltip cell={tooltip.cell} x={tooltip.x} y={tooltip.y} />}

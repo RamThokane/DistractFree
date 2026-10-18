@@ -1,87 +1,58 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
+import { LuCoins } from 'react-icons/lu';
 import { useCoins } from '../context/CoinContext';
+import { useTheme } from '../context/ThemeContext';
+import { Button } from './ui';
+
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 const RewardPopup = () => {
   const { pendingReward, clearReward } = useCoins();
+  const { isDark } = useTheme();
 
   return (
     <AnimatePresence>
       {pendingReward && (
         <>
-          <Confetti
-            width={window.innerWidth}
-            height={window.innerHeight}
-            recycle={false}
-            numberOfPieces={150}
-            gravity={0.3}
-            colors={['#6366F1', '#34D399', '#818CF8', '#6EE7B7', '#A78BFA']}
-          />
+          {!reduceMotion() && (
+            <Confetti
+              width={window.innerWidth}
+              height={window.innerHeight}
+              recycle={false}
+              numberOfPieces={90}
+              gravity={0.25}
+              colors={isDark ? ['#7FC2A3', '#E0B04A', '#EDE9E1'] : ['#1F5E4A', '#C8901E', '#DCD5C9']}
+            />
+          )}
           <motion.div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            className="df-modal-backdrop"
+            style={{ zIndex: 100 }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={clearReward}
           >
             <motion.div
-              className="bg-ink/15 backdrop-blur-2xl border border-ink/25 rounded-[32px] p-10 text-center max-w-sm mx-4 shadow-2xl"
-              initial={{ scale: 0.5, opacity: 0, y: 50 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.8, opacity: 0, y: -30 }}
-              transition={{ type: 'spring', damping: 15, stiffness: 200 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reward-title"
+              className="df-modal max-w-sm text-center"
+              initial={{ y: 16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 8, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <motion.div
-                className="text-6xl mb-4"
-                animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-              >
-                🎉
-              </motion.div>
-              <motion.h2
-                className="text-3xl font-bold text-hi mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                +{pendingReward.amount} Focus Coins
-              </motion.h2>
-              <motion.p
-                className="text-fg-soft text-sm mb-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                {pendingReward.description}
-              </motion.p>
-              <motion.div
-                className="flex justify-center gap-2 mb-2"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                {[...Array(5)].map((_, i) => (
-                  <motion.span
-                    key={i}
-                    className="text-2xl"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + i * 0.1 }}
-                  >
-                    🪙
-                  </motion.span>
-                ))}
-              </motion.div>
-              <motion.button
-                className="mt-4 bg-primary hover:bg-primary-light text-white font-semibold py-2.5 px-8 rounded-full transition-all duration-300"
-                onClick={clearReward}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Awesome!
-              </motion.button>
+              <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-soft text-amber mb-4">
+                <LuCoins size={22} aria-hidden="true" />
+              </span>
+              <h2 id="reward-title" className="df-display text-t-40">
+                <span className="df-mono text-amber-ink">+{pendingReward.amount}</span> Focus Coins
+              </h2>
+              <p className="text-sm text-muted mt-2 mb-6">{pendingReward.description}</p>
+              <Button onClick={clearReward} autoFocus>Nice, keep going</Button>
             </motion.div>
           </motion.div>
         </>

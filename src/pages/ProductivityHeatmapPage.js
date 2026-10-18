@@ -5,7 +5,7 @@ import ProductivityHeatmap from '../components/ProductivityHeatmap';
 const ProductivityHeatmapPage = () => {
   return (
     <PageTransition>
-      <div className="max-w-7xl mx-auto pb-10">
+      <div>
         <ProductivityHeatmap />
       </div>
     </PageTransition>

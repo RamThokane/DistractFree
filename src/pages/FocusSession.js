@@ -1,38 +1,33 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import GlassCard from '../components/GlassCard';
-import CircularProgress from '../components/CircularProgress';
-import Button from '../components/Button';
 import PageTransition from '../components/PageTransition';
+import { Button, Card, Badge, ProgressRing, Input, useToast } from '../components/ui';
 import { useCoins } from '../context/CoinContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { formatTime, getRandomQuote, motivationalQuotes } from '../utils/helpers';
 import { SESSION_PRESETS } from '../utils/coinRules';
-import { HiOutlinePlay, HiOutlineStop, HiOutlineLockClosed, HiOutlineCalendarDays } from 'react-icons/hi2';
+import { LuPlay, LuSquare, LuLock, LuCalendarDays, LuRotateCcw, LuX, LuCoins } from 'react-icons/lu';
 
 // Live state (a simple rule over this session's counts, computed on the server)
 const LIVE_STATES = {
   low: {
     label: 'Focused',
-    icon: '🎯',
     message: "You're in the zone. Keep going!",
-    badge: 'bg-green-100 text-green-600',
-    text: 'text-green-600',
+    tone: 'text-accent',
+    dot: 'bg-accent',
   },
   medium: {
     label: 'Drifting',
-    icon: '🌊',
     message: "You've switched away a few times — bring your attention back to one task.",
-    badge: 'bg-amber-100 text-amber-600',
-    text: 'text-amber-500',
+    tone: 'text-amber-ink',
+    dot: 'bg-amber',
   },
   high: {
     label: 'Distracted',
-    icon: '⚠️',
     message: 'Lots of switching and distracting sites. Close one tab and refocus.',
-    badge: 'bg-red-100 text-red-600',
-    text: 'text-red-600',
+    tone: 'text-danger',
+    dot: 'bg-danger',
   },
 };
 // Legacy sessions may hold the old labels
@@ -49,6 +44,7 @@ const hasExtension = () => document.documentElement.getAttribute('data-distractf
 const FocusSession = () => {
   const { refreshCoins } = useCoins();
   const { user } = useAuth();
+  const toast = useToast();
   const [selectedPreset, setSelectedPreset] = useState(0);
   const [customMinutes, setCustomMinutes] = useState(30);
   const [timeLeft, setTimeLeft] = useState(SESSION_PRESETS[0].seconds);
@@ -189,8 +185,7 @@ const FocusSession = () => {
           if (coins > 0) {
             refreshCoins();
           }
-          // Show alert to user
-          setTimeout(() => alert('✅ Focus Session Complete! Great job!'), 100);
+          toast.reward('Focus session complete. Great job!', coins > 0 ? `+${coins} Focus Coins added to your wallet.` : undefined);
         }
       } catch (err) {
         console.error('[FocusSession] Complete error:', err);
@@ -199,7 +194,7 @@ const FocusSession = () => {
     // Notify extension
     window.dispatchEvent(new CustomEvent('DF_SESSION_END'));
     localStorage.setItem('df_session_action', JSON.stringify({ action: 'end', ts: Date.now() }));
-  }, [activeSessionId, refreshCoins]);
+  }, [activeSessionId, refreshCoins, toast]);
 
   const selectPreset = (idx) => {
     if (isRunning) return;
@@ -328,248 +323,204 @@ const FocusSession = () => {
     return () => clearInterval(q);
   }, []);
 
+  const status = isComplete ? 'Session complete' : isRunning ? 'Stay with it' : 'Ready when you are';
+
   return (
     <PageTransition>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {isInitializing && (
-          <div className="text-center text-fg-2 py-10">Syncing session state...</div>
-        )}
-        {!isInitializing && (
+      <div className="max-w-3xl mx-auto">
+        {isInitializing ? (
+          <div className="flex flex-col items-center py-16" aria-busy="true">
+            <div className="df-skel" style={{ width: 280, height: 280, borderRadius: '50%' }} />
+            <p className="text-sm text-muted mt-6">Syncing session state…</p>
+          </div>
+        ) : (
           <>
             {/* ── Timer ── */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <GlassCard className="py-10 relative overflow-hidden">
-                <div className="flex flex-col items-center w-full relative z-20">
-                  {/* Background progress bar */}
-                  <div
-                    className="absolute bottom-[-40px] left-[-24px] right-[-24px] h-1 bg-blue-500 transition-all duration-1000 ease-linear rounded-full opacity-50"
-                    style={{ width: `${progressPercent}%` }}
-                  />
+            <section className="flex flex-col items-center text-center pt-2 pb-10" aria-label="Focus timer">
+              <div className="flex flex-wrap justify-center gap-2 mb-6 min-h-[28px]">
+                {isStrictMode && isRunning && (
+                  <Badge><LuLock size={12} aria-hidden="true" />Strict mode on</Badge>
+                )}
+                {schedule && (isRunning || isComplete) && (
+                  <Badge tone="accent" className="max-w-full">
+                    <LuCalendarDays size={12} aria-hidden="true" />
+                    <span className="truncate">{schedule.title}{schedule.subject ? ` · ${schedule.subject}` : ''}</span>
+                  </Badge>
+                )}
+              </div>
 
-                  {/* Strict mode indicator */}
-                  {isStrictMode && isRunning && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-full px-4 py-1.5 mb-4"
-                    >
-                      <HiOutlineLockClosed className="w-4 h-4 text-red-500" />
-                      <span className="text-red-600 text-xs font-semibold">Strict Mode Active</span>
-                    </motion.div>
-                  )}
+              {/* Session presets */}
+              <div className="df-tabs df-tabs--pill mb-8" role="radiogroup" aria-label="Session length">
+                {SESSION_PRESETS.map((p, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    role="radio"
+                    aria-checked={i === selectedPreset}
+                    aria-selected={i === selectedPreset}
+                    disabled={isRunning}
+                    className="df-tab disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => selectPreset(i)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
 
-                  {/* Scheduled session title */}
-                  {schedule && (isRunning || isComplete) && (
-                    <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-4 max-w-full">
-                      <HiOutlineCalendarDays className="w-4 h-4 text-indigo-500 flex-shrink-0" aria-hidden="true" />
-                      <span className="text-indigo-600 text-sm font-semibold truncate">{schedule.title}</span>
-                      {schedule.subject && <span className="text-fg-2 text-sm truncate">· {schedule.subject}</span>}
-                    </div>
-                  )}
-
-                  {/* Session presets */}
-                  <div className="flex flex-wrap justify-center gap-2 mb-8">
-                    {SESSION_PRESETS.map((p, i) => (
-                      <motion.button
-                        key={i}
-                        className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                          i === selectedPreset
-                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                            : 'bg-ink/[0.03] border border-ink/[0.06] text-fg-2 hover:text-hi hover:bg-ink/[0.06]'
-                        } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        onClick={() => selectPreset(i)}
-                        whileHover={!isRunning ? { scale: 1.05 } : {}}
-                        whileTap={!isRunning ? { scale: 0.95 } : {}}
-                      >
-                        {p.label}
-                      </motion.button>
-                    ))}
-                  </div>
-
-                  {/* Custom Time Input */}
-                  <AnimatePresence>
-                    {isCustomPreset && !isRunning && !isComplete && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                        animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
-                        exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                        className="flex items-center gap-3 overflow-hidden"
-                      >
-                        <span className="text-sm text-fg-2">Duration (minutes):</span>
-                        <input
-                          type="number"
-                          min="25"
-                          max="180"
-                          value={customMinutes}
-                          onChange={(e) => {
-                            let val = e.target.value;
-                            if (val !== '' && parseInt(val) > 180) val = '180';
-                            setCustomMinutes(val);
-                            const num = parseInt(val);
-                            if (!isNaN(num) && num >= 25 && num <= 180) setTimeLeft(num * 60);
-                          }}
-                          onBlur={(e) => {
-                            let val = parseInt(e.target.value);
-                            if (isNaN(val) || val < 25) val = 25;
-                            if (val > 180) val = 180;
-                            setCustomMinutes(val);
-                            setTimeLeft(val * 60);
-                          }}
-                          className="w-24 text-center bg-ink/[0.03] border border-ink/[0.1] text-hi rounded-lg py-1.5 focus:outline-none focus:border-indigo-500"
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Timer ring */}
-                  <div className="relative">
-                    <CircularProgress
-                      value={elapsed}
-                      max={totalTime}
-                      size={260}
-                      strokeWidth={14}
-                      color={isComplete ? '#10B981' : '#7E8CF6'}
-                      label={isComplete ? '✓' : formatTime(timeLeft)}
-                      sublabel={isComplete ? 'Session Complete!' : isRunning ? 'Stay focused...' : 'Ready to focus'}
+              {/* Custom Time Input */}
+              <AnimatePresence>
+                {isCustomPreset && !isRunning && !isComplete && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden mb-6 w-44 text-left"
+                  >
+                    <Input
+                      label="Minutes (25–180)"
+                      type="number"
+                      min="25"
+                      max="180"
+                      className="text-center df-mono"
+                      value={customMinutes}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (val !== '' && parseInt(val) > 180) val = '180';
+                        setCustomMinutes(val);
+                        const num = parseInt(val);
+                        if (!isNaN(num) && num >= 25 && num <= 180) setTimeLeft(num * 60);
+                      }}
+                      onBlur={(e) => {
+                        let val = parseInt(e.target.value);
+                        if (isNaN(val) || val < 25) val = 25;
+                        if (val > 180) val = 180;
+                        setCustomMinutes(val);
+                        setTimeLeft(val * 60);
+                      }}
                     />
-                  </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                  {/* Controls */}
-                  <div className="flex items-center gap-4 mt-8">
-                    {!isRunning && !isComplete && (
-                      <Button variant="primary" size="lg" onClick={startTimer} icon={<HiOutlinePlay className="w-5 h-5" />}>
-                        Start Focus
-                      </Button>
-                    )}
-                    {isRunning && (
-                      <Button variant="danger" size="md" onClick={stopTimer} icon={<HiOutlineStop className="w-5 h-5" />}>
-                        Cancel
-                      </Button>
-                    )}
-                    {isComplete && (
-                      <Button variant="accent" size="lg" onClick={resetToIdle}>
-                        Start Another
-                      </Button>
-                    )}
-                  </div>
+              {/* Timer ring */}
+              <ProgressRing
+                value={elapsed}
+                max={totalTime}
+                size={300}
+                stroke={4}
+                labelSize={60}
+                label={isComplete ? 'Done' : formatTime(timeLeft)}
+                sublabel={status}
+                title="Session progress"
+                className="max-w-full"
+              />
 
-                  {/* Coins to earn */}
-                  <div className="mt-6 flex items-center justify-center gap-2 bg-ink/[0.03] border border-ink/[0.06] rounded-full px-5 py-2.5">
-                    <span className="text-lg">🪙</span>
-                    <span className="text-fg-2 text-sm">
-                      Earn up to <span className="text-amber-400 font-semibold">{earnableCoins}</span> Focus Coins
-                    </span>
-                  </div>
-                </div>
-              </GlassCard>
-            </motion.div>
+              {/* Controls */}
+              <div className="flex items-center gap-3 mt-10">
+                {!isRunning && !isComplete && (
+                  <Button size="lg" onClick={startTimer} icon={<LuPlay size={18} aria-hidden="true" />}>
+                    Start focus
+                  </Button>
+                )}
+                {isRunning && (
+                  <Button variant="danger-outline" onClick={stopTimer} icon={<LuSquare size={14} aria-hidden="true" />}>
+                    End session early
+                  </Button>
+                )}
+                {isComplete && (
+                  <Button variant="secondary" size="lg" onClick={resetToIdle} icon={<LuRotateCcw size={16} aria-hidden="true" />}>
+                    Start another
+                  </Button>
+                )}
+              </div>
+
+              {/* Coins to earn */}
+              <p className="mt-5 inline-flex items-center gap-2 text-sm text-muted">
+                <LuCoins className="text-amber" aria-hidden="true" />
+                Finish to earn up to <span className="df-mono font-semibold text-amber-ink">{earnableCoins}</span> Focus Coins
+              </p>
+            </section>
 
             {/* ── Gentle nudge when the live status turns to Distracted ── */}
             <AnimatePresence>
               {showNudge && isRunning && (
                 <motion.div
-                  initial={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="flex items-start justify-between gap-4 rounded-2xl border border-amber-300/40 bg-amber-50 dark:bg-amber-500/10 px-5 py-4"
+                  exit={{ opacity: 0, y: -6 }}
+                  className="flex items-start justify-between gap-4 rounded-lg bg-amber-soft px-5 py-4 mb-8"
+                  role="status"
                 >
-                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                  <p className="text-sm text-text leading-relaxed">
                     <span className="font-semibold">Quick check-in:</span> lots of switching away in the last few minutes.
                     Close one distracting tab and give the next five minutes to a single task.
                   </p>
-                  <button onClick={() => setShowNudge(false)} className="text-amber-700 dark:text-amber-200 text-sm font-medium flex-shrink-0">
-                    Dismiss
+                  <button onClick={() => setShowNudge(false)} className="app-icon-btn -mt-1 -mr-2 flex-shrink-0" aria-label="Dismiss">
+                    <LuX />
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* ── Bottom Info Row ── */}
-            <div className={`grid grid-cols-1 gap-4 ${isRunning ? 'md:grid-cols-2' : ''}`}>
-              {/* Live State — only while a session is running */}
-              {isRunning && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <GlassCard>
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <h3 className="text-fg font-semibold">Live State</h3>
-                    <span className="flex items-center gap-1.5 text-[11px] text-dash-muted">
-                      <span className={`w-2 h-2 rounded-full ${liveError ? 'bg-amber-400' : 'bg-green-500 animate-pulse'}`} aria-hidden="true" />
-                      {liveError ? 'Reconnecting…' : 'Live'}
-                    </span>
-                  </div>
+            {/* ── Live state — only while a session is running ── */}
+            {isRunning && (
+              <Card variant="plain" className="mb-8" aria-live="polite">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="df-label">Live state</p>
+                  <span className="flex items-center gap-1.5 text-xs text-muted">
+                    <span className={`w-2 h-2 rounded-full ${liveError ? 'bg-amber' : 'bg-accent'}`} aria-hidden="true" />
+                    {liveError ? 'Reconnecting…' : 'Live'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mt-3">
+                  <span className={`w-2.5 h-2.5 rounded-full ${liveState.dot}`} aria-hidden="true" />
+                  <h3 className={`df-display text-t-40 ${liveState.tone}`}>{liveState.label}</h3>
+                </div>
+                <p className="text-sm text-text-2 mt-2 max-w-prose">{liveState.message}</p>
 
-                    <>
-                      <div className="flex items-center gap-4" aria-live="polite">
-                        <div className={`p-4 rounded-full ${liveState.badge}`}>
-                          <span className="text-3xl font-bold" aria-hidden="true">{liveState.icon}</span>
-                        </div>
-                        <div>
-                          <h4 className={`text-xl font-bold ${liveState.text}`}>{liveState.label}</h4>
-                          <p className="text-dash-muted text-sm leading-relaxed mt-1">{liveState.message}</p>
-                        </div>
-                      </div>
+                <dl className="pg-stats pg-stats--3 mt-6">
+                  {[
+                    ['Tab switches', liveCounts.tabSwitches],
+                    ['Distracting sites', liveCounts.interruptions],
+                    ['Blocked attempts', liveCounts.blockAttempts],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="df-label">{label}</dt>
+                      <dd className="df-mono text-t-28 text-text mt-1">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
 
-                      <dl className="grid grid-cols-3 gap-2 mt-4 text-center">
-                        {[
-                          ['Tab switches', liveCounts.tabSwitches],
-                          ['Distracting sites', liveCounts.interruptions],
-                          ['Blocked attempts', liveCounts.blockAttempts],
-                        ].map(([label, value]) => (
-                          <div key={label} className="rounded-xl bg-ink/[0.03] border border-ink/[0.06] py-2">
-                            <dd className="text-fg font-bold text-lg tabular-nums">{value}</dd>
-                            <dt className="text-dash-muted text-[11px]">{label}</dt>
-                          </div>
-                        ))}
-                      </dl>
+                {!extensionDetected && (
+                  <p className="text-xs text-amber-ink mt-4">
+                    The DistractFree extension wasn't detected in this browser. It's what counts tab switches and blocked
+                    sites, so without it the live state stays at Focused.
+                  </p>
+                )}
+                <p className="text-xs text-muted mt-2 df-mono">
+                  {liveError
+                    ? 'Live update failed, retrying'
+                    : lastLiveSync ? `Updated ${lastLiveSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Waiting for the first update…'}
+                </p>
+              </Card>
+            )}
 
-                      {!extensionDetected && (
-                        <p className="text-[11px] text-amber-600 mt-3">
-                          The DistractFree extension wasn't detected in this browser. It's what counts tab switches and blocked
-                          sites, so without it the live state stays at Focused.
-                        </p>
-                      )}
-                      <p className="text-dash-muted/70 text-[11px] mt-2">
-                        {liveError
-                          ? 'Live update failed, retrying'
-                          : lastLiveSync ? `Updated ${lastLiveSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Waiting for the first update…'}
-                      </p>
-                    </>
-                </GlassCard>
-              </motion.div>
-              )}
-
-              {/* Motivational Quote */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <GlassCard className="flex flex-col justify-center h-full">
-                  <span className="text-2xl mb-3">💡</span>
-                  <AnimatePresence mode="wait">
-                    <motion.p
-                      key={quote}
-                      className="text-dash-muted text-sm leading-relaxed italic"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.4 }}
-                    >
-                      "{quote}"
-                    </motion.p>
-                  </AnimatePresence>
-                  <p className="text-dash-muted/50 text-xs mt-3">Refreshes every minute</p>
-                </GlassCard>
-              </motion.div>
-            </div>
+            {/* ── Quote ── */}
+            <figure className="border-l-2 border-accent pl-5 py-1 max-w-xl mx-auto">
+              <AnimatePresence mode="wait">
+                <motion.blockquote
+                  key={quote}
+                  className="df-display text-t-28 leading-snug text-text"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  “{quote}”
+                </motion.blockquote>
+              </AnimatePresence>
+              <figcaption className="text-xs text-muted mt-2">A new line every minute</figcaption>
+            </figure>
           </>
         )}
       </div>

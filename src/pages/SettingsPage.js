@@ -1,26 +1,50 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import GlassCard from '../components/GlassCard';
-import Button from '../components/Button';
+import { useNavigate } from 'react-router-dom';
 import PageTransition from '../components/PageTransition';
 import PDFReportGenerator from '../components/PDFReportGenerator';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
-import {
-  HiOutlineSwatch,
-  HiOutlineGlobeAlt,
-  HiOutlineBell,
-  HiOutlinePaintBrush,
-  HiOutlineUser,
-  HiOutlineXMark,
-  HiOutlinePlus,
-  HiOutlineShieldCheck,
-} from 'react-icons/hi2';
+import { LuPlus, LuGlobe, LuShieldCheck, LuTrash2, LuCheck, LuLogOut } from 'react-icons/lu';
+import { Button, Input, Select, Toggle, Badge, Skeleton, EmptyState, useToast } from '../components/ui';
+import { UNLOCK_COST } from '../utils/coinRules';
+
+/* Module scope: defining these inside the component would remount the
+   section (and drop input focus) on every keystroke. */
+const THEMES = [
+  { value: 'light', label: 'Light', desc: 'Warm paper, dark ink', swatch: ['#FAF8F5', '#FFFFFF', '#1F5E4A', '#1C1B19'] },
+  { value: 'dark', label: 'Dark', desc: 'Warm charcoal, easy at night', swatch: ['#151412', '#201F1C', '#7FC2A3', '#EDE9E1'] },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: 'social_media', label: 'Social' },
+  { value: 'entertainment', label: 'Entertainment' },
+  { value: 'streaming', label: 'Streaming' },
+  { value: 'news', label: 'News' },
+  { value: 'shopping', label: 'Shopping' },
+  { value: 'gaming', label: 'Gaming' },
+  { value: 'messaging', label: 'Messaging' },
+  { value: 'other', label: 'Other' },
+];
+const categoryLabel = (c) => CATEGORY_OPTIONS.find((o) => o.value === c)?.label || 'Other';
+
+const Section = ({ id, title, desc, children }) => (
+  <section aria-labelledby={id} className="grid md:grid-cols-[15rem_1fr] gap-x-10 gap-y-5 py-10 border-t border-line first:border-t-0 first:pt-2">
+    <div>
+      <h2 id={id} className="pg-h2">{title}</h2>
+      {desc && <p className="pg-note mt-2 max-w-xs">{desc}</p>}
+    </div>
+    <div className="min-w-0">{children}</div>
+  </section>
+);
 
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [newCategory, setNewCategory] = useState('other');
+  const [saving, setSaving] = useState(false);
 
   const [blockedSites, setBlockedSites] = useState([]);
   const [loadingSites, setLoadingSites] = useState(true);
@@ -69,15 +93,17 @@ const SettingsPage = () => {
             url: w.websiteUrl,
             displayName: w.displayName,
             isActive: w.isActive,
+            category: w.category,
           }))
         );
       }
     } catch (err) {
       console.error('[Settings] Failed to fetch blocked sites:', err);
+      toast.error('Couldn’t load your blocked sites', 'Refresh the page to try again.');
     } finally {
       setLoadingSites(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchBlockedSites();
@@ -112,15 +138,16 @@ const SettingsPage = () => {
       const res = await api.post('/websites/add', {
         websiteUrl: site,
         displayName: site,
-        category: 'other',
+        category: typeof siteToAdd === 'string' ? 'other' : newCategory,
       });
 
       if (res.data.success) {
         const newW = res.data.website;
         setBlockedSites((prev) => [
           ...prev,
-          { id: newW._id, url: newW.websiteUrl, displayName: newW.displayName, isActive: true },
+          { id: newW._id, url: newW.websiteUrl, displayName: newW.displayName, isActive: true, category: newW.category },
         ]);
+        toast.success(`${newW.websiteUrl} added`, 'It will be paused during focus sessions.');
         if (typeof siteToAdd !== 'string') {
           setNewSite('');
         }
@@ -147,7 +174,24 @@ const SettingsPage = () => {
       notifyExtension();
     } catch (err) {
       console.error('[Settings] Failed to remove site:', err);
-      setSiteError('Failed to remove website');
+      toast.error('Couldn’t remove that site', 'Try again in a moment.');
+    } finally {
+      setAddingState('');
+    }
+  };
+
+  // ── Turn blocking on/off for one site (keeps it on the list) ──
+  const toggleSite = async (siteId) => {
+    try {
+      setAddingState(`toggling-${siteId}`);
+      const res = await api.patch(`/websites/toggle/${siteId}`);
+      if (res.data.success) {
+        setBlockedSites((prev) => prev.map((s) => (s.id === siteId ? { ...s, isActive: res.data.website.isActive } : s)));
+        notifyExtension();
+      }
+    } catch (err) {
+      console.error('[Settings] Failed to toggle site:', err);
+      toast.error('Couldn’t update that site', 'Try again in a moment.');
     } finally {
       setAddingState('');
     }
@@ -158,6 +202,7 @@ const SettingsPage = () => {
   };
 
   const handleSave = async () => {
+    setSaving(true);
     try {
       const res = await api.put('/auth/profile', {
         name: displayName,
@@ -171,6 +216,9 @@ const SettingsPage = () => {
       }
     } catch (err) {
       console.error('Failed to save profile:', err);
+      toast.error('Couldn’t save your changes', 'Check your connection and try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -194,281 +242,217 @@ const SettingsPage = () => {
 
 
 
-  const themes = [
-    { value: 'dark', label: 'Dark', desc: 'Easy on the eyes at night', swatch: ['#060918', '#14171C', '#7C5CFC', '#F0EEFF'] },
-    { value: 'light', label: 'Light', desc: 'Clean, bright surfaces', swatch: ['#F7F8FC', '#FFFFFF', '#6366F1', '#111827'] },
-  ];
-
   return (
     <PageTransition>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <motion.h1
-          className="text-2xl font-semibold text-dash-text"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          Settings
-        </motion.h1>
+      <div className="max-w-5xl">
+        <div className="pg-head">
+          <div>
+            <p className="pg-kicker">Preferences</p>
+            <h2 className="pg-title">Settings</h2>
+          </div>
+        </div>
 
         {/* ── Blocked Sites ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <GlassCard>
-            <h2 className="text-dash-text font-semibold text-base mb-1 flex items-center gap-2">
-              <HiOutlineGlobeAlt className="w-5 h-5 text-sage" />
-              Blocked Sites
-            </h2>
-            <p className="text-dash-muted text-sm mb-4">These websites are always blocked while the extension is active.</p>
+        <Section id="blocked-title" title="Blocked sites" desc="These websites are always blocked while the extension is active. Switch one off to keep it on the list without blocking it.">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-start">
+            <Input
+              label="Add a website"
+              fieldClassName="flex-1"
+              value={newSite}
+              onChange={(e) => { setNewSite(e.target.value); setSiteError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && addSite()}
+              placeholder="e.g. facebook.com"
+              error={siteError || undefined}
+              disabled={addingState === 'adding'}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <Select
+              label="Category"
+              fieldClassName="sm:w-44"
+              options={CATEGORY_OPTIONS}
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+            />
+            <Button
+              className="sm:mt-[30px]"
+              onClick={addSite}
+              icon={<LuPlus size={16} aria-hidden="true" />}
+              loading={addingState === 'adding'}
+            >
+              Add site
+            </Button>
+          </div>
 
-            <div className="flex gap-2 mb-1">
-              <input
-                type="text"
-                value={newSite}
-                onChange={(e) => { setNewSite(e.target.value); setSiteError(''); }}
-                onKeyDown={(e) => e.key === 'Enter' && addSite()}
-                placeholder="e.g. facebook.com"
-                className={`dash-input flex-1 ${siteError ? '!border-red-500/50 focus:!ring-red-500/30' : ''}`}
-                disabled={addingState === 'adding'}
-              />
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={addSite}
-                icon={<HiOutlinePlus className="w-4 h-4" />}
-                disabled={addingState === 'adding'}
-              >
-                {addingState === 'adding' ? 'Adding…' : 'Add'}
-              </Button>
-            </div>
-            {siteError && (
-              <p className="text-red-400 text-xs mt-1.5 mb-3 pl-1">{siteError}</p>
-            )}
-            {!siteError && <div className="mb-3" />}
-
+          <div className="mt-6">
             {loadingSites ? (
-              <div className="flex items-center gap-2 py-4 justify-center text-dash-muted text-sm">
-                <div className="w-4 h-4 border-2 border-sage border-t-transparent rounded-full animate-spin" />
-                Loading blocked sites…
+              <div aria-busy="true" aria-label="Loading blocked sites">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="pg-row"><Skeleton width="40%" height={14} /><Skeleton width={36} height={20} radius={10} /></div>
+                ))}
               </div>
             ) : blockedSites.length === 0 ? (
-              <p className="text-dash-muted text-sm text-center py-4">
-                No blocked sites yet. Add websites above to start blocking.
-              </p>
+              <EmptyState icon={LuGlobe} title="No blocked sites yet">
+                Add the sites that pull you away most, or pick from the suggestions below. They’re only paused while a focus session runs.
+              </EmptyState>
             ) : (
-              <div className="flex flex-wrap gap-2 mb-5">
+              <ul className="pg-rows" aria-label="Blocked sites">
                 {blockedSites.map((site) => (
-                  <motion.span
-                    key={site.id}
-                    className="inline-flex items-center gap-1.5 bg-dash-hover border border-dash-border rounded-xl px-3 py-1.5 text-sm text-dash-text"
-                    layout
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                  >
-                    {site.url}
+                  <li key={site.id} className={`flex items-center gap-4 py-3 border-b border-line ${site.isActive === false ? 'opacity-60' : ''}`}>
+                    <span className="w-8 h-8 rounded-md bg-paper-2 border border-line flex items-center justify-center df-mono text-xs text-muted uppercase flex-shrink-0" aria-hidden="true">
+                      {site.url.charAt(0)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-text truncate">{site.url}</p>
+                      <p className="text-xs text-muted mt-0.5">
+                        <span className="df-mono">{UNLOCK_COST}</span> coins to unlock during a session
+                      </p>
+                    </div>
+                    <Badge className="hidden sm:inline-flex">{categoryLabel(site.category)}</Badge>
+                    <Toggle
+                      checked={site.isActive !== false}
+                      onChange={() => toggleSite(site.id)}
+                      disabled={addingState === `toggling-${site.id}`}
+                      aria-label={`Block ${site.url}`}
+                    />
                     <button
                       onClick={() => removeSite(site.id)}
                       disabled={addingState === `removing-${site.id}`}
-                      className="text-dash-muted hover:text-red-400 transition-colors ml-0.5 disabled:opacity-50"
+                      className="app-icon-btn hover:!text-danger disabled:opacity-50"
+                      aria-label={`Remove ${site.url}`}
+                      title="Remove"
                     >
-                      <HiOutlineXMark className="w-3.5 h-3.5" />
+                      <LuTrash2 />
                     </button>
-                  </motion.span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
+          </div>
 
-            {/* Suggested Sites */}
-            <div className="mt-6 border-t border-dash-border pt-4">
-              <p className="text-dash-muted text-xs mb-3 font-medium uppercase tracking-wider">Suggested to block</p>
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-                {['youtube.com', 'instagram.com', 'facebook.com', 'netflix.com', 'chatgpt.com', 'reddit.com', 'x.com', 'pinterest.com', 'tiktok.com', 'amazon.com']
-                  .filter(site => !blockedSites.some(s => s.url === site))
-                  .map(site => (
-                  <button
-                    key={site}
-                    onClick={() => addSite(site)}
-                    disabled={addingState === 'adding'}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dash-border bg-ink/[0.02] hover:bg-ink/[0.06] text-dash-muted hover:text-hi transition-colors text-xs font-medium"
-                  >
-                    <HiOutlinePlus className="w-3 h-3" />
-                    {site}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Strict Mode Toggle */}
-            <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-dash-hover border border-dash-border">
-              <div className="flex items-center gap-3">
-                <HiOutlineShieldCheck className="w-5 h-5 text-dash-muted" />
-                <div>
-                  <p className="text-dash-text text-sm font-medium">Strict Mode</p>
-                  <p className="text-dash-muted text-xs">Blocked sites can't be unlocked with coins — at any time</p>
+          {/* Suggested Sites */}
+          {(() => {
+            const suggestions = ['youtube.com', 'instagram.com', 'facebook.com', 'netflix.com', 'chatgpt.com', 'reddit.com', 'x.com', 'pinterest.com', 'tiktok.com', 'amazon.com']
+              .filter((site) => !blockedSites.some((s) => s.url === site));
+            if (!suggestions.length) return null;
+            return (
+              <div className="mt-6">
+                <p className="df-label mb-3">Suggested to block</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((site) => (
+                    <button
+                      key={site}
+                      onClick={() => addSite(site)}
+                      disabled={addingState === 'adding'}
+                      className="df-btn df-btn--secondary df-btn--sm font-medium"
+                    >
+                      <LuPlus size={14} aria-hidden="true" />
+                      {site}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <button
-                onClick={toggleStrictMode}
-                className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-                  strictMode ? 'bg-sage' : 'bg-dash-border'
-                }`}
-              >
-                <motion.div
-                  className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm"
-                  animate={{ left: strictMode ? 22 : 2 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                />
-              </button>
+            );
+          })()}
+
+          {/* Strict Mode */}
+          <div className="mt-8 flex items-start justify-between gap-6 rounded-lg bg-paper-2 px-5 py-4">
+            <div className="flex items-start gap-3">
+              <LuShieldCheck className="w-5 h-5 mt-0.5 text-muted flex-shrink-0" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold text-text">Strict mode</p>
+                <p className="text-sm text-muted">Blocked sites can't be unlocked with coins — at any time.</p>
+              </div>
             </div>
-          </GlassCard>
-        </motion.div>
+            <Toggle checked={strictMode} onChange={toggleStrictMode} aria-label="Strict mode" />
+          </div>
+        </Section>
 
         {/* ── Appearance ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-        >
-          <GlassCard>
-            <h2 className="text-dash-text font-semibold text-base mb-1 flex items-center gap-2">
-              <HiOutlineSwatch className="w-5 h-5 text-sage" />
-              Appearance
-            </h2>
-            <p className="text-dash-muted text-sm mb-4">Applies across the website, dashboard and extension pages.</p>
-            <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Theme">
-              {themes.map((t) => {
-                const selected = theme === t.value;
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => setTheme(t.value)}
-                    className={`text-left rounded-xl border p-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-                      selected ? 'border-indigo-500 bg-indigo-500/[0.08]' : 'border-ink/[0.08] hover:bg-ink/[0.03]'
-                    }`}
-                  >
-                    <div className="flex gap-1 mb-2.5" aria-hidden="true">
-                      {t.swatch.map((c) => (
-                        <span key={c} className="w-6 h-6 rounded-md border border-ink/[0.1]" style={{ background: c }} />
-                      ))}
-                    </div>
-                    <p className="text-dash-text text-sm font-semibold flex items-center gap-1.5">
-                      {t.label}
-                      {selected && <span className="text-[10px] font-semibold text-indigo-500 bg-indigo-500/10 rounded-full px-1.5 py-0.5">Active</span>}
-                    </p>
-                    <p className="text-dash-muted text-xs mt-0.5">{t.desc}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </GlassCard>
-        </motion.div>
+        <Section id="appearance-title" title="Appearance" desc="Applies across the website, dashboard and extension pages.">
+          <div className="grid sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Theme">
+            {THEMES.map((t) => {
+              const selected = theme === t.value;
+              return (
+                <button
+                  key={t.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setTheme(t.value)}
+                  className={`text-left rounded-lg border p-4 transition-colors focus:outline-none focus-visible:shadow-[var(--focus-ring)] ${
+                    selected ? 'border-accent bg-accent-soft/40' : 'border-line hover:border-line-strong'
+                  }`}
+                >
+                  <div className="flex gap-1 mb-3" aria-hidden="true">
+                    {t.swatch.map((c) => (
+                      <span key={c} className="w-6 h-6 rounded border border-line" style={{ background: c }} />
+                    ))}
+                  </div>
+                  <p className="text-sm font-semibold text-text flex items-center gap-2">
+                    {t.label}
+                    {selected && <Badge tone="accent">Active</Badge>}
+                  </p>
+                  <p className="text-xs text-muted mt-0.5">{t.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
 
         {/* ── Notifications ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <GlassCard>
-            <h2 className="text-dash-text font-semibold text-base mb-1 flex items-center gap-2">
-              <HiOutlineBell className="w-5 h-5 text-sage" />
-              Notifications
-            </h2>
-            <p className="text-dash-muted text-sm mb-4">Choose what notifications you receive</p>
-
-            <div className="space-y-3">
-              {[
-                { key: 'focusReminder', label: 'Focus Reminders', desc: 'Gentle nudges to start a session' },
-                { key: 'streakAlert', label: 'Streak Alerts', desc: "Don't lose your streak!" },
-                { key: 'weeklyReport', label: 'Weekly Report', desc: 'Summary of your productivity', action: (
-                  <PDFReportGenerator user={user} />
-                ) },
-                { key: 'coinEarned', label: 'Coin Notifications', desc: 'Alert when coins are earned' },
-              ].map((item) => (
-                <div
-                  key={item.key}
-                  className="flex items-center justify-between py-3 px-4 rounded-xl hover:bg-dash-hover transition-colors"
-                >
-                  <div className="flex-1 flex items-center">
-                    <div>
-                      <p className="text-dash-text text-sm font-medium">{item.label}</p>
-                      <p className="text-dash-muted text-xs">{item.desc}</p>
-                    </div>
-                    {item.action && item.action}
+        <Section id="notif-title" title="Notifications" desc="Choose what notifications you receive.">
+          <ul className="pg-rows">
+            {[
+              { key: 'focusReminder', label: 'Focus reminders', desc: 'Gentle nudges to start a session' },
+              { key: 'streakAlert', label: 'Streak alerts', desc: "A heads-up before you'd lose your streak" },
+              { key: 'weeklyReport', label: 'Weekly report', desc: 'Summary of your productivity', action: <PDFReportGenerator user={user} /> },
+              { key: 'coinEarned', label: 'Coin notifications', desc: 'Alert when coins are earned' },
+            ].map((item) => (
+              <li key={item.key} className="flex items-center justify-between gap-4 py-4 border-b border-line">
+                <div className="min-w-0 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <div>
+                    <p className="text-sm font-medium text-text">{item.label}</p>
+                    <p className="text-xs text-muted">{item.desc}</p>
                   </div>
-                  <button
-                    onClick={() => toggleNotification(item.key)}
-                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-                      notifications[item.key] ? 'bg-sage' : 'bg-dash-border'
-                    }`}
-                  >
-                    <motion.div
-                      className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm"
-                      animate={{ left: notifications[item.key] ? 22 : 2 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                  </button>
+                  {item.action}
                 </div>
-              ))}
-            </div>
-          </GlassCard>
-        </motion.div>
-
+                <Toggle checked={notifications[item.key]} onChange={() => toggleNotification(item.key)} aria-label={item.label} />
+              </li>
+            ))}
+          </ul>
+        </Section>
 
         {/* ── Account ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <GlassCard>
-            <h2 className="text-dash-text font-semibold text-base mb-1 flex items-center gap-2">
-              <HiOutlineUser className="w-5 h-5 text-blue-400" />
-              Account
-            </h2>
-            <p className="text-dash-muted text-sm mb-4">Manage your account settings</p>
+        <Section id="account-title" title="Account" desc="Your name appears on the dashboard and leaderboard.">
+          <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
+            <Input label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoComplete="name" />
+            <Input label="Email" type="email" value={displayEmail} onChange={(e) => setDisplayEmail(e.target.value)} disabled hint="Email can't be changed here." />
+          </div>
+          <div className="flex items-center gap-4 mt-6">
+            <Button onClick={handleSave} loading={saving}>
+              Save changes
+            </Button>
+            {saved && (
+              <span className="inline-flex items-center gap-1.5 text-sm text-accent" role="status">
+                <LuCheck aria-hidden="true" /> Saved
+              </span>
+            )}
+          </div>
+        </Section>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-dash-muted text-sm mb-2">Display Name</label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="dash-input"
-                />
-              </div>
-              <div>
-                <label className="block text-dash-muted text-sm mb-2">Email</label>
-                <input
-                  type="email"
-                  value={displayEmail}
-                  onChange={(e) => setDisplayEmail(e.target.value)}
-                  className="dash-input"
-                  disabled
-                />
-              </div>
+        {/* ── Danger zone ── */}
+        <Section id="danger-title" title="Danger zone" desc="Signing out removes your session from this browser. Your data stays in your account.">
+          <div className="rounded-lg border border-danger/40 px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-text">Log out of this device</p>
+              <p className="text-sm text-muted">You'll need to sign in again to see your dashboard.</p>
             </div>
-          </GlassCard>
-        </motion.div>
-
-        {/* ── Save Button ── */}
-        <motion.div
-          className="flex justify-end"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Button variant={saved ? 'accent' : 'primary'} size="md" onClick={handleSave}>
-            {saved ? '✓ Saved!' : 'Save Changes'}
-          </Button>
-        </motion.div>
+            <Button variant="danger-outline" onClick={() => { logout(); navigate('/'); }} icon={<LuLogOut size={16} aria-hidden="true" />}>
+              Log out
+            </Button>
+          </div>
+        </Section>
       </div>
     </PageTransition>
   );

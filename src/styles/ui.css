@@ -464,8 +464,12 @@ html.dark .df-modal-backdrop { background: rgb(0 0 0 / 0.55); }
 .df-bar--danger .df-bar-fill { background: var(--danger); }
 .df-bar--muted .df-bar-fill { background: var(--faint); }
 
+/* ── Entrance (≤300 ms) ── */
+.df-in { animation: df-rise var(--dur) var(--ease) both; }
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
+  .df-in { animation: none; }
   .df-skel { animation: none; background-image: none; }
   .df-toast { animation: none; }
   .df-btn-spinner { animation-duration: 1.6s; }

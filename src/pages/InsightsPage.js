@@ -1,151 +1,180 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useChartTheme } from '../context/ThemeContext';
 import {
-  BarChart, Bar, AreaChart, Area, LineChart, Line,
+  BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import GlassCard from '../components/GlassCard';
-import CircularProgress from '../components/CircularProgress';
+import { LuSparkles } from 'react-icons/lu';
 import PageTransition from '../components/PageTransition';
+import { Button, Card, Badge, ProgressBar, Skeleton, SkeletonText, EmptyState, ErrorState } from '../components/ui';
 import api from '../services/api';
 
 /* ── Tooltip ── */
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload?.length) {
-    return (
-      <div className="bg-surface-2/90 backdrop-blur-md border border-ink/[0.08] rounded-xl px-4 py-3 shadow-lg">
-        <p className="text-fg-2 text-xs mb-1">{label}</p>
-        {payload.map((p, i) => (
-          <p key={i} className="text-hi text-sm font-semibold">
-            {p.name}: {typeof p.value === 'number' ? Math.round(p.value) : p.value}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+const ChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="df-card px-3 py-2 shadow-pop">
+      <p className="df-label mb-1">{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} className="text-sm text-text">
+          {p.name}: <span className="df-mono">{typeof p.value === 'number' ? Math.round(p.value) : p.value}</span>
+        </p>
+      ))}
+    </div>
+  );
 };
 
-const containerV = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
-const itemV = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45 } } };
-
-const riskColors = { low: '#3FAE6A', medium: '#F5B638', high: '#EF6B6B' };
+const RISK_TONE = { low: 'text-accent', medium: 'text-amber-ink', high: 'text-danger' };
 const riskMeaning = {
   low: 'Low: likely to finish as planned',
   medium: 'Medium: could go either way',
   high: 'High: unlikely to finish as planned',
 };
-const pct = (x) => (x === null || x === undefined ? '—' : `${Math.round(x * 100)}%`);
+const PRIORITY_TONE = { high: 'danger', medium: 'amber', low: 'accent' };
 
-/* ── Two-class probability bar ── */
-const ProbabilityBar = ({ probabilities }) => {
-  if (!probabilities) return null;
-  const success = Math.round(probabilities.successful * 100);
+/* ── Factor breakdown: diverging bars, one row per input ── */
+const FactorBreakdown = ({ reasons }) => {
+  if (!reasons?.length) return null;
+  const max = Math.max(...reasons.map((r) => Math.abs(r.delta || 0)), 0.001);
   return (
     <div>
-      <div className="flex h-2.5 rounded-full overflow-hidden bg-ink/[0.06]">
-        <div style={{ width: `${success}%`, backgroundColor: '#3FAE6A' }} />
-        <div style={{ width: `${100 - success}%`, backgroundColor: '#EF6B6B', opacity: 0.75 }} />
+      <div className="grid grid-cols-[minmax(0,10rem)_1fr_4.5rem] sm:grid-cols-[13rem_1fr_5rem] gap-x-4 pb-2 border-b border-line df-label">
+        <span>Factor</span>
+        <span className="grid grid-cols-2"><span>← Lowers</span><span className="text-right">Raises →</span></span>
+        <span className="text-right">Effect</span>
       </div>
-      <div className="flex justify-between mt-1 text-[10px] text-fg-lav">
-        <span>Successful {success}%</span>
-        <span>Not successful {100 - success}%</span>
-      </div>
+      <ul>
+        {reasons.map((r) => {
+          const d = r.delta || 0;
+          const w = `${(Math.abs(d) / max) * 50}%`;
+          const pts = Math.round(d * 1000) / 10;
+          return (
+            <li key={r.feature} className="grid grid-cols-[minmax(0,10rem)_1fr_4.5rem] sm:grid-cols-[13rem_1fr_5rem] gap-x-4 items-center py-3 border-b border-line">
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-text truncate">{r.label}</span>
+                <span className="block df-mono text-xs text-muted truncate">{r.value}{r.condition ? ` · ${r.condition}` : ''}</span>
+              </span>
+              <span className="relative h-2.5" aria-hidden="true">
+                <span className="absolute inset-y-[-6px] left-1/2 w-px bg-line-strong" />
+                {d !== 0 && (
+                  <span
+                    className={`absolute top-0 bottom-0 rounded-sm ${d > 0 ? 'bg-accent left-1/2' : 'bg-text/70 right-1/2'}`}
+                    style={{ width: w }}
+                  />
+                )}
+              </span>
+              <span className={`df-mono text-sm text-right ${d > 0 ? 'text-accent' : d < 0 ? 'text-text' : 'text-muted'}`}>
+                {d > 0 ? '+' : d < 0 ? '−' : '±'}{Math.abs(pts).toFixed(1)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-xs text-muted mt-3">Effect = percentage points each factor adds to or takes from the chance of success.</p>
     </div>
   );
 };
 
 /* ── Next-session prediction ── */
 const PredictionPanel = ({ prediction, features, dataStatus }) => {
-  const riskColor = riskColors[prediction?.riskLevel] || '#9CA3AF';
   const isPersonal = prediction?.source === 'model';
+  const hasOdds = !(prediction?.successProbability === null || prediction?.successProbability === undefined);
+  const success = prediction?.classProbabilities ? Math.round(prediction.classProbabilities.successful * 100) : prediction?.successPercent;
 
   return (
-    <>
-      <motion.div variants={itemV}>
-        <h2 className="text-fg font-semibold text-xl mb-1 flex items-center gap-2">🤖 AI Prediction: Next Session</h2>
-        <p className="text-fg-lav text-xs mb-4">
-          {isPersonal
-            ? `Chance that a ${prediction.plannedDuration}-minute session started now goes to plan (you finish at least 90% of it, with at most one blocked-site attempt).`
-            : prediction?.message}
-        </p>
-
-        {prediction?.isColdStart && (
-          <GlassCard padding="p-3" className="mb-4 border-indigo-500/20">
-            <p className="text-fg-soft text-sm">
-              <span className="text-indigo-500 font-medium">Not personalised yet</span> — you have no finished sessions.
-              Complete a few sessions to personalise this prediction.
-            </p>
-          </GlassCard>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <GlassCard className="lg:col-span-2">
-            {prediction?.successProbability === null || prediction?.successProbability === undefined ? (
-              <p className="text-fg-lav text-sm py-6 text-center">{prediction?.explanation || 'No prediction available yet.'}</p>
-            ) : (
-              <>
-                <div className="flex items-end justify-between gap-4 mb-3">
-                  <div>
-                    <p className="text-fg-lav text-xs mb-1">Risk level</p>
-                    <p className="font-bold text-3xl capitalize" style={{ color: riskColor }}>{prediction.riskLevel}</p>
-                    <p className="text-fg-lav text-[11px] mt-0.5">{riskMeaning[prediction.riskLevel]}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-fg-lav text-xs mb-1">{isPersonal ? 'Predicted success' : 'Past success rate'}</p>
-                    <p className="text-fg font-bold text-3xl">{prediction.successPercent}%</p>
-                  </div>
-                </div>
-                <ProbabilityBar probabilities={prediction.classProbabilities} />
-                <p className="text-fg-soft text-xs leading-relaxed mt-3">{prediction.explanation}</p>
-              </>
-            )}
-          </GlassCard>
-          <GlassCard className="text-center flex flex-col justify-center">
-            <p className="text-fg-lav text-sm mb-2">Focus Score</p>
-            <p className="text-[#3FAE6A] font-bold text-5xl">{prediction?.focusScore || 0}<span className="text-xl text-fg-lav">/100</span></p>
-            <p className="text-fg-lav text-sm mt-2">Last 7 days</p>
-          </GlassCard>
-          <GlassCard className="text-center flex flex-col justify-center">
-            <p className="text-fg-lav text-sm mb-2">Sessions (7 days)</p>
-            <p className="text-fg font-bold text-5xl">{features?.completedSessions || 0}<span className="text-xl text-fg-lav">/{features?.totalSessions || 0}</span></p>
-            <p className="text-fg-lav text-sm mt-2">Completed · {dataStatus?.allTimeFinishedSessions ?? 0} finished all-time</p>
-          </GlassCard>
+    <section aria-labelledby="pred-title">
+      <div className="pg-head">
+        <div>
+          <p className="pg-kicker">AI prediction · next session</p>
+          <h2 id="pred-title" className="pg-title">
+            {hasOdds ? (
+              <><span className={RISK_TONE[prediction.riskLevel]}><span className="capitalize">{prediction.riskLevel}</span> risk</span>, <em>{prediction.successPercent}%</em> chance</>
+            ) : 'No prediction yet'}
+          </h2>
+          <p className="pg-sub">
+            {isPersonal
+              ? `Chance that a ${prediction.plannedDuration}-minute session started now goes to plan (you finish at least 90% of it, with at most one blocked-site attempt).`
+              : prediction?.message}
+          </p>
         </div>
-      </motion.div>
-    </>
+      </div>
+
+      {prediction?.isColdStart && (
+        <div className="rounded-lg bg-accent-soft px-5 py-3 mb-6 text-sm text-text">
+          <span className="font-semibold">Not personalised yet</span> — you have no finished sessions. Complete a few sessions to personalise this prediction.
+        </div>
+      )}
+
+      <div className="grid lg:grid-cols-12 gap-8 lg:gap-10">
+        {/* The report */}
+        <Card className="lg:col-span-8" padding="p-6 md:p-8">
+          {!hasOdds ? (
+            <p className="text-sm text-muted py-6">{prediction?.explanation || 'No prediction available yet.'}</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+                <div>
+                  <p className="df-label">Why the model thinks so</p>
+                  <p className="text-text-2 mt-2 max-w-prose leading-relaxed">{prediction.explanation}</p>
+                </div>
+                {prediction.modelVersion && <Badge mono>{prediction.modelVersion}</Badge>}
+              </div>
+              <ProgressBar
+                className="mb-8"
+                label={`Successful ${success}% · Not successful ${100 - success}%`}
+                valueLabel={riskMeaning[prediction.riskLevel]}
+                value={success}
+                tone={prediction.riskLevel === 'high' ? 'danger' : prediction.riskLevel === 'medium' ? 'amber' : 'accent'}
+              />
+              <FactorBreakdown reasons={prediction.reasons} />
+            </>
+          )}
+        </Card>
+
+        {/* Side numbers */}
+        <div className="lg:col-span-4 flex flex-col">
+          <div className="py-5 border-t border-line-strong">
+            <p className="df-label">Focus score · last 7 days</p>
+            <p className="df-mono text-t-64 leading-none mt-2 text-accent">
+              {prediction?.focusScore || 0}<span className="text-t-28 text-muted">/100</span>
+            </p>
+          </div>
+          <div className="py-5 border-t border-line">
+            <p className="df-label">Sessions · last 7 days</p>
+            <p className="df-mono text-t-40 mt-2 text-text">
+              {features?.completedSessions || 0}<span className="text-t-28 text-muted">/{features?.totalSessions || 0}</span>
+            </p>
+            <p className="text-sm text-muted mt-1">Completed · {dataStatus?.allTimeFinishedSessions ?? 0} finished all-time</p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 };
-
-const priorityColors = { high: '#EF6B6B', medium: '#F5B638', low: '#3FAE6A' };
 
 /* ── Skeleton ── */
 const LoadingSkeleton = () => (
   <PageTransition>
-    <div className="max-w-6xl mx-auto space-y-6 animate-pulse">
-      <div className="h-7 w-64 bg-ink/5 rounded mb-4" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => <div key={i} className="bg-ink/[0.03] rounded-2xl border border-ink/[0.04] h-24" />)}
-      </div>
-      <div className="bg-ink/[0.03] rounded-2xl border border-ink/[0.04] h-[260px]" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[...Array(4)].map((_, i) => <div key={i} className="bg-ink/[0.03] rounded-2xl border border-ink/[0.04] h-32" />)}
+    <div aria-busy="true" aria-label="Loading insights">
+      <Skeleton width={180} height={12} />
+      <Skeleton className="mt-3" width="min(520px, 90%)" height={48} />
+      <div className="grid lg:grid-cols-12 gap-10 mt-10">
+        <div className="lg:col-span-8"><Skeleton height={380} radius={10} /></div>
+        <div className="lg:col-span-4"><SkeletonText lines={6} /></div>
       </div>
     </div>
   </PageTransition>
 );
 
-/* ── Empty State ── */
-const EmptyInsights = () => (
-  <div className="flex flex-col items-center justify-center py-20 text-center">
-    <span className="text-6xl mb-4">🧠</span>
-    <h2 className="text-xl font-bold text-fg mb-2">No Insights Available Yet</h2>
-    <p className="text-fg-lav text-sm max-w-md leading-relaxed">
-      Complete a few focus sessions to generate insights. DistractFree uses your own
-      session history to estimate, before you start, how likely your next session is to succeed.
-    </p>
-  </div>
+const Section = ({ id, title, note, children }) => (
+  <section className="pg-section" aria-labelledby={id}>
+    <div className="pg-section-head">
+      <h2 id={id} className="pg-h2">{title}</h2>
+      {note && <span className="text-xs text-muted text-right">{note}</span>}
+    </div>
+    {children}
+  </section>
 );
 
 /* ════════════ MAIN PAGE ════════════ */
@@ -176,251 +205,212 @@ const InsightsPage = () => {
   if (loading) return <LoadingSkeleton />;
   if (error) return (
     <PageTransition>
-      <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-fg-lav text-lg mb-4">{error}</p>
-        <button onClick={fetchInsights} className="px-6 py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 font-medium">Retry</button>
-      </div>
+      <ErrorState title="Insights didn’t load" action={<Button variant="secondary" onClick={fetchInsights}>Try again</Button>}>
+        {error} Your sessions are safe; this page only reads them.
+      </ErrorState>
     </PageTransition>
   );
-  if (!data) return <PageTransition><EmptyInsights /></PageTransition>;
+  if (!data) return (
+    <PageTransition>
+      <EmptyState icon={LuSparkles} title="No insights yet" action={<Button as={Link} to="/dashboard/focus">Start a session</Button>}>
+        Complete a few focus sessions to generate insights. DistractFree uses your own session history to estimate,
+        before you start, how likely your next session is to succeed.
+      </EmptyState>
+    </PageTransition>
+  );
 
   const { prediction, features, breakdown, productivityWindows, distractionHours, recommendations, sessionRecommendation, trends, topSites, dataStatus } = data;
+  const scoreColor = (v) => (v >= 60 ? chart.accent : v >= 30 ? chart.amber : chart.danger);
 
   return (
     <PageTransition>
-      <motion.div className="max-w-6xl mx-auto space-y-8" variants={containerV} initial="hidden" animate="visible">
+      {/* A. AI prediction — shown even with no recent sessions */}
+      <PredictionPanel prediction={prediction} features={features} dataStatus={dataStatus} />
 
-        {/* ═══ A. AI PREDICTION — shown even with no recent sessions ═══ */}
-        <PredictionPanel prediction={prediction} features={features} dataStatus={dataStatus} />
+      {/* B. Distraction breakdown */}
+      <Section id="breakdown-title" title="Distraction breakdown">
+        <div className="grid md:grid-cols-2 gap-8">
+          {[
+            { label: 'Blocked visit ratio', hint: 'Share of your visits that hit a blocked site', val: breakdown?.visitRatio || 0, warnAt: 30 },
+            { label: 'Context switch rate', hint: 'How often you jump between work and blocked sites', val: breakdown?.switchRate || 0, warnAt: 40 },
+          ].map((item) => (
+            <div key={item.label}>
+              <p className="df-mono text-t-40 text-text">{item.val}%</p>
+              <ProgressBar className="mt-3" label={item.label} value={item.val} tone={item.val > item.warnAt ? 'danger' : 'accent'} />
+              <p className="text-xs text-muted mt-2">{item.hint}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
 
-        {/* ═══ B. DISTRACTION BREAKDOWN ═══ */}
-        <motion.div variants={itemV}>
-          <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">📊 Distraction Breakdown</h2>
-          <GlassCard>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                { label: 'Blocked Visit Ratio', hint: 'Share of your visits that hit a blocked site', val: breakdown?.visitRatio || 0, color: (breakdown?.visitRatio || 0) > 30 ? '#EF6B6B' : '#3FAE6A' },
-                { label: 'Context Switch Rate', hint: 'How often you jump between work and blocked sites', val: breakdown?.switchRate || 0, color: (breakdown?.switchRate || 0) > 40 ? '#EF6B6B' : '#F5B638' },
-              ].map((item, i) => (
-                <div key={i} className="flex flex-col items-center text-center">
-                  <CircularProgress value={item.val} max={100} size={100} strokeWidth={8} color={item.color} label={`${item.val}%`} />
-                  <p className="text-fg-lav text-sm mt-3">{item.label}</p>
-                  <p className="text-fg-4 text-[11px] mt-0.5">{item.hint}</p>
+      {/* C. Productivity windows */}
+      {productivityWindows?.hasSufficientData && (
+        <Section id="pattern-title" title="Focus patterns" note="Sessions grouped by start hour · last 30 days">
+          <dl className="pg-stats pg-stats--4 mb-8">
+            {[
+              ['Best focus hours', productivityWindows.bestFocusHours || 'N/A', 'text-accent'],
+              ['Weakest hours', productivityWindows.weakestHours || 'N/A', 'text-amber-ink'],
+              ['Avg session', `${productivityWindows.avgSessionMinutes || 0} min`, 'text-text'],
+              ['Optimal length', `${productivityWindows.optimalSessionLength || 25} min`, 'text-text'],
+            ].map(([label, value, tone]) => (
+              <div key={label}>
+                <dt className="df-label">{label}</dt>
+                <dd className={`df-mono text-lg mt-1 ${tone}`}>{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {productivityWindows.hourlyData?.length > 0 && (
+            <>
+              <p className="pg-h3 mb-3">Hourly focus score</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={productivityWindows.hourlyData} margin={{ left: -18, right: 4 }}>
+                  <CartesianGrid vertical={false} stroke={chart.grid} />
+                  <XAxis dataKey="label" stroke={chart.axis} fontSize={10} tickLine={false} axisLine={false} interval={0} />
+                  <YAxis stroke={chart.axis} fontSize={10} tickLine={false} axisLine={false} domain={[0, 100]} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: chart.cursor }} />
+                  <Bar dataKey="focusScore" name="Focus score" radius={[3, 3, 0, 0]} barSize={20}>
+                    {productivityWindows.hourlyData.map((entry, i) => (
+                      <Cell key={i} fill={scoreColor(entry.focusScore)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </>
+          )}
+        </Section>
+      )}
+
+      {/* D. High distraction hours */}
+      {distractionHours?.hasSufficientData && distractionHours.topRiskHours?.length > 0 && (
+        <Section id="risk-hours-title" title="High-risk hours" note="Risk % = 100 − that hour's focus score (hours with only blocked attempts: 10% per attempt)">
+          <ol>
+            {distractionHours.topRiskHours.map((h, i) => (
+              <li key={i} className="grid grid-cols-[2rem_minmax(0,9rem)_1fr_3.5rem] items-center gap-4 py-3 border-b border-line">
+                <span className="df-mono text-xs text-muted">{String(i + 1).padStart(2, '0')}</span>
+                <span className="text-sm font-medium text-text">{h.window || h.label}</span>
+                <span>
+                  <ProgressBar value={h.riskPercent} tone={h.riskPercent > 60 ? 'danger' : h.riskPercent > 30 ? 'amber' : 'accent'} />
+                  <span className="block text-xs text-muted mt-1">{h.blockedAttempts} blocked attempts{h.sessions > 0 ? ` · ${h.sessions} session${h.sessions > 1 ? 's' : ''}` : ''}</span>
+                </span>
+                <span className="df-mono text-sm text-right text-text">{h.riskPercent}%</span>
+              </li>
+            ))}
+          </ol>
+          {distractionHours.peakDistractionWindow && (
+            <p className="mt-5 text-sm text-text-2 border-l-2 border-amber pl-4">
+              Your distraction risk peaks during <span className="font-semibold text-text">{distractionHours.peakDistractionWindow}</span>.
+              Consider scheduling lighter tasks or enabling strict mode during this window.
+            </p>
+          )}
+        </Section>
+      )}
+
+      {/* E. Recommendations */}
+      {recommendations?.length > 0 && (
+        <Section id="recs-title" title="Recommendations">
+          {sessionRecommendation && (
+            <div className="rounded-lg bg-paper-2 px-6 py-5 mb-6">
+              <p className="df-label">Recommended rhythm</p>
+              <p className="df-display text-t-28 mt-2 text-text">
+                <span className="df-mono">{sessionRecommendation.recommendedSessionTime}</span> min focus, <span className="df-mono">{sessionRecommendation.suggestedBreakTime}</span> min break.
+              </p>
+              <p className="text-sm text-muted mt-1">Based on how your past sessions went.</p>
+            </div>
+          )}
+          <div className="grid md:grid-cols-2 gap-x-10">
+            {recommendations.slice(0, 6).map((rec, i) => (
+              <article key={rec.id || i} className="py-5 border-b border-line">
+                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                  <h3 className="text-sm font-semibold text-text">{rec.title}</h3>
+                  <Badge tone={PRIORITY_TONE[rec.priority] || 'neutral'}>{rec.priority}</Badge>
                 </div>
-              ))}
+                <p className="text-sm text-text-2 leading-relaxed">{rec.description}</p>
+                {rec.metric && (
+                  <p className="mt-2 text-xs text-muted"><span className="df-mono text-text">{rec.metric}</span> · {rec.metricLabel}</p>
+                )}
+              </article>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* F. 7-day trends */}
+      {trends && (
+        <Section id="trends-title" title="Last 7 days">
+          <dl className="pg-stats pg-stats--3 mb-8">
+            <div>
+              <dt className="df-label">Total focus</dt>
+              <dd className="df-mono text-t-28 mt-1 text-text">{Math.round((trends.totalFocusMinutes || 0) / 60 * 10) / 10}h</dd>
             </div>
-          </GlassCard>
-        </motion.div>
-
-        {/* ═══ C. PRODUCTIVITY WINDOWS ═══ */}
-        {productivityWindows?.hasSufficientData && (
-          <motion.div variants={itemV}>
-            <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">📈 Focus Pattern Analysis</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <GlassCard className="text-center">
-                <p className="text-fg-lav text-xs mb-1">Best Focus Hours</p>
-                <p className="text-fg font-bold text-lg">{productivityWindows.bestFocusHours || 'N/A'}</p>
-              </GlassCard>
-              <GlassCard className="text-center">
-                <p className="text-fg-lav text-xs mb-1">Weakest Hours</p>
-                <p className="text-[#F5B638] font-bold text-lg">{productivityWindows.weakestHours || 'N/A'}</p>
-              </GlassCard>
-              <GlassCard className="text-center">
-                <p className="text-fg-lav text-xs mb-1">Avg Session</p>
-                <p className="text-fg font-bold text-lg">{productivityWindows.avgSessionMinutes || 0} min</p>
-              </GlassCard>
-              <GlassCard className="text-center">
-                <p className="text-fg-lav text-xs mb-1">Optimal Length</p>
-                <p className="text-[#7C5CFC] font-bold text-lg">{productivityWindows.optimalSessionLength || 25} min</p>
-              </GlassCard>
+            <div>
+              <dt className="df-label">Consistency</dt>
+              <dd className={`df-mono text-t-28 mt-1 ${trends.consistencyScore >= 70 ? 'text-accent' : trends.consistencyScore >= 40 ? 'text-amber-ink' : 'text-danger'}`}>{trends.consistencyScore || 0}%</dd>
             </div>
-
-            {/* Hourly focus score chart */}
-            {productivityWindows.hourlyData?.length > 0 && (
-              <GlassCard>
-                <p className="text-fg-lav text-xs mb-1 font-medium uppercase tracking-wider">Hourly Focus Score</p>
-                <p className="text-fg-4 text-[11px] mb-3">Sessions grouped by start hour · last 30 days</p>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={productivityWindows.hourlyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                    <XAxis dataKey="label" stroke={chart.axis} fontSize={10} tickLine={false} interval={0} />
-                    <YAxis stroke={chart.axis} fontSize={10} tickLine={false} axisLine={false} domain={[0, 100]} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
-                    <Bar dataKey="focusScore" radius={[4, 4, 0, 0]} barSize={20}>
-                      {productivityWindows.hourlyData.map((entry, i) => (
-                        <Cell key={i} fill={entry.focusScore >= 60 ? '#3FAE6A' : entry.focusScore >= 30 ? '#F5B638' : '#EF6B6B'} fillOpacity={0.8} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </GlassCard>
-            )}
-          </motion.div>
-        )}
-
-        {/* ═══ D. HIGH DISTRACTION HOURS ═══ */}
-        {distractionHours?.hasSufficientData && distractionHours.topRiskHours?.length > 0 && (
-          <motion.div variants={itemV}>
-            <h2 className="text-fg font-semibold text-xl mb-1 flex items-center gap-2">📉 High Risk Distraction Hours</h2>
-            <p className="text-fg-lav text-xs mb-4">Risk % = 100 − that hour's focus score (hours with only blocked attempts: 10% per attempt)</p>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              {distractionHours.topRiskHours.map((h, i) => (
-                <GlassCard key={i} className="text-center">
-                  <CircularProgress
-                    value={h.riskPercent} max={100} size={80} strokeWidth={6}
-                    color={h.riskPercent > 60 ? '#EF6B6B' : h.riskPercent > 30 ? '#F5B638' : '#3FAE6A'}
-                    label={`${h.riskPercent}%`}
-                  />
-                  <p className="text-fg text-sm font-medium mt-2">{h.window || h.label}</p>
-                  <p className="text-fg-lav text-[10px]">{h.blockedAttempts} blocked attempts{h.sessions > 0 ? ` · ${h.sessions} session${h.sessions > 1 ? 's' : ''}` : ''}</p>
-                </GlassCard>
-              ))}
+            <div>
+              <dt className="df-label">Distractions</dt>
+              <dd className="df-mono text-t-28 mt-1 text-text">{trends.totalDistractions || 0}</dd>
             </div>
-            {distractionHours.peakDistractionWindow && (
-              <GlassCard padding="p-3" className="border-red-500/10">
-                <p className="text-fg-soft text-sm text-center">
-                  <span className="text-[#EF6B6B] font-medium">AI Analysis:</span> Your distraction risk peaks during{' '}
-                  <span className="text-fg font-semibold">{distractionHours.peakDistractionWindow}</span>.
-                  Consider scheduling lighter tasks or enabling strict mode during this window.
-                </p>
-              </GlassCard>
-            )}
-          </motion.div>
-        )}
+          </dl>
 
-        {/* ═══ E. PERSONALIZED RECOMMENDATIONS ═══ */}
-        {recommendations?.length > 0 && (
-          <motion.div variants={itemV}>
-            <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">🧠 Personalized Recommendations</h2>
-            {sessionRecommendation && (
-              <GlassCard hover className="mb-4">
-                <div className="flex gap-4">
-                  <span className="text-3xl flex-shrink-0">⏱️</span>
-                  <div>
-                    <h3 className="text-fg font-semibold mb-1">Recommended Session Time</h3>
-                    <p className="text-fg-lav text-sm">
-                      Based on your patterns, try a <strong className="text-fg">{sessionRecommendation.recommendedSessionTime}-minute</strong> session
-                      followed by a <strong className="text-fg">{sessionRecommendation.suggestedBreakTime}-minute</strong> break.
-                    </p>
-                  </div>
-                </div>
-              </GlassCard>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {recommendations.slice(0, 6).map((rec, i) => (
-                <motion.div key={rec.id || i} initial={{ opacity: 0, x: i % 2 === 0 ? -15 : 15 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 + i * 0.07 }}>
-                  <GlassCard hover className="h-full">
-                    <div className="flex gap-4">
-                      <span className="text-2xl flex-shrink-0">{rec.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-fg font-semibold text-sm">{rec.title}</h3>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${priorityColors[rec.priority]}20`, color: priorityColors[rec.priority] }}>
-                            {rec.priority}
-                          </span>
-                        </div>
-                        <p className="text-fg-lav text-xs leading-relaxed mb-2">{rec.description}</p>
-                        {rec.metric && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[#7C5CFC] text-xs font-bold">{rec.metric}</span>
-                            <span className="text-fg-4 text-[10px]">{rec.metricLabel}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ═══ F. 7-DAY TREND ANALYTICS ═══ */}
-        {trends && (
-          <motion.div variants={itemV}>
-            <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">📈 7-Day Trends</h2>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <GlassCard className="text-center">
-                <p className="text-fg-lav text-xs mb-1">Total Focus</p>
-                <p className="text-fg font-bold text-xl">{Math.round((trends.totalFocusMinutes || 0) / 60 * 10) / 10}h</p>
-              </GlassCard>
-              <GlassCard className="text-center">
-                <p className="text-fg-lav text-xs mb-1">Consistency</p>
-                <p className="font-bold text-xl" style={{ color: trends.consistencyScore >= 70 ? '#3FAE6A' : trends.consistencyScore >= 40 ? '#F5B638' : '#EF6B6B' }}>
-                  {trends.consistencyScore || 0}%
-                </p>
-              </GlassCard>
-              <GlassCard className="text-center">
-                <p className="text-fg-lav text-xs mb-1">Distractions</p>
-                <p className="text-[#EF6B6B] font-bold text-xl">{trends.totalDistractions || 0}</p>
-              </GlassCard>
-            </div>
-
-            {/* Focus trend chart */}
+          <div className="grid lg:grid-cols-2 gap-8">
             {trends.focusTrend?.length > 0 && (
-              <GlassCard className="mb-4">
-                <p className="text-fg-lav text-xs mb-3 font-medium uppercase tracking-wider">Focus Minutes (7 Days)</p>
+              <div>
+                <p className="pg-h3 mb-3">Focus minutes</p>
                 <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={trends.focusTrend}>
+                  <AreaChart data={trends.focusTrend} margin={{ left: -18, right: 4 }}>
                     <defs>
                       <linearGradient id="focusGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#7C5CFC" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#7C5CFC" stopOpacity={0} />
+                        <stop offset="0%" stopColor={chart.accent} stopOpacity={0.16} />
+                        <stop offset="100%" stopColor={chart.accent} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                    <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} />
-                    <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
-                    <Area type="monotone" dataKey="focusMinutes" name="Focus Min" stroke="#7C5CFC" fill="url(#focusGrad)" strokeWidth={2} />
+                    <CartesianGrid vertical={false} stroke={chart.grid} />
+                    <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ stroke: chart.grid }} />
+                    <Area type="monotone" dataKey="focusMinutes" name="Focus min" stroke={chart.accent} fill="url(#focusGrad)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
-              </GlassCard>
+              </div>
             )}
-
-            {/* Distraction trend */}
-            {trends.distractionTrend?.some(d => d.attempts > 0) && (
-              <GlassCard>
-                <p className="text-fg-lav text-xs mb-3 font-medium uppercase tracking-wider">Distraction Trend (7 Days)</p>
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={trends.distractionTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
-                    <XAxis dataKey="day" stroke={chart.axis} fontSize={12} tickLine={false} />
-                    <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: chart.cursor }} />
-                    <Bar dataKey="attempts" name="Blocked Attempts" fill="#EF6B6B" radius={[4, 4, 0, 0]} barSize={30} fillOpacity={0.8} />
+            {trends.distractionTrend?.some((d) => d.attempts > 0) && (
+              <div>
+                <p className="pg-h3 mb-3">Blocked attempts</p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={trends.distractionTrend} margin={{ left: -18, right: 4 }}>
+                    <CartesianGrid vertical={false} stroke={chart.grid} />
+                    <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: chart.cursor }} />
+                    <Bar dataKey="attempts" name="Blocked attempts" fill={chart.text} fillOpacity={0.75} radius={[3, 3, 0, 0]} barSize={26} />
                   </BarChart>
                 </ResponsiveContainer>
-              </GlassCard>
-            )}
-          </motion.div>
-        )}
-
-        {/* ═══ G. TOP SITES ═══ */}
-        {topSites?.length > 0 && (
-          <motion.div variants={itemV}>
-            <h2 className="text-fg font-semibold text-xl mb-4 flex items-center gap-2">🌐 Most Visited Sites (7 Days)</h2>
-            <GlassCard>
-              <div className="space-y-2">
-                {topSites.slice(0, 8).map((site, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-ink/[0.03] transition-colors">
-                    <div className="flex items-center gap-3">
-                      <span className="text-fg-4 text-xs font-mono w-5">#{i + 1}</span>
-                      <span className="text-fg text-sm font-medium">{site._id}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-fg-lav text-xs">{site.visits} visits</span>
-                      <span className="text-fg-lav text-xs">{Math.round(site.totalDuration / 60)}m</span>
-                      {site.blockedVisits > 0 && <span className="text-red-400 text-xs font-medium">{site.blockedVisits} blocked</span>}
-                    </div>
-                  </div>
-                ))}
               </div>
-            </GlassCard>
-          </motion.div>
-        )}
+            )}
+          </div>
+        </Section>
+      )}
 
-      </motion.div>
+      {/* G. Top sites */}
+      {topSites?.length > 0 && (
+        <Section id="sites-title" title="Most visited sites" note="Last 7 days">
+          <div className="hidden sm:grid grid-cols-[2rem_1fr_5rem_4rem_6rem] gap-4 pb-2 df-label">
+            <span>#</span><span>Site</span><span className="text-right">Visits</span><span className="text-right">Time</span><span className="text-right">Blocked</span>
+          </div>
+          <ol className="pg-rows">
+            {topSites.slice(0, 8).map((site, i) => (
+              <li key={i} className="grid grid-cols-[2rem_1fr_auto] sm:grid-cols-[2rem_1fr_5rem_4rem_6rem] gap-4 items-center py-3 border-b border-line">
+                <span className="df-mono text-xs text-muted">{String(i + 1).padStart(2, '0')}</span>
+                <span className="text-sm font-medium text-text truncate">{site._id}</span>
+                <span className="df-mono text-sm text-right text-text-2">{site.visits}<span className="sm:hidden text-muted"> visits</span></span>
+                <span className="hidden sm:block df-mono text-sm text-right text-text-2">{Math.round(site.totalDuration / 60)}m</span>
+                <span className="hidden sm:block df-mono text-sm text-right">{site.blockedVisits > 0 ? <span className="text-text">{site.blockedVisits}</span> : <span className="text-muted">—</span>}</span>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
     </PageTransition>
   );
 };

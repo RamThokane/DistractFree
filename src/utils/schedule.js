@@ -80,11 +80,13 @@ export function apiErrorMessage(err, fallback = 'Something went wrong. Please tr
 }
 
 /** Calendar colours by status. */
+/* Calendar status colours — CSS variables from styles/tokens.css so both themes work.
+   bg/fg = event block; tone = Badge tone. */
 export const STATUS_STYLES = {
-  scheduled: { label: 'Scheduled', color: '#3B82F6' },
-  active: { label: 'In progress', color: '#7C5CFC' },
-  started: { label: 'In progress', color: '#7C5CFC' },
-  completed: { label: 'Completed', color: '#22C55E' },
-  cancelled: { label: 'Cancelled', color: '#EF4444' },
-  missed: { label: 'Missed', color: '#9CA3AF' },
+  scheduled: { label: 'Scheduled', bg: 'var(--text)', fg: 'var(--paper)', tone: 'neutral' },
+  active: { label: 'In progress', bg: 'var(--accent)', fg: 'var(--on-accent)', tone: 'accent' },
+  started: { label: 'In progress', bg: 'var(--accent)', fg: 'var(--on-accent)', tone: 'accent' },
+  completed: { label: 'Completed', bg: 'var(--accent-soft)', fg: 'var(--accent)', tone: 'accent' },
+  cancelled: { label: 'Cancelled', bg: 'var(--paper-3)', fg: 'var(--muted)', tone: 'neutral' },
+  missed: { label: 'Missed', bg: 'var(--amber-soft)', fg: 'var(--amber-ink)', tone: 'amber' },
 };
