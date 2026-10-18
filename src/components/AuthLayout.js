@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
 import AuthShowcase from './AuthShowcase';
+import Wordmark from './Wordmark';
 
 /**
  * Login / sign-up frame: form column on the left, brand panel on the right
@@ -13,7 +14,7 @@ const AuthLayout = ({ title, subtitle, children, footer }) => (
       <header className="px-6 sm:px-12 lg:px-16 pt-8 flex items-center justify-between">
         <Link to="/" className="app-brand" aria-label="DistractFree home">
           <img src="/favicon.svg" alt="" className="w-8 h-8 rounded-md" />
-          <span className="text-lg">DistractFree</span>
+          <Wordmark className="df-wordmark--logo" />
         </Link>
         <ThemeToggle />
       </header>

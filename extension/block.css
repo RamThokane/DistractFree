@@ -46,6 +46,14 @@ body::before {
   text-transform: uppercase;
   color: var(--muted);
 }
+.kicker .wordmark {
+  font-family: var(--font-display);
+  font-size: 1.45em;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text);
+}
+.kicker .wordmark em { font-style: italic; color: var(--accent); }
 .title {
   margin-top: 12px;
   font-family: var(--font-display);

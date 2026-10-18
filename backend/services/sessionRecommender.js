@@ -200,24 +200,37 @@ function recommendFromHistory({ sessions, now = new Date(), timezone, modelScore
  * Recommendation for a user. Uses the model only if it validated well on
  * unseen sessions; otherwise the user's own history.
  */
-async function recommendForUser(userId, { timezone, now = new Date() } = {}) {
+/** True once the trained model has validated on sessions it wasn't trained on. */
+function modelIsReliable() {
+  try {
+    // Lazy require keeps this module usable in unit tests without the model files
+    const { getTrainingReport } = require('../ml/trainModel');
+    const auc = getTrainingReport()?.walk_forward?.model?.roc_auc;
+    return typeof auc === 'number' && auc >= MODEL_MIN_AUC;
+  } catch {
+    return false;
+  }
+}
+
+async function loadHistory(userId, timezone) {
   const sessions = await FocusSession.find({ userId, status: { $in: ENDED_STATUSES } })
     .sort({ startTime: -1 })
     .limit(HISTORY_LIMIT)
     .select('startTime endTime plannedDuration duration status distractionAttempts tabSwitches timezone')
     .lean();
-
   const tz = isValidTimezone(timezone)
     ? timezone
     : sessions.find((s) => isValidTimezone(s.timezone))?.timezone || DEFAULT_TIMEZONE;
+  return { sessions, tz };
+}
+
+async function recommendForUser(userId, { timezone, now = new Date() } = {}) {
+  const { sessions, tz } = await loadHistory(userId, timezone);
 
   let modelScore = null;
   try {
-    // Lazy requires keep this module usable in unit tests without the model files
-    const { getTrainingReport } = require('../ml/trainModel');
     const { predictFromHistory } = require('./predictionService');
-    const auc = getTrainingReport()?.walk_forward?.model?.roc_auc;
-    if (typeof auc === 'number' && auc >= MODEL_MIN_AUC) {
+    if (modelIsReliable()) {
       modelScore = ({ startTime, plannedDuration }) => {
         const p = predictFromHistory({ sessions, startTime, plannedDuration, timezone: tz });
         return p.source === 'model' ? p.successProbability : null;
@@ -233,4 +246,60 @@ async function recommendForUser(userId, { timezone, now = new Date() } = {}) {
   return recommendFromHistory({ sessions, now, timezone: tz, modelScore });
 }
 
-module.exports = { LENGTHS, MIN_SESSIONS, MODEL_MIN_AUC, recommendFromHistory, recommendForUser, candidateStarts };
+/**
+ * The forecast for one session ("start N minutes now"), shown on the
+ * dashboard and AI Insights. Uses the same scorer as the recommender, so the
+ * two never disagree: the model once it is reliable, otherwise the user's
+ * history. Session-start predictions stored for training stay model-only
+ * (focusSessionService → predictForUser).
+ */
+async function forecastForUser(userId, { startTime = new Date(), plannedDuration, timezone } = {}) {
+  const { predictForUser, riskFromProbability } = require('./predictionService');
+  const prediction = await predictForUser(userId, { startTime, plannedDuration, timezone });
+  if (modelIsReliable()) return prediction;
+
+  const { sessions, tz } = await loadHistory(userId, prediction.timezone || timezone);
+  if (sessions.length < MIN_SESSIONS) return prediction; // too little history: keep the existing answer
+
+  const length = nearestLength(prediction.plannedDuration);
+  const { hour } = localParts(startTime, tz);
+  const est = historyScorer(tally(sessions, tz))({ hour, plannedDuration: length });
+  const p = est.probability;
+  const e = est.evidence;
+  const reason = (feature, label, rate, n, text) => ({
+    feature,
+    label,
+    value: `${Math.round(rate * 100)}%`,
+    condition: rate > e.overall ? 'above average' : rate < e.overall ? 'below average' : null,
+    effect: rate > e.overall + 0.01 ? 'raises' : rate < e.overall - 0.01 ? 'lowers' : 'neutral',
+    delta: Math.round((rate - e.overall) * 1000) / 1000,
+    text,
+    samples: n,
+  });
+  const hourRate = e.hour.n ? e.hour.s / e.hour.n : null;
+  const lengthRate = e.length.n ? e.length.s / e.length.n : null;
+  const reasons = [
+    hourRate !== null && reason('hourOfDay', 'This time of day', hourRate, e.hour.n,
+      `${Math.round(hourRate * 100)}% of your sessions around ${hourLabel(hour)} went to plan (${e.hour.n})`),
+    lengthRate !== null && reason('plannedDuration', 'Planned length', lengthRate, e.length.n,
+      `${Math.round(lengthRate * 100)}% of your ${length}-min sessions went to plan (${e.length.n})`),
+  ].filter(Boolean);
+
+  return {
+    ...prediction,
+    status: 'ready',
+    source: 'history',
+    plannedDuration: length,
+    successProbability: p,
+    predictedSuccess: p >= 0.5,
+    riskLevel: riskFromProbability(p),
+    reasons,
+    path: [],
+    counterfactual: null,
+    message: null,
+    explanation: `A ${length}-minute session started now has a ${Math.round(p * 100)}% chance of going to plan, based on how your past sessions went.`,
+    modelProbability: prediction.source === 'model' ? prediction.successProbability : null,
+  };
+}
+
+module.exports = { LENGTHS, MIN_SESSIONS, MODEL_MIN_AUC, recommendFromHistory, recommendForUser, forecastForUser, modelIsReliable, candidateStarts };

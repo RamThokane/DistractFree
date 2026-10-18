@@ -17,9 +17,9 @@ const BrowsingLog = require('../models/BrowsingLog');
 const FocusSession = require('../models/FocusSession');
 const { getModelState, getModelInfo, computeFeatureImportances } = require('../ml/activeModel');
 const { getTrainingReport, AUTO_RETRAIN_NEW_SESSIONS } = require('../ml/trainModel');
-const { recommendForUser } = require('../services/sessionRecommender');
+const { recommendForUser, forecastForUser } = require('../services/sessionRecommender');
 const {
-  predictForUser,
+
   toClientPrediction,
   toLegacyTopFeatures,
   countRealSessions,
@@ -69,7 +69,7 @@ exports.getFullInsights = async (req, res) => {
     // Pre-session features only; reasons come from the active model (logistic
     // regression input effects, or the decision tree's path with ML_MODEL=tree).
     const dominantCategory = _getDominantCategory(topSites);
-    const mlPrediction = await predictForUser(userId, { timezone: req.query.tz });
+    const mlPrediction = await forecastForUser(userId, { timezone: req.query.tz });
 
     // ── Recommendations ────────────────────────────
     const recommendations = generateRecommendations(
@@ -147,7 +147,7 @@ exports.predictDistraction = async (req, res) => {
     const plannedDuration = parseInt(req.query.plannedDuration) || undefined;
     const [features, prediction, breakdown, productivity] = await Promise.all([
       computeUserFeatures(userId, 7),
-      predictForUser(userId, { timezone: req.query.tz, plannedDuration }),
+      forecastForUser(userId, { timezone: req.query.tz, plannedDuration }),
       getDistractionBreakdown(userId, 7),
       getProductivityWindows(userId, 30),
     ]);

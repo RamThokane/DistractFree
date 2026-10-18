@@ -6,6 +6,7 @@ import { useCoins } from '../context/CoinContext';
 import { getGreeting } from '../utils/helpers';
 import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
+import Wordmark from '../components/Wordmark';
 import {
   LuLayoutDashboard,
   LuTimer,
@@ -132,7 +133,7 @@ const TopNavbar = () => {
           {/* Left — logo */}
           <Link to="/dashboard" className="app-brand shrink-0" aria-label="DistractFree dashboard">
             <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
-            <span className="hidden sm:inline">DistractFree</span>
+            <Wordmark className="df-wordmark--logo hidden sm:inline" />
           </Link>
 
           {/* Center — section links (≥1280px) */}

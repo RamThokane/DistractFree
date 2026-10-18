@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LuPlus, LuTimer, LuGlobe } from 'react-icons/lu';
 import ThemeToggle from '../components/ThemeToggle';
+import Wordmark from '../components/Wordmark';
 import {
   Button, Input, Select, Toggle, Checkbox, Tabs, Card, Badge, Modal, useToast,
   Tooltip, EmptyState, ErrorState, Skeleton, SkeletonText, Stat, ProgressRing, ProgressBar,
@@ -37,7 +38,7 @@ const StyleguidePage = () => {
     <div className="df-grain min-h-screen bg-paper text-text">
       <div className="max-w-5xl mx-auto px-5 sm:px-8 py-10">
         <header className="flex items-center justify-between gap-4 mb-6">
-          <Link to="/" className="font-semibold">DistractFree</Link>
+          <Link to="/"><Wordmark className="df-wordmark--logo" /></Link>
           <ThemeToggle />
         </header>
 

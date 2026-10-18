@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from './Modal';
+import Wordmark from './Wordmark';
 import { scheduleService } from '../services/endpoints';
 import {
   WEEKDAY_SHORT,
@@ -196,7 +197,7 @@ const ScheduleModal = ({ start, occurrence, onClose, onSaved, defaultDuration, d
 
         <p className="text-xs text-muted">
           Times are in your timezone ({browserTimezone()}). The session starts automatically at this time — keep the website or the
-          DistractFree extension open.
+          <Wordmark /> extension open.
         </p>
 
         {error && (

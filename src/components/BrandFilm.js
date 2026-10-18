@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useReducedMotion } from 'framer-motion';
 import '../styles/brandFilm.css';
+import Wordmark from './Wordmark';
 
 /* ═══════════════════════════════════════════════════════════
    BrandFilm — the cinematic brand film on the landing page.
@@ -65,7 +66,7 @@ const ReplayIcon = () => <Icon><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" /><
 const SectionHeading = () => (
   <div className="text-center mb-10 md:mb-12">
     <p className="lp-marker" data-n="01">
-      The DistractFree film
+      The <Wordmark /> film
     </p>
     <h2 className="lp-display lp-h2">
       From distraction to deliberate focus
@@ -79,7 +80,7 @@ const BrandPanel = () => (
     <div className="film-endcard">
       <img src="/favicon.svg" alt="" className="film-endcard-logo" />
       <p className="film-endcard-title">Make room for what matters.</p>
-      <p className="film-endcard-sub">Build better focus habits with DistractFree.</p>
+      <p className="film-endcard-sub">Build better focus habits with <Wordmark />.</p>
       <Link to="/register" className="film-cta">Start Focusing</Link>
     </div>
   </div>
@@ -332,7 +333,7 @@ const BrandFilm = () => {
                   <>
                     <img src="/favicon.svg" alt="" className="film-endcard-logo" />
                     <p className="film-endcard-title">Make room for what matters.</p>
-                    <p className="film-endcard-sub">Build better focus habits with DistractFree.</p>
+                    <p className="film-endcard-sub">Build better focus habits with <Wordmark />.</p>
                   </>
                 )}
                 <div className="film-cta-row">

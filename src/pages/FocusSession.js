@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../components/PageTransition';
+import Wordmark from '../components/Wordmark';
 import { Button, Card, Badge, ProgressRing, Input, useToast } from '../components/ui';
 import { useCoins } from '../context/CoinContext';
 import { useAuth } from '../context/AuthContext';
@@ -502,7 +503,7 @@ const FocusSession = () => {
 
                 {!extensionDetected && (
                   <p className="text-xs text-amber-ink mt-4">
-                    The DistractFree extension wasn't detected in this browser. It's what counts tab switches and blocked
+                    The <Wordmark /> extension wasn't detected in this browser. It's what counts tab switches and blocked
                     sites, so without it the live state stays at Focused.
                   </p>
                 )}

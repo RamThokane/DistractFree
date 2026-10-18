@@ -9,6 +9,7 @@ import {
 import GlassNavbar from '../components/GlassNavbar';
 import BrandFilm from '../components/BrandFilm';
 import ThemeToggle from '../components/ThemeToggle';
+import Wordmark from '../components/Wordmark';
 import '../styles/landing.css';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -196,7 +197,7 @@ const LandingPage = () => {
             </h1>
 
             <p className="lp-lede max-w-md mb-10 lp-in" style={{ animationDelay: '0.1s' }}>
-              DistractFree helps you build sustainable focus habits using AI insights
+              <Wordmark /> helps you build sustainable focus habits using AI insights
               and a reward-based system — instead of forceful blocking.
             </p>
 
@@ -297,7 +298,7 @@ const LandingPage = () => {
 
             {/* DistractFree */}
             <motion.div className="lp-compare-col lp-compare-new" variants={fadeUp}>
-              <p className="lp-compare-head">DistractFree</p>
+              <p className="lp-compare-head"><Wordmark /></p>
               <ul>
                 {[
                   'Reward-based system that makes focus feel good',
@@ -661,7 +662,7 @@ const LandingPage = () => {
             </motion.h2>
             <motion.div className="lp-article lg:col-start-5 lg:col-span-8 lg:row-start-1 lg:row-span-3" variants={fadeUp}>
               <p className="lp-pull">
-                DistractFree draws on established research in habit formation, self-determination theory,
+                <Wordmark /> draws on established research in habit formation, self-determination theory,
                 and digital wellbeing. The reward-based model is inspired by intrinsic motivation frameworks
                 — the same principles behind why autonomy and competence drive sustained behavior change.
               </p>
@@ -729,7 +730,7 @@ const LandingPage = () => {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 py-8">
           <div className="flex items-center gap-2.5">
             <img src="/favicon.svg" alt="DistractFree Logo" className="w-6 h-6 rounded-md" />
-            <span className="text-sm text-fg-2">&copy; 2026 DistractFree</span>
+            <span className="text-sm text-fg-2">&copy; 2026 <Wordmark /></span>
           </div>
           <div className="flex gap-6 text-sm text-fg-2">
             <a href="#privacy" className="lp-footer-link">Privacy</a>

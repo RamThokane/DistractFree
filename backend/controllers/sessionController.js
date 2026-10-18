@@ -14,6 +14,7 @@ const {
 } = require('../services/predictionService');
 const { safePredict, createFocusSession } = require('../services/focusSessionService');
 const { processDueSchedules, scheduleSummary } = require('../services/scheduleService');
+const { forecastForUser } = require('../services/sessionRecommender');
 const { computeStreak, streakAfterCompletion, resolveTimezone } = require('../services/streakService');
 const { localDayNumber, dayFromNumber, zonedTimeToUtc } = require('../utils/timezone');
 
@@ -446,7 +447,11 @@ exports.getDashboard = async (req, res) => {
 
     // Forward-looking: the model's estimate for a session started right now.
     // Deliberately separate from the "today" numbers above, which describe the past.
-    const prediction = await safePredict(userId, { timezone: req.query.tz });
+    // Same scorer as the session recommender, so the numbers agree
+    const prediction = await forecastForUser(userId, { timezone: req.query.tz }).catch((err) => {
+      console.error('[Session] Forecast error:', err.message);
+      return null;
+    });
     const client = prediction ? toClientPrediction(prediction) : null;
 
     res.json({

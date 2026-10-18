@@ -51,14 +51,15 @@ const RISK_BAR = { low: 'accent', medium: 'amber', high: 'danger' };
 const RiskCard = memo(({ prediction, details }) => {
   const level = prediction?.riskLevel;
   const isModel = prediction?.source === 'model';
+  const isHistory = prediction?.source === 'history';
   const reasons = (details?.reasons || []).slice(0, 3);
   return (
     <Card variant="band" padding="p-6 md:p-7" className="h-full flex flex-col">
-      <p className="df-label">AI forecast · next session</p>
+      <p className="df-label">Forecast · if you start now</p>
       {level ? (
         <>
           <p className={`df-display text-t-40 mt-3 ${RISK_TONE[level] || 'text-text'}`}><span className="capitalize">{level}</span> risk</p>
-          {isModel && (
+          {(isModel || isHistory) && (
             <ProgressBar
               className="mt-4"
               label="Chance it goes to plan"
@@ -82,8 +83,8 @@ const RiskCard = memo(({ prediction, details }) => {
           )}
           <p className="text-xs text-muted mt-4">
             {isModel
-              ? prediction.isColdStart ? 'Not personalised yet — it learns from your sessions.' : 'Personalised from your past sessions.'
-              : 'Based on your past sessions so far.'}
+              ? prediction.isColdStart ? 'Not personalised yet — it learns from your sessions.' : 'From your AI model, personalised to your sessions.'
+              : isHistory ? 'Based on how your past sessions went — same scoring as “Best next session”.' : 'Based on your past sessions so far.'}
           </p>
         </>
       ) : (

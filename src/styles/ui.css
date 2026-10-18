@@ -34,6 +34,18 @@
 }
 html.dark .df-grain::before { filter: invert(1); }
 
+/* ── Brand wordmark: serif, "Free" in italic green (same as the landing nav) ── */
+.df-wordmark {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.14em;           /* serif runs small next to Inter; this evens it out */
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.df-wordmark em { font-style: italic; color: var(--accent); }
+.df-wordmark--logo { font-size: 1.55rem; color: var(--text); }
+
 /* ── Button ── */
 .df-btn {
   --btn-h: 40px;

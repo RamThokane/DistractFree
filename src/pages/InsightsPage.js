@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { LuSparkles } from 'react-icons/lu';
 import PageTransition from '../components/PageTransition';
+import Wordmark from '../components/Wordmark';
 import { Button, Card, Badge, ProgressBar, Skeleton, SkeletonText, EmptyState, ErrorState } from '../components/ui';
 import api from '../services/api';
 import SessionRecommendation from '../components/SessionRecommendation';
@@ -36,7 +37,7 @@ const PRIORITY_TONE = { high: 'danger', medium: 'amber', low: 'accent' };
 
 /* ── Next-session prediction ── */
 const PredictionPanel = ({ prediction, features, dataStatus }) => {
-  const isPersonal = prediction?.source === 'model';
+  const isPersonal = prediction?.source === 'model' || prediction?.source === 'history';
   const hasOdds = !(prediction?.successProbability === null || prediction?.successProbability === undefined);
   const success = prediction?.classProbabilities ? Math.round(prediction.classProbabilities.successful * 100) : prediction?.successPercent;
 
@@ -44,7 +45,7 @@ const PredictionPanel = ({ prediction, features, dataStatus }) => {
     <section aria-labelledby="pred-title">
       <div className="pg-head">
         <div>
-          <p className="pg-kicker">AI prediction · next session</p>
+          <p className="pg-kicker">Forecast · if you start now</p>
           <h2 id="pred-title" className="pg-title">
             {hasOdds ? (
               <><span className={RISK_TONE[prediction.riskLevel]}><span className="capitalize">{prediction.riskLevel}</span> risk</span>, <em>{prediction.successPercent}%</em> chance</>
@@ -52,7 +53,7 @@ const PredictionPanel = ({ prediction, features, dataStatus }) => {
           </h2>
           <p className="pg-sub">
             {isPersonal
-              ? `Chance that a ${prediction.plannedDuration}-minute session started now goes to plan (you finish at least 90% of it, with at most one blocked-site attempt).`
+              ? `Chance that a ${prediction.plannedDuration}-minute session — your usual length — started now goes to plan (you finish at least 90% of it, with at most one blocked-site attempt). “Best next session” above compares other times and lengths.`
               : prediction?.message}
           </p>
         </div>
@@ -167,7 +168,7 @@ const InsightsPage = () => {
   if (!data) return (
     <PageTransition>
       <EmptyState icon={LuSparkles} title="No insights yet" action={<Button as={Link} to="/dashboard/focus">Start a session</Button>}>
-        Complete a few focus sessions to generate insights. DistractFree uses your own session history to estimate,
+        Complete a few focus sessions to generate insights. <Wordmark /> uses your own session history to estimate,
         before you start, how likely your next session is to succeed.
       </EmptyState>
     </PageTransition>
