@@ -79,6 +79,8 @@ const userSchema = new mongoose.Schema(
         focusReminder: { type: Boolean, default: true },
         streakAlert: { type: Boolean, default: true },
         weeklyReport: { type: Boolean, default: true },
+        // Also email the AI weekly report (off unless the user turns it on)
+        weeklyReportEmail: { type: Boolean, default: false },
         coinEarned: { type: Boolean, default: false },
       }
     },

@@ -1,11 +1,14 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { body } = require('express-validator');
-const { getStatus, chat } = require('../controllers/agentController');
+const { getStatus, chat, getWeeklyReport, runWeeklyEmails } = require('../controllers/agentController');
 const { protect } = require('../middleware/authMiddleware');
 const { handleValidationErrors } = require('../middleware/validateRequest');
 
 const router = express.Router();
+
+// Vercel Cron: authorised by CRON_SECRET, not a user token
+router.get('/cron/weekly-emails', runWeeklyEmails);
 
 router.use(protect);
 
@@ -27,5 +30,6 @@ const validateChat = [
 
 router.get('/status', getStatus);
 router.post('/chat', chatLimiter, validateChat, chat);
+router.get('/weekly-report', getWeeklyReport);
 
 module.exports = router;

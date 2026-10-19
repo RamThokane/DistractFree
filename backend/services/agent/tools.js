@@ -16,6 +16,7 @@ const { buildFullInsights } = require('../insightsService');
 const { forecastForUser, recommendForUser } = require('../sessionRecommender');
 const { toClientPrediction } = require('../predictionService');
 const { checkSchedule, listOccurrences, ScheduleError, MAX_RANGE_DAYS, MIN_DURATION, MAX_DURATION } = require('../scheduleService');
+const { getWeeklyReport: loadWeeklyReport } = require('./weeklyReportService');
 const { DAY_MS } = require('../../utils/timezone');
 
 const MAX_PROPOSED_SESSIONS = 5;
@@ -188,6 +189,12 @@ async function listSchedule(ctx, args) {
   };
 }
 
+async function getWeeklyReport(ctx, args) {
+  const r = await loadWeeklyReport(ctx.userId, { timezone: ctx.timezone, weekStart: args.weekStart, now: ctx.now, sendEmail: false });
+  if (r.status !== 'ready') return { status: r.status, message: r.reason || 'The report is being written; ask again in a minute.' };
+  return { week: r.weekLabel, facts: r.facts, report: r.report };
+}
+
 // ── Proposal tools (write nothing) ─────────────────
 
 const overlapsInPlan = (a, b) => a.start < b.end && b.start < a.end;
@@ -291,6 +298,16 @@ const DECLARATIONS = [
     },
   },
   {
+    name: 'getWeeklyReport',
+    description: 'The weekly report for last week (Monday-Sunday) or an earlier week: focus minutes and change vs the week before, sessions, % that went to plan, best day and start hour, coins, unlocks, streak, plus the written headline, wins, slips and goal.',
+    parameters: {
+      type: 'object',
+      properties: {
+        weekStart: { type: 'string', description: 'Optional: the Monday the week starts on, YYYY-MM-DD (default: last week)' },
+      },
+    },
+  },
+  {
     name: 'proposeSchedule',
     description: 'Propose 1-5 calendar sessions. Saves NOTHING: it checks each one (future time, no overlaps), adds a forecast, and shows the user Confirm cards. Call it whenever the user wants sessions planned.',
     parameters: {
@@ -323,6 +340,7 @@ const HANDLERS = {
   getForecast,
   getRecommendation,
   listSchedule,
+  getWeeklyReport,
   proposeSchedule,
 };
 

@@ -7,15 +7,15 @@
  *
  *   focus_reminder — no session yet today, after 10 AM (once per day)
  *   streak_alert   — active streak not extended today, after 6 PM (once per day)
- *   weekly_report  — summary of the last 7 days (once per 7 days)
+ *   weekly_report  — the AI weekly report for last week is ready (once per week, after Sunday)
  *   scheduled_reminder — 10 minutes before a scheduled session (once each)
  *   scheduled_missed   — a scheduled session's start window passed without it starting
  */
 
 const Notification = require('../models/Notification');
-const FocusSession = require('../models/FocusSession');
 const User = require('../models/User');
 const { sendScheduledReminders, processDueSchedules } = require('./scheduleService');
+const { lastCompletedWeek, getWeeklyReport } = require('./agent/weeklyReportService');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -39,15 +39,14 @@ async function lastOfType(userId, type) {
   return Notification.findOne({ userId, type }).sort({ createdAt: -1 }).select('createdAt');
 }
 
-async function runScheduledChecks(userId, tz = 'UTC') {
+async function runScheduledChecks(userId, tz = 'UTC', { now = new Date() } = {}) {
   try {
     // Lazy require avoids a circular import with notificationController
     const { createNotification } = require('../controllers/notificationController');
-    const now = new Date();
     const today = localDate(now, tz);
     const hour = localHour(now, tz);
 
-    const user = await User.findById(userId).select('currentStreak lastSessionDate createdAt');
+    const user = await User.findById(userId).select('currentStreak lastSessionDate createdAt settings.notifications');
     if (!user) return;
 
     // ── Scheduled sessions ──
@@ -88,22 +87,24 @@ async function runScheduledChecks(userId, tz = 'UTC') {
     }
 
     // ── Weekly report ──
+    // Once a week, after the user's week (Monday to Sunday) ends. Getting the
+    // report generates it the first time (services/agent/weeklyReportService.js).
     const accountAgeMs = now - (user.createdAt || now);
-    if (accountAgeMs >= 7 * DAY_MS) {
+    if (accountAgeMs >= 7 * DAY_MS && user.settings?.notifications?.weeklyReport !== false) {
+      const week = lastCompletedWeek(now, tz);
       const last = await lastOfType(userId, 'weekly_report');
-      if (!last || now - last.createdAt >= 7 * DAY_MS) {
-        const since = new Date(now.getTime() - 7 * DAY_MS);
-        const sessions = await FocusSession.find({ userId, startTime: { $gte: since }, status: 'completed' })
-          .select('duration coinsEarned');
-        const minutes = sessions.reduce((s, x) => s + (x.duration || 0), 0);
-        const coins = sessions.reduce((s, x) => s + (x.coinsEarned || 0), 0);
-        await createNotification(
-          userId,
-          'weekly_report',
-          '📊 Your Weekly Report Is Ready',
-          `Last 7 days: ${sessions.length} sessions, ${minutes} minutes focused, ${coins} coins earned. Download the full PDF report from Settings.`,
-          { sessions: sessions.length, minutes, coins }
-        );
+      if (!last || last.createdAt < week.end) {
+        const weekly = await getWeeklyReport(userId, { timezone: tz, now });
+        // 'generating': another request is writing it; the next poll notifies
+        if (weekly.status === 'ready') {
+          await createNotification(
+            userId,
+            'weekly_report',
+            '📊 Your Weekly Report Is Ready',
+            `${weekly.report.headline} See the full report on your dashboard.`,
+            { weekStart: weekly.weekStart, sessions: weekly.facts.sessions, minutes: weekly.facts.focusMinutes, coins: weekly.facts.coinsEarned }
+          );
+        }
       }
     }
   } catch (err) {

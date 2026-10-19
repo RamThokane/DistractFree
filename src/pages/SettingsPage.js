@@ -56,6 +56,7 @@ const SettingsPage = () => {
     focusReminder: true,
     streakAlert: true,
     weeklyReport: true,
+    weeklyReportEmail: false,
     coinEarned: false,
   });
   const [displayName, setDisplayName] = useState('');
@@ -74,6 +75,7 @@ const SettingsPage = () => {
             focusReminder: user.settings.notifications.focusReminder ?? true,
             streakAlert: user.settings.notifications.streakAlert ?? true,
             weeklyReport: user.settings.notifications.weeklyReport ?? true,
+            weeklyReportEmail: user.settings.notifications.weeklyReportEmail ?? false,
             coinEarned: user.settings.notifications.coinEarned ?? false,
           });
         }
@@ -407,6 +409,7 @@ const SettingsPage = () => {
               { key: 'focusReminder', label: 'Focus reminders', desc: 'Gentle nudges to start a session' },
               { key: 'streakAlert', label: 'Streak alerts', desc: "A heads-up before you'd lose your streak" },
               { key: 'weeklyReport', label: 'Weekly report', desc: 'Summary of your productivity', action: <PDFReportGenerator user={user} /> },
+              { key: 'weeklyReportEmail', label: 'Email my weekly report', desc: 'The AI weekly report in your inbox on Mondays' },
               { key: 'coinEarned', label: 'Coin notifications', desc: 'Alert when coins are earned' },
             ].map((item) => (
               <li key={item.key} className="flex items-center justify-between gap-4 py-4 border-b border-line">
