@@ -22,6 +22,8 @@ import {
   LuFlame,
   LuMessageCircle,
   LuNotebookText,
+  LuPanelLeftClose,
+  LuPanelLeftOpen,
 } from 'react-icons/lu';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -59,8 +61,8 @@ function useDismiss(open, ref, close) {
   }, [open, ref, close]);
 }
 
-/** The section links, with icons (sidebar and drawer). */
-const NavLinks = ({ onNavigate, label }) => (
+/** The section links, with icons (sidebar and drawer). Collapsed: icons only, names as tooltips. */
+const NavLinks = ({ onNavigate, label, collapsed = false }) => (
   <nav className="flex flex-col gap-0.5 p-3" aria-label={label}>
     {navItems.map(({ to, icon: Icon, label: text }) => (
       <NavLink
@@ -68,28 +70,61 @@ const NavLinks = ({ onNavigate, label }) => (
         to={to}
         end={to === '/dashboard'}
         onClick={onNavigate}
+        title={collapsed ? text : undefined}
+        aria-label={collapsed ? text : undefined}
         className={({ isActive }) => `app-drawer-link ${isActive ? 'is-active' : ''}`}
       >
         <Icon aria-hidden="true" />
-        <span>{text}</span>
+        {!collapsed && <span>{text}</span>}
       </NavLink>
     ))}
   </nav>
 );
 
 /** Streak and log out, at the bottom of the sidebar and drawer. */
-const NavFooter = ({ streak, onLogout }) => (
+const NavFooter = ({ streak, onLogout, collapsed = false }) => (
   <div className="mt-auto p-3 border-t border-line flex flex-col gap-2">
-    <div className="flex items-center justify-between px-3 py-2 text-sm">
-      <span className="text-muted flex items-center gap-1.5"><LuFlame className="text-amber" aria-hidden="true" />Streak</span>
-      <span className="df-mono text-text">{streak} days</span>
-    </div>
-    <button onClick={onLogout} className="app-menu-item app-menu-item--danger rounded-md">
+    {collapsed ? (
+      <div className="flex items-center justify-center gap-1 py-2 text-sm" title={`${streak}-day streak`}>
+        <LuFlame className="text-amber" aria-hidden="true" />
+        <span className="df-mono text-text">{streak}</span>
+        <span className="sr-only">day streak</span>
+      </div>
+    ) : (
+      <div className="flex items-center justify-between px-3 py-2 text-sm">
+        <span className="text-muted flex items-center gap-1.5"><LuFlame className="text-amber" aria-hidden="true" />Streak</span>
+        <span className="df-mono text-text">{streak} days</span>
+      </div>
+    )}
+    <button onClick={onLogout} className="app-menu-item app-menu-item--danger rounded-md" title={collapsed ? 'Log out' : undefined} aria-label={collapsed ? 'Log out' : undefined}>
       <LuLogOut aria-hidden="true" />
-      Log out
+      {!collapsed && 'Log out'}
     </button>
   </div>
 );
+
+const COLLAPSE_KEY = 'df-sidebar-collapsed';
+
+/** Sidebar collapsed to an icon rail, remembered per browser. Sets html.sidebar-collapsed for the layout widths. */
+function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+    try {
+      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+    } catch {
+      // storage unavailable — it just won't be remembered
+    }
+    return () => document.documentElement.classList.remove('sidebar-collapsed');
+  }, [collapsed]);
+  return [collapsed, setCollapsed];
+}
 
 const TopNavbar = () => {
   const { user, logout } = useAuth();
@@ -97,6 +132,7 @@ const TopNavbar = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useSidebarCollapsed();
   const [scrolled, setScrolled] = useState(false);
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -166,13 +202,26 @@ const TopNavbar = () => {
   return (
     <>
       {/* ── Sidebar (≥1024px) ── */}
-      <aside className="app-sidebar" aria-label="Sidebar">
-        <Link to="/dashboard" className="app-brand app-sidebar-brand" aria-label="DistractFree dashboard">
-          <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
-          <Wordmark className="df-wordmark--logo" />
-        </Link>
-        <NavLinks label="Main navigation" />
-        <NavFooter streak={streak} onLogout={handleLogout} />
+      <aside className={`app-sidebar ${collapsed ? 'is-collapsed' : ''}`} aria-label="Sidebar">
+        <div className="app-sidebar-brand">
+          {!collapsed && (
+            <Link to="/dashboard" className="app-brand" aria-label="DistractFree dashboard">
+              <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
+              <Wordmark className="df-wordmark--logo" />
+            </Link>
+          )}
+          <button
+            className="app-icon-btn"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <LuPanelLeftOpen /> : <LuPanelLeftClose />}
+          </button>
+        </div>
+        <NavLinks label="Main navigation" collapsed={collapsed} />
+        <NavFooter streak={streak} onLogout={handleLogout} collapsed={collapsed} />
       </aside>
 
       <header className={`app-topbar ${scrolled ? 'is-scrolled' : ''}`} role="banner">

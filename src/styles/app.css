@@ -111,7 +111,7 @@
   z-index: 30;
   height: var(--topbar-h);
   margin-left: 0;
-  background: rgb(var(--c-paper) / 0.94);
+  background: var(--paper);
   border-bottom: 1px solid transparent;
   transition: border-color var(--dur-fast) ease;
 }
@@ -295,7 +295,12 @@
 
 /* ── Sidebar (≥1024px): fixed on the left; the top bar and page sit to its right ── */
 .app-sidebar { display: none; }
-.app-sidebar-brand { flex-shrink: 0; height: var(--topbar-h); padding: 0 20px; border-bottom: 1px solid var(--line); border-radius: 0; }
+.app-sidebar-brand { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: var(--topbar-h); padding: 0 12px 0 20px; border-bottom: 1px solid var(--line); }
+/* Collapsed: a narrow icon rail */
+html.sidebar-collapsed .app-shell { --sidebar-w: 72px; }
+.app-sidebar.is-collapsed .app-sidebar-brand { justify-content: center; padding: 0; }
+.app-sidebar.is-collapsed .app-drawer-link { justify-content: center; padding: 0; }
+.app-sidebar.is-collapsed .app-menu-item { justify-content: center; padding-left: 0; padding-right: 0; }
 @media (min-width: 1024px) {
   .app-sidebar {
     position: fixed;
@@ -309,8 +314,9 @@
     overflow-y: auto;
     background: var(--paper);
     border-right: 1px solid var(--line);
+    transition: width var(--dur) var(--ease);
   }
-  .app-topbar, .app-main { margin-left: var(--sidebar-w); }
+  .app-topbar, .app-main { margin-left: var(--sidebar-w); transition: margin-left var(--dur) var(--ease); }
   .app-topbar-inner { justify-content: flex-end; max-width: none; }
   .app-topbar-brand { display: none; }
   /* doubled class beats .app-icon-btn */
