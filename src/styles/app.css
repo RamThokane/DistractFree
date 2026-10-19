@@ -111,7 +111,10 @@
   z-index: 30;
   height: var(--topbar-h);
   margin-left: 0;
-  background: var(--paper);
+  /* Frosted glass: the page shows through, blurred */
+  background: rgb(var(--c-paper) / 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
   border-bottom: 1px solid transparent;
   transition: border-color var(--dur-fast) ease;
 }
