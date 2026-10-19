@@ -24,7 +24,7 @@
   "crons": [
     {
       "path": "/api/agent/cron/weekly-emails",
-      "schedule": "0 12 * * 1"
+      "schedule": "30 2 * * *"
     }
   ]
 }

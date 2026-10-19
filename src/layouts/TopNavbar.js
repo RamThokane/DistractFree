@@ -20,6 +20,8 @@ import {
   LuX,
   LuBell,
   LuFlame,
+  LuMessageCircle,
+  LuNotebookText,
 } from 'react-icons/lu';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -33,6 +35,8 @@ export const navItems = [
   { to: '/dashboard/calendar', icon: LuCalendarDays, label: 'Calendar' },
   { to: '/dashboard/coins', icon: LuCoins, label: 'Coins' },
   { to: '/dashboard/insights', icon: LuSparkles, label: 'AI Insights' },
+  { to: '/dashboard/coach', icon: LuMessageCircle, label: 'Focus Coach' },
+  { to: '/dashboard/weekly-report', icon: LuNotebookText, label: 'Weekly Report' },
   { to: '/dashboard/leaderboard', icon: LuTrophy, label: 'Leaderboard' },
   { to: '/dashboard/settings', icon: LuSettings, label: 'Settings' },
 ];
@@ -136,7 +140,7 @@ const TopNavbar = () => {
             <Wordmark className="df-wordmark--logo hidden sm:inline" />
           </Link>
 
-          {/* Center — section links (≥1280px) */}
+          {/* Center — section links (≥1360px) */}
           <nav className="app-hnav" aria-label="Main navigation">
             {navItems.map(({ to, label }) => (
               <NavLink
@@ -285,7 +289,7 @@ const TopNavbar = () => {
               </AnimatePresence>
             </div>
 
-            {/* Hamburger (<1280px) */}
+            {/* Hamburger (<1360px) */}
             <button className="app-icon-btn app-menu-toggle -mr-2" onClick={() => setMobileOpen(true)} aria-label="Open menu">
               <LuMenu />
             </button>
@@ -293,7 +297,7 @@ const TopNavbar = () => {
         </div>
       </header>
 
-      {/* ── Drawer (<1280px) ── */}
+      {/* ── Drawer (<1360px) ── */}
       <AnimatePresence>
         {mobileOpen && (
           <>

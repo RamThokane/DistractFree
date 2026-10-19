@@ -11,8 +11,6 @@ import AnimatedCounter from '../components/AnimatedCounter';
 import PageTransition from '../components/PageTransition';
 import NextScheduledCard from '../components/NextScheduledCard';
 import SessionRecommendation from '../components/SessionRecommendation';
-import AgentChat from '../components/AgentChat';
-import WeeklyReportCard from '../components/WeeklyReportCard';
 import { Button, Card, Input, Modal, ProgressBar, Skeleton, SkeletonText, ErrorState, EmptyState, Badge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -332,16 +330,6 @@ const DashboardHome = () => {
       {/* ── Next scheduled session ── */}
       <div className="mt-8">
         <NextScheduledCard />
-      </div>
-
-      {/* ── Last week's AI report ── */}
-      <div className="mt-10">
-        <WeeklyReportCard />
-      </div>
-
-      {/* ── Focus coach (AI assistant) ── */}
-      <div className="mt-10">
-        <AgentChat />
       </div>
 
       {/* ── Weekly focus + recent sessions ── */}

@@ -34,7 +34,8 @@ export const scheduleService = {
 /* ── AI assistant (Gemini, server-side) ── */
 // messages: [{ role: 'user' | 'model', text }] — the recent conversation
 export const agentService = {
-  status: () => api.get('/agent/status'),
+  status: (tz) => api.get('/agent/status', { params: { tz } }),
+  weeklyReport: (week) => api.get('/agent/weekly-report', { params: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, week } }),
   chat: (messages) => api.post('/agent/chat', { messages, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }, { timeout: 90000 }),
 };
 

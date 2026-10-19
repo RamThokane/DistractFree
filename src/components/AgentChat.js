@@ -17,9 +17,6 @@ const STARTERS = [
   'How is my week going?',
 ];
 
-/** Other components can open the chat with a question: window.dispatchEvent(new CustomEvent('DF_AGENT_ASK', { detail: { text } })) */
-export const askAgent = (text) => window.dispatchEvent(new CustomEvent('DF_AGENT_ASK', { detail: { text } }));
-
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 function loadSaved() {
@@ -269,11 +266,14 @@ function BlocklistProposal({ proposal, onUpdate }) {
 }
 
 /**
- * Dashboard chat with the focus coach (Gemini via POST /api/agent/chat).
- * The coach reads your stats and can propose sessions; nothing is saved until
- * you press Confirm, which calls the normal schedule API.
+ * Chat with the focus coach (Gemini via POST /api/agent/chat), on the Focus
+ * coach page. The coach reads your stats and can propose sessions and
+ * blocklist changes; nothing is saved until you confirm, which calls the
+ * normal APIs.
+ *
+ * @param {string} [initialQuestion] sent once when the chat opens (e.g. from the weekly report)
  */
-const AgentChat = () => {
+const AgentChat = ({ initialQuestion }) => {
   const toast = useToast();
   const [status, setStatus] = useState(null); // { enabled, remainingToday, dailyLimit }
   const [messages, setMessages] = useState(loadSaved);
@@ -282,12 +282,12 @@ const AgentChat = () => {
   const [error, setError] = useState(null); // { text, retry }
   const listRef = useRef(null);
   const inputRef = useRef(null);
-  const sectionRef = useRef(null);
+  const askedRef = useRef(false);
 
   useEffect(() => { save(messages); }, [messages]);
 
   useEffect(() => {
-    agentService.status()
+    agentService.status(Intl.DateTimeFormat().resolvedOptions().timeZone)
       .then((res) => setStatus(res.data))
       .catch(() => setStatus({ enabled: true, remainingToday: null }));
   }, []);
@@ -324,17 +324,12 @@ const AgentChat = () => {
     }
   }, [messages, pending]);
 
-  // Questions from elsewhere on the dashboard (e.g. the weekly report)
+  // A question handed over by another page (e.g. "Ask the coach" on the weekly report)
   useEffect(() => {
-    const onAsk = (e) => {
-      const text = e.detail?.text;
-      if (!text) return;
-      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      send(text);
-    };
-    window.addEventListener('DF_AGENT_ASK', onAsk);
-    return () => window.removeEventListener('DF_AGENT_ASK', onAsk);
-  }, [send]);
+    if (!initialQuestion || askedRef.current) return;
+    askedRef.current = true;
+    send(initialQuestion);
+  }, [initialQuestion, send]);
 
   const updateItem = (messageId, proposalId, index, patch) => {
     setMessages((prev) => prev.map((m) => (m.id !== messageId ? m : {
@@ -391,19 +386,13 @@ const AgentChat = () => {
   const outOfMessages = status?.remainingToday === 0;
 
   return (
-    <section ref={sectionRef} aria-labelledby="agent-title" className="agent scroll-mt-24">
+    <section aria-label="Chat with the focus coach" className="agent">
       <Card padding="p-0" className="agent-card">
         <div className="agent-head">
-          <div className="min-w-0">
-            <h3 id="agent-title" className="pg-h2 flex items-center gap-2">
-              <LuSparkles className="text-accent flex-shrink-0" size={20} aria-hidden="true" />
-              Focus coach
-            </h3>
-            <p className="pg-note">
-              Ask about your focus, or have it plan sessions for you. Powered by Google Gemini: your messages and focus
-              stats are sent to Google to answer.
-            </p>
-          </div>
+          <p className="pg-note flex items-center gap-2 min-w-0">
+            <LuSparkles className="text-accent flex-shrink-0" size={16} aria-hidden="true" />
+            Powered by Google Gemini: your messages and focus stats are sent to Google to answer.
+          </p>
           {messages.length > 0 && (
             <Button size="sm" variant="ghost" icon={<LuRotateCcw size={14} aria-hidden="true" />} onClick={reset} disabled={pending}>
               New chat

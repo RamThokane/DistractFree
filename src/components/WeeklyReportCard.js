@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { LuCalendarPlus, LuMessageCircle, LuTrendingUp, LuTrendingDown } from 'react-icons/lu';
-import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { LuCalendarPlus, LuMessageCircle, LuTrendingUp, LuTrendingDown, LuCalendarRange } from 'react-icons/lu';
+import { agentService } from '../services/endpoints';
 import ScheduleModal from './ScheduleModal';
-import { askAgent } from './AgentChat';
-import { Button, Card, Skeleton, SkeletonText, useToast } from './ui';
+import { Button, Card, EmptyState, Skeleton, SkeletonText, useToast } from './ui';
 import { formatWhen } from '../utils/schedule';
 import { formatMinutesToHours } from '../utils/helpers';
 
@@ -12,12 +12,16 @@ const RETRY_MS = 6000;
 const MAX_RETRIES = 5;
 
 /**
- * Last week's AI report (GET /agent/weekly-report): headline, numbers, what
- * went well, what slipped, and one goal, which can be scheduled. Hidden until
- * the user has a full week behind them.
+ * A week's AI report (GET /agent/weekly-report): headline, numbers, what went
+ * well, what slipped, and one goal, which can be scheduled. Weeks run Monday
+ * to Sunday in the user's timezone.
+ *
+ * @param {string}   [week]   'latest' (last finished week) or the Monday it starts, YYYY-MM-DD
+ * @param {Function} [onLoad] called with the response, e.g. to page between weeks
  */
-const WeeklyReportCard = () => {
+const WeeklyReportCard = ({ week = 'latest', onLoad }) => {
   const toast = useToast();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
   const [scheduling, setScheduling] = useState(false);
@@ -26,15 +30,19 @@ const WeeklyReportCard = () => {
   const load = useCallback(async () => {
     try {
       setError(false);
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const res = await api.get('/agent/weekly-report', { params: { tz } });
+      const res = await agentService.weeklyReport(week);
       setData(res.data);
+      onLoad?.(res.data);
     } catch {
       setError(true);
     }
-  }, []);
+  }, [week, onLoad]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    retries.current = 0;
+    setData(null);
+    load();
+  }, [load]);
 
   // Another request is writing it: check back shortly
   useEffect(() => {
@@ -63,10 +71,18 @@ const WeeklyReportCard = () => {
     );
   }
 
-  if (data.status !== 'ready') return null;
+  if (data.status !== 'ready') {
+    return (
+      <EmptyState icon={LuCalendarRange} title="No report for this week">
+        {data.reason || 'There is no report for this week.'}
+      </EmptyState>
+    );
+  }
 
   const { facts: f, report: r, weekLabel } = data;
-  const slot = r.goal?.suggestedSlot?.startAt ? r.goal.suggestedSlot : null;
+  // An earlier week: its goal was for the week after it, and the streak is today's, so leave both out
+  const isPast = week !== 'latest';
+  const slot = !isPast && r.goal?.suggestedSlot?.startAt ? r.goal.suggestedSlot : null;
   const change = f.changePercent;
 
   return (
@@ -99,10 +115,17 @@ const WeeklyReportCard = () => {
             <p className="df-mono text-t-28 text-text mt-1">{f.wentToPlanPercent ?? 0}%</p>
             <p className="text-xs text-muted mt-1">{f.wentToPlan} of {f.sessions}</p>
           </div>
-          <div>
-            <p className="df-label">Streak</p>
-            <p className="df-mono text-t-28 text-text mt-1">{f.currentStreakDays}<span className="text-sm text-muted ml-1.5">days</span></p>
-          </div>
+          {isPast ? (
+            <div>
+              <p className="df-label">Blocked attempts</p>
+              <p className="df-mono text-t-28 text-text mt-1">{f.blockedAttempts}</p>
+            </div>
+          ) : (
+            <div>
+              <p className="df-label">Streak</p>
+              <p className="df-mono text-t-28 text-text mt-1">{f.currentStreakDays}<span className="text-sm text-muted ml-1.5">days</span></p>
+            </div>
+          )}
         </div>
 
         {(r.wins.length > 0 || r.slips.length > 0) && (
@@ -124,7 +147,7 @@ const WeeklyReportCard = () => {
 
         <div className="mt-6 pt-5 border-t border-line flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="min-w-0">
-            <p className="df-label">Goal for this week</p>
+            <p className="df-label">{isPast ? 'Goal set for the week after' : 'Goal for this week'}</p>
             <p className="text-base text-text mt-1">{r.goal.text}</p>
             {slot && <p className="text-xs text-muted mt-1">Suggested: {formatWhen(slot.startAt)} · {slot.plannedDuration} min</p>}
           </div>
@@ -138,7 +161,7 @@ const WeeklyReportCard = () => {
               size="sm"
               variant="secondary"
               icon={<LuMessageCircle size={14} aria-hidden="true" />}
-              onClick={() => askAgent(`Talk me through my weekly report for ${weekLabel}. What should I change this week?`)}
+              onClick={() => navigate('/dashboard/coach', { state: { ask: `Talk me through my weekly report for ${weekLabel} (the week starting ${data.weekStart}). What should I change this week?` } })}
             >
               Ask the coach
             </Button>

@@ -266,7 +266,7 @@ test('the weekly notification uses the report headline, once per week', async ()
   assert.match(notes[0].message, new RegExp(GOOD.headline.slice(0, 20)));
 });
 
-test('the Monday cron emails opted-in users, and refuses calls without CRON_SECRET', async () => {
+test('the daily cron emails opted-in users, and refuses calls without CRON_SECRET', async () => {
   const { runWeeklyEmails } = require('../controllers/agentController');
   const call = async (authorization) => {
     let status = 200;

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * How many AI assistant messages a user sent on one UTC day. Kept in the
+ * How many AI assistant messages a user sent on one local day. Kept in the
  * database (not memory) so the daily cap holds across serverless instances.
  */
 const agentUsageSchema = new mongoose.Schema(
@@ -11,7 +11,7 @@ const agentUsageSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
-    /** UTC day, YYYY-MM-DD. */
+    /** The user's local day, YYYY-MM-DD. */
     day: {
       type: String,
       required: true,

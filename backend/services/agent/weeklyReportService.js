@@ -10,7 +10,7 @@
  * no per-user job: it's generated the first time it's asked for after the
  * week ends (dashboard card, notifications poll or the assistant), and a
  * "generating" claim stops two requests from writing it at once. The one
- * cron job (Mondays, see sendWeeklyEmails) only covers users who asked for
+ * cron job (daily, see sendWeeklyEmails) only covers users who asked for
  * the report by email, so it reaches them without a visit.
  */
 
@@ -387,8 +387,10 @@ async function getWeeklyReport(userIdInput, { timezone, weekStart, now = new Dat
 }
 
 /**
- * Cron (Mondays): make sure every user who turned on weekly report emails
- * gets last week's report, even if they haven't opened the site.
+ * Cron (daily, 02:30 UTC = 8 AM in India): every user who turned on weekly
+ * report emails gets last week's report once their own week (in their
+ * timezone) has ended, so it arrives on their Monday without a visit.
+ * Already-sent reports are skipped, so running every day is cheap.
  * Stops early when the time budget runs out; the next run picks up the rest.
  */
 async function sendWeeklyEmails({ now = new Date(), budgetMs = 240 * 1000, limit = 500 } = {}) {

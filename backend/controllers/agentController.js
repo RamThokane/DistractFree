@@ -4,7 +4,7 @@
  *   GET  /api/agent/status  — is the assistant on, and how many messages are left today
  *   POST /api/agent/chat    — one chat turn: { messages: [{ role, text }], timezone }
  *   GET  /api/agent/weekly-report?tz=&week=latest|YYYY-MM-DD — the AI weekly report
- *   GET  /api/agent/cron/weekly-emails — Vercel cron (Mondays): email opted-in users
+ *   GET  /api/agent/cron/weekly-emails — Vercel cron (daily): email opted-in users their finished week
  */
 
 const { isConfigured } = require('../services/agent/geminiClient');
@@ -23,7 +23,8 @@ const firstNameOf = (user) => String(user?.name || '').trim().split(/\s+/)[0] ||
 exports.getStatus = async (req, res) => {
   try {
     if (!isConfigured()) return res.json({ success: true, enabled: false, remainingToday: 0, dailyLimit: 0 });
-    res.json({ success: true, enabled: true, remainingToday: await remainingToday(req.user._id), dailyLimit: dailyLimit() });
+    const timezone = await resolveTimezone(req.user._id, req.query.tz);
+    res.json({ success: true, enabled: true, remainingToday: await remainingToday(req.user._id, new Date(), timezone), dailyLimit: dailyLimit() });
   } catch (error) {
     console.error('[Agent] Status error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -39,22 +40,23 @@ exports.chat = async (req, res) => {
   const userId = req.user._id;
   const now = new Date();
   let reserved = false;
+  let timezone = 'UTC';
   try {
-    const remaining = await reserveMessage(userId, now);
+    timezone = await resolveTimezone(userId, req.body.timezone);
+    const remaining = await reserveMessage(userId, now, timezone);
     if (remaining === null) {
       return res.status(429).json({
         success: false,
-        message: `You've used all ${dailyLimit()} assistant messages for today. They reset at midnight UTC.`,
+        message: `You've used all ${dailyLimit()} assistant messages for today. They reset at midnight.`,
         remainingToday: 0,
       });
     }
     reserved = true;
 
-    const timezone = await resolveTimezone(userId, req.body.timezone);
     const result = await chat({ userId, firstName: firstNameOf(req.user), timezone, messages: req.body.messages, now });
     res.json({ success: true, reply: result.reply, proposals: result.proposals, usage: { remainingToday: remaining } });
   } catch (error) {
-    if (reserved) await refundMessage(userId, now);
+    if (reserved) await refundMessage(userId, now, timezone);
     if (error instanceof AgentError) return res.status(error.status).json({ success: false, message: error.message });
     if (error instanceof GeminiError) {
       console.error('[Agent] Gemini error:', error.message);

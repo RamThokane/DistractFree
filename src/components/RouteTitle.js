@@ -16,6 +16,8 @@ const TITLES = {
   '/dashboard/calendar': 'Calendar',
   '/dashboard/coins': 'Coins',
   '/dashboard/insights': 'AI Insights',
+  '/dashboard/coach': 'Focus coach',
+  '/dashboard/weekly-report': 'Weekly report',
   '/dashboard/heatmap': 'Focus heatmap',
   '/dashboard/leaderboard': 'Leaderboard',
   '/dashboard/settings': 'Settings',

@@ -238,13 +238,15 @@ test('a non-retryable error does not try other models', async () => {
 test('the daily cap is enforced atomically and refunds give a message back', async () => {
   process.env.AGENT_DAILY_LIMIT = '2';
   const userId = new mongoose.Types.ObjectId();
-  assert.equal(await reserveMessage(userId, NOW), 1);
-  assert.equal(await reserveMessage(userId, NOW), 0);
-  assert.equal(await reserveMessage(userId, NOW), null);
-  await refundMessage(userId, NOW);
-  assert.equal(await remainingToday(userId, NOW), 1);
-  // A new UTC day starts fresh
-  assert.equal(await reserveMessage(userId, new Date('2026-10-21T00:01:00Z')), 1);
+  assert.equal(await reserveMessage(userId, NOW, TZ), 1);
+  assert.equal(await reserveMessage(userId, NOW, TZ), 0);
+  assert.equal(await reserveMessage(userId, NOW, TZ), null);
+  await refundMessage(userId, NOW, TZ);
+  assert.equal(await remainingToday(userId, NOW, TZ), 1);
+  // The cap resets at the user's midnight: 00:10 IST is still 20 Oct in UTC, but a new day in India
+  assert.equal(await reserveMessage(userId, new Date('2026-10-20T18:40:00Z'), TZ), 1);
+  // (counted in UTC it would still be 20 Oct, sharing the old day's last message)
+  assert.equal(await reserveMessage(userId, new Date('2026-10-20T18:40:00Z'), 'UTC'), 0);
 });
 
 async function callChat(user, bodyIn) {
@@ -270,7 +272,7 @@ test('POST /chat: 503 without a key, 429 at the cap, 502 on Gemini errors (refun
   const failed = await callChat(me, body);
   assert.equal(failed.status, 502);
   assert.doesNotMatch(failed.payload.message, /down|503/);
-  assert.equal(await remainingToday(me._id), 50);
+  assert.equal(await remainingToday(me._id, new Date(), TZ), 50);
 
   scripted([text('Hi Asha!')]);
   const ok = await callChat(me, body);

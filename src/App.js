@@ -22,6 +22,8 @@ import ProductivityHeatmapPage from './pages/ProductivityHeatmapPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import SettingsPage from './pages/SettingsPage';
 import CalendarPage from './pages/CalendarPage';
+import CoachPage from './pages/CoachPage';
+import WeeklyReportPage from './pages/WeeklyReportPage';
 import StyleguidePage from './pages/StyleguidePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -67,6 +69,8 @@ function App() {
                 <Route path="calendar" element={<CalendarPage />} />
                 <Route path="coins" element={<CoinsPage />} />
                 <Route path="insights" element={<InsightsPage />} />
+                <Route path="coach" element={<CoachPage />} />
+                <Route path="weekly-report" element={<WeeklyReportPage />} />
                 <Route path="heatmap" element={<ProductivityHeatmapPage />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="settings" element={<SettingsPage />} />

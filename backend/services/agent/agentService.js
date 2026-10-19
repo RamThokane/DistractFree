@@ -33,7 +33,14 @@ class AgentError extends Error {
 }
 
 const dailyLimit = () => Number(process.env.AGENT_DAILY_LIMIT) || 50;
-const utcDay = (now) => now.toISOString().slice(0, 10);
+/** The user's local calendar day, YYYY-MM-DD, so the cap resets at their midnight. */
+const localDay = (now, tz) => {
+  try {
+    return now.toLocaleDateString('en-CA', { timeZone: tz || 'UTC' });
+  } catch {
+    return now.toISOString().slice(0, 10);
+  }
+};
 
 // ── Daily cap ──────────────────────────────────────
 
@@ -41,12 +48,12 @@ const utcDay = (now) => now.toISOString().slice(0, 10);
  * Count one message against today's cap.
  * @returns {Promise<number|null>} messages left today, or null if the cap is reached
  */
-async function reserveMessage(userId, now = new Date()) {
+async function reserveMessage(userId, now = new Date(), tz = 'UTC') {
   try {
     // Matches only while under the cap; at the cap the upsert's insert hits the
     // unique { userId, day } index, which is how "full" is detected atomically.
     const doc = await AgentUsage.findOneAndUpdate(
-      { userId, day: utcDay(now), count: { $lt: dailyLimit() } },
+      { userId, day: localDay(now, tz), count: { $lt: dailyLimit() } },
       { $inc: { count: 1 } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
@@ -58,12 +65,12 @@ async function reserveMessage(userId, now = new Date()) {
 }
 
 /** Give a message back when the assistant failed to answer it. */
-async function refundMessage(userId, now = new Date()) {
-  await AgentUsage.updateOne({ userId, day: utcDay(now), count: { $gt: 0 } }, { $inc: { count: -1 } }).catch(() => {});
+async function refundMessage(userId, now = new Date(), tz = 'UTC') {
+  await AgentUsage.updateOne({ userId, day: localDay(now, tz), count: { $gt: 0 } }, { $inc: { count: -1 } }).catch(() => {});
 }
 
-async function remainingToday(userId, now = new Date()) {
-  const doc = await AgentUsage.findOne({ userId, day: utcDay(now) }).select('count').lean();
+async function remainingToday(userId, now = new Date(), tz = 'UTC') {
+  const doc = await AgentUsage.findOne({ userId, day: localDay(now, tz) }).select('count').lean();
   return Math.max(0, dailyLimit() - (doc?.count || 0));
 }
 
