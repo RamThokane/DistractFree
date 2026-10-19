@@ -5,12 +5,12 @@ const CoinTransaction = require('../models/CoinTransaction');
 const { calculateCoins } = require('../utils/coinCalculator');
 const { createNotification } = require('./notificationController');
 const { isSessionSuccess } = require('../ml/target');
-const { maybeAutoRetrain } = require('../ml/trainModel');
+const { retrainFromAllSessions } = require('../ml/nodeTrainer');
+const { refreshFromDb } = require('../ml/activeModel');
 const { liveFocusStatus } = require('../utils/liveFocusStatus');
 const {
   toClientPrediction,
   storedSessionPrediction,
-  countRealSessions,
 } = require('../services/predictionService');
 const { safePredict, createFocusSession } = require('../services/focusSessionService');
 const { processDueSchedules, scheduleSummary } = require('../services/scheduleService');
@@ -179,13 +179,19 @@ exports.endSession = async (req, res) => {
     session.actualSuccess = isSessionSuccess(session) === 1;
     await session.save();
 
+    // Learning loop: every ended session (completed or cancelled) retrains the
+    // model on all real sessions, then this instance switches to it. Runs
+    // before the response because serverless functions may stop right after
+    // it; training takes milliseconds. Never fails the request.
+    if (process.env.ML_AUTO_RETRAIN !== 'false' && session.source !== 'simulated') {
+      const learned = await retrainFromAllSessions({ trigger: 'session_end' });
+      if (learned.trained) await refreshFromDb({ force: true });
+    }
+
     res.json({
       success: true,
       session,
     });
-
-    // Learning loop: retrain in the background when enough new sessions exist
-    maybeAutoRetrain(countRealSessions);
   } catch (error) {
     console.error('[Session] End error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });

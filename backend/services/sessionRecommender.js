@@ -204,9 +204,9 @@ function recommendFromHistory({ sessions, now = new Date(), timezone, modelScore
 function modelIsReliable() {
   try {
     // Lazy require keeps this module usable in unit tests without the model files
-    const { getTrainingReport } = require('../ml/trainModel');
-    const auc = getTrainingReport()?.walk_forward?.model?.roc_auc;
-    return typeof auc === 'number' && auc >= MODEL_MIN_AUC;
+    const { getActiveModel, getModelState, getWalkForwardAuc } = require('../ml/activeModel');
+    const auc = getWalkForwardAuc(getActiveModel());
+    return getModelState().ready && typeof auc === 'number' && auc >= MODEL_MIN_AUC;
   } catch {
     return false;
   }

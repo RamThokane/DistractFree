@@ -1,5 +1,7 @@
 const express = require('express');
 const { retrainFromRealData, getTrainingReport } = require('../ml/trainModel');
+const { retrainFromAllSessions } = require('../ml/nodeTrainer');
+const { refreshFromDb, getModelSource, getWalkForwardAuc, getActiveModel } = require('../ml/activeModel');
 const { requestedKind, getModelState, getModelInfo } = require('../ml/activeModel');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -48,17 +50,21 @@ router.get('/status', (req, res) => {
       }
       : null,
     reportStatus: report?.status ?? null,
+    // The learning loop: where the active model came from and how it validates
+    source: getModelSource(),
+    activeMetrics: getActiveModel()?.metrics || null,
+    walkForwardAuc: getWalkForwardAuc(),
   });
 });
 
 // POST /api/ml/retrain — extract → train → export → hot-reload
 // Body: { includeSimulated?: boolean, kind?: 'logreg'|'tree' } (metrics are always on real sessions only)
 router.post('/retrain', requireMlAdmin, async (req, res) => {
-  if (process.env.VERCEL) {
-    return res.status(501).json({
-      success: false,
-      message: 'Retraining needs Python and is not available on this deployment. Run `npm run ml:retrain` locally and redeploy.',
-    });
+  // Hosted (no Python): the Node trainer retrains on all real sessions
+  if (process.env.VERCEL || req.body?.engine === 'node') {
+    const result = await retrainFromAllSessions({ trigger: 'manual' });
+    if (result.trained) await refreshFromDb({ force: true });
+    return res.status(result.trained ? 200 : 422).json({ success: result.trained, ...result });
   }
 
   try {

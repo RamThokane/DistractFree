@@ -68,6 +68,13 @@ function loadModel() {
 
 const getModel = () => lrModel;
 
+/** Swap in a model (e.g. the latest from MongoDB). Returns false if it isn't usable. */
+function setModel(model) {
+  if (!isCompatible(model)) return false;
+  lrModel = model;
+  return true;
+}
+
 const sigmoid = (z) => 1 / (1 + Math.exp(-z));
 
 /**
@@ -126,6 +133,7 @@ module.exports = {
   sigmoid,
   loadModel,
   getModel,
+  setModel,
   isCompatible,
   predict,
   computeFeatureImportances,

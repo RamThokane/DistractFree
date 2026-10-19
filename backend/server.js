@@ -152,6 +152,8 @@ const PORT = process.env.PORT || 5000;
 
 // Connect to DB eagerly (cached for serverless cold starts)
 let dbReady = connectDB();
+// Then use the newest model the learning loop has stored, if any
+dbReady.then(() => require('./ml/activeModel').refreshFromDb({ force: true })).catch(() => {});
 
 // Only start listening when NOT running as a Vercel serverless function
 if (!process.env.VERCEL) {

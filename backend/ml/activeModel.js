@@ -15,6 +15,10 @@ const tree = require('./decisionTreeModel');
 const logreg = require('./logisticRegressionModel');
 
 const MODEL_KINDS = Object.freeze(['logreg', 'tree']);
+const DB_REFRESH_MS = 60 * 1000;
+let lastDbCheck = 0;
+let modelSource = 'file';
+let refreshing = null;
 const { MIN_REAL_SESSIONS } = tree;
 
 let warnedFallback = false;
@@ -44,6 +48,53 @@ function getActiveModel() {
     }
   }
   return tree.getModel();
+}
+
+/**
+ * Use the newest model stored in MongoDB (trained by ml/nodeTrainer.js after
+ * sessions end). Checked at most once a minute unless forced, so every
+ * server instance catches up quickly. The bundled JSON file stays the
+ * fallback when the database has no model yet. Never throws.
+ */
+function refreshFromDb({ force = false } = {}) {
+  if (requestedKind() !== 'logreg') return Promise.resolve(false);
+  if (!force && Date.now() - lastDbCheck < DB_REFRESH_MS) return Promise.resolve(false);
+  if (refreshing) return refreshing;
+  lastDbCheck = Date.now();
+  refreshing = (async () => {
+    try {
+      const MlModel = require('../models/MlModel');
+      const doc = await MlModel.findOne().sort({ trainedAt: -1 }).lean();
+      if (!doc) return false;
+      const current = logreg.getModel();
+      if (current && current.version === doc.version) return false;
+      const model = { ...doc, trainedAt: new Date(doc.trainedAt).toISOString() };
+      if (!logreg.setModel(model)) return false;
+      modelSource = 'database';
+      console.log(`[ML] Using ${doc.version} from the database (${doc.nReal} sessions, walk-forward AUC ${doc.metrics?.walkForward?.roc_auc ?? 'n/a'})`);
+      return true;
+    } catch (err) {
+      console.error('[ML] Model refresh from database failed:', err.message);
+      return false;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
+/** 'database' once a stored model is in use, otherwise 'file'. */
+const getModelSource = () => modelSource;
+
+/** Walk-forward ROC-AUC of the active model (stored models carry their own; the file model's is in its report). */
+function getWalkForwardAuc(model = getActiveModel()) {
+  const own = model?.metrics?.walkForward?.roc_auc;
+  if (typeof own === 'number') return own;
+  try {
+    return require('./trainModel').getTrainingReport()?.walk_forward?.model?.roc_auc ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Reload the model files of one kind (after retraining). */
@@ -94,6 +145,10 @@ function getModelInfo(model = getActiveModel()) {
       trainedAt: model.trainedAt || null,
       features: model.featureNames,
       regularization: model.C,
+      source: modelSource,
+      nReal: model.nReal || null,
+      nUsers: model.nUsers || null,
+      walkForwardAuc: getWalkForwardAuc(model),
     };
   }
   return null;
@@ -124,6 +179,9 @@ module.exports = {
   kindOf,
   getActiveModel,
   reload,
+  refreshFromDb,
+  getModelSource,
+  getWalkForwardAuc,
   getModelState,
   getModelInfo,
   predict,

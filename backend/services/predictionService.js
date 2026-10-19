@@ -16,7 +16,7 @@
 const FocusSession = require('../models/FocusSession');
 const { ENDED_STATUSES } = require('../ml/target');
 const { buildFeatures, isValidTimezone, HISTORY_WINDOW, DEFAULT_TIMEZONE } = require('../ml/featureBuilder');
-const { getActiveModel, getModelState, getModelInfo, predict } = require('../ml/activeModel');
+const { getActiveModel, getModelState, getModelInfo, predict, refreshFromDb } = require('../ml/activeModel');
 const {
   explainPath,
   explainContributions,
@@ -126,6 +126,7 @@ function typicalPlannedDuration(sessions) {
  * @param {string}  [options.timezone]        defaults to the one on their latest session
  */
 async function predictForUser(userId, { startTime = new Date(), plannedDuration, timezone } = {}) {
+  await refreshFromDb(); // newest retrained model, checked at most once a minute
   // Newest first, so the limit keeps the most recent window
   const sessions = await FocusSession.find({
     userId,
