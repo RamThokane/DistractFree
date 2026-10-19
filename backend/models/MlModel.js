@@ -13,6 +13,7 @@ const mlModelSchema = new mongoose.Schema(
     version: { type: String, required: true, unique: true },
     trainedAt: { type: Date, required: true, index: true },
     featureNames: { type: [String], required: true },
+    selectedAtN: Number, // sessions in the data when the inputs were last chosen
     means: { type: [Number], required: true },
     stds: { type: [Number], required: true },
     coefficients: { type: [Number], required: true },

@@ -205,8 +205,12 @@ function modelIsReliable() {
   try {
     // Lazy require keeps this module usable in unit tests without the model files
     const { getActiveModel, getModelState, getWalkForwardAuc } = require('../ml/activeModel');
-    const auc = getWalkForwardAuc(getActiveModel());
-    return getModelState().ready && typeof auc === 'number' && auc >= MODEL_MIN_AUC;
+    const model = getActiveModel();
+    if (!getModelState().ready) return false;
+    // Models from the learning loop carry their own verdict (AUC and beating the simple baselines)
+    if (typeof model?.metrics?.trusted === 'boolean') return model.metrics.trusted;
+    const auc = getWalkForwardAuc(model);
+    return typeof auc === 'number' && auc >= MODEL_MIN_AUC;
   } catch {
     return false;
   }

@@ -16,11 +16,19 @@
  * unpenalised, with balanced class weights wᵢ = n / (2·n_class) — the same as
  * the Python trainer's LogisticRegression(penalty='l2', class_weight='balanced').
  *
+ * Inputs: chosen from CANDIDATES by greedy forward selection — an input is
+ * kept only if it lowers walk-forward log-loss (on the oldest 80%). Selection
+ * reruns once 20+ new sessions have arrived; retrains in between reuse it.
+ *
  * Checks (real sessions only, in time order):
  *   - C chosen by expanding-window validation on the oldest 80%
  *   - holdout: train on the oldest 80%, score the newest 20%
  *   - walk-forward: each block of sessions predicted by a model trained only
- *     on the sessions before it — the number the app trusts (ROC-AUC ≥ 0.6)
+ *     on the sessions before it, compared on the SAME sessions with simple
+ *     baselines (last-5 rate, last-20 rate, overall rate).
+ *   - trusted = on the newest 20% (never used to choose inputs or C):
+ *     ROC-AUC ≥ 0.6 AND lower log-loss than every baseline on the same
+ *     sessions. Only a trusted model drives the forecasts.
  */
 
 const FocusSession = require('../models/FocusSession');
@@ -29,7 +37,7 @@ const { ENDED_STATUSES } = require('./target');
 const { buildTrainingRows } = require('./featureBuilder');
 const { toModelInputs } = require('./modelInputs');
 
-// Same inputs the Python trainer selected for the production model
+// Starting set (what the Python trainer selected) — used when selection can't run
 const FEATURES = Object.freeze([
   'successRateLast5',
   'plannedDuration',
@@ -38,6 +46,16 @@ const FEATURES = Object.freeze([
   'avgDistractionsLast5',
   'isWeekend',
 ]);
+// Everything the feature builder offers that makes sense for a linear model
+const CANDIDATES = Object.freeze([
+  'successRateLast5', 'successRateLast20', 'plannedDuration', 'currentStreak',
+  'hourBandSuccessRate', 'avgDistractionsLast5', 'avgTabSwitchesLast5',
+  'minutesSinceLastSession', 'sessionsAlreadyToday', 'isWeekend', 'hourSin', 'hourCos',
+]);
+const MAX_FEATURES = 6;
+const MIN_GAIN = 0.002;          // log-loss improvement needed to add an input
+const RESELECT_EVERY = 20;       // new sessions before inputs are re-chosen
+const MIN_AUC = 0.6;
 const C_GRID = [0.01, 0.1, 1, 10];
 const MIN_ROWS = 30;          // below this, nothing is trained
 const KEEP_MODELS = 20;       // older stored models are pruned
@@ -165,6 +183,59 @@ function walkForward(X, y, C, blocks = 8) {
   return scores(yy, pp);
 }
 
+/** Walk-forward predictions (no scoring) — same blocks as walkForward(). */
+function walkForwardPredictions(X, y, C, blocks = 8) {
+  const start = Math.max(MIN_TRAIN_FOR_EVAL, Math.floor(X.length * 0.4));
+  if (X.length - start < 5) return null;
+  const size = Math.max(1, Math.ceil((X.length - start) / blocks));
+  const idx = [];
+  const pp = [];
+  for (let s = start; s < X.length; s += size) {
+    const trainY = y.slice(0, s);
+    if (!trainY.includes(0) || !trainY.includes(1)) continue;
+    const m = fit(X.slice(0, s), trainY, C);
+    for (let i = s; i < Math.min(X.length, s + size); i++) { idx.push(i); pp.push(predictRaw(m, X[i])); }
+  }
+  return { idx, pp };
+}
+
+const clamp01 = (v) => Math.min(0.97, Math.max(0.03, Number.isFinite(v) ? v : 0.5));
+
+/** Simple estimates scored on exactly the sessions the model was scored on. */
+function baselineScores(rows, y, idx) {
+  if (!idx?.length) return null;
+  const ys = idx.map((i) => y[i]);
+  const prior = (i) => {
+    const before = y.slice(0, i);
+    return before.length ? before.reduce((a, v) => a + v, 0) / before.length : 0.5;
+  };
+  return {
+    last5_success_rate: scores(ys, idx.map((i) => clamp01(Number(rows[i].successRateLast5)))),
+    last20_success_rate: scores(ys, idx.map((i) => clamp01(Number(rows[i].successRateLast20)))),
+    overall_success_rate: scores(ys, idx.map((i) => clamp01(prior(i)))),
+  };
+}
+
+const matrix = (rows, features) => rows.map((r) => features.map((f) => Number(r[f]) || 0));
+
+/** Greedy forward selection by walk-forward log-loss (C fixed at 1 while searching). */
+function selectFeatures(rows, y) {
+  const chosen = [];
+  let best = Infinity;
+  while (chosen.length < MAX_FEATURES) {
+    let pick = null;
+    for (const f of CANDIDATES) {
+      if (chosen.includes(f)) continue;
+      const wf = walkForward(matrix(rows, [...chosen, f]), y, 1, 5);
+      if (wf && wf.log_loss < best - MIN_GAIN && (!pick || wf.log_loss < pick.loss)) pick = { f, loss: wf.log_loss };
+    }
+    if (!pick) break;
+    chosen.push(pick.f);
+    best = pick.loss;
+  }
+  return chosen.length ? chosen : [...FEATURES];
+}
+
 function chooseC(X, y) {
   let best = { C: 1, loss: Infinity };
   for (const C of C_GRID) {
@@ -174,20 +245,41 @@ function chooseC(X, y) {
   return best.C;
 }
 
-/** Pure training + evaluation on prepared rows (no database). */
-function trainOnRows(rows) {
+/**
+ * Pure training + evaluation on prepared rows (no database).
+ * @param {object[]} rows
+ * @param {object}  [options]
+ * @param {object}  [options.previous] last stored model: its inputs are reused until RESELECT_EVERY new sessions
+ */
+function trainOnRows(rows, { previous = null } = {}) {
   const sorted = [...rows].sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-  const X = sorted.map((r) => FEATURES.map((f) => Number(r[f]) || 0));
   const y = sorted.map((r) => (r.sessionSuccess === 1 ? 1 : 0));
-  if (X.length < MIN_ROWS || !y.includes(0) || !y.includes(1)) {
-    return { trained: false, reason: X.length < MIN_ROWS ? `needs ${MIN_ROWS} finished sessions, has ${X.length}` : 'all sessions have the same outcome', n: X.length };
+  if (sorted.length < MIN_ROWS || !y.includes(0) || !y.includes(1)) {
+    return { trained: false, reason: sorted.length < MIN_ROWS ? `needs ${MIN_ROWS} finished sessions, has ${sorted.length}` : 'all sessions have the same outcome', n: sorted.length };
   }
 
-  const cut = Math.floor(X.length * 0.8);
+  const cut = Math.floor(sorted.length * 0.8);
+  const reuse = previous?.featureNames?.length && previous.selectedAtN && sorted.length - previous.selectedAtN < RESELECT_EVERY
+    && previous.featureNames.every((f) => CANDIDATES.includes(f));
+  const features = reuse ? [...previous.featureNames] : selectFeatures(sorted.slice(0, cut), y.slice(0, cut));
+  const selectedAtN = reuse ? previous.selectedAtN : sorted.length;
+
+  const X = matrix(sorted, features);
   const C = chooseC(X.slice(0, cut), y.slice(0, cut));
   const holdModel = fit(X.slice(0, cut), y.slice(0, cut), C);
   const holdout = scores(y.slice(cut), X.slice(cut).map((x) => predictRaw(holdModel, x)));
-  const walk = walkForward(X, y, C);
+
+  const wfp = walkForwardPredictions(X, y, C);
+  const walk = wfp ? scores(wfp.idx.map((i) => y[i]), wfp.pp) : null;
+  // The verdict uses only "fresh" sessions — the newest 20%, which neither the
+  // input search nor the choice of C ever saw — so it isn't flattered by them.
+  const fresh = wfp ? wfp.idx.map((i, k) => [i, wfp.pp[k]]).filter(([i]) => i >= cut) : [];
+  const freshScores = fresh.length >= 5 ? scores(fresh.map(([i]) => y[i]), fresh.map(([, p]) => p)) : null;
+  const baselines = fresh.length >= 5 ? baselineScores(sorted, y, fresh.map(([i]) => i)) : null;
+  const bestBaselineLoss = baselines ? Math.min(...Object.values(baselines).map((b) => b?.log_loss ?? Infinity)) : Infinity;
+  const beatsBaselines = Boolean(freshScores && freshScores.log_loss < bestBaselineLoss);
+  const trusted = Boolean(freshScores && freshScores.roc_auc !== null && freshScores.roc_auc >= MIN_AUC && beatsBaselines);
+
   const final = fit(X, y, C);
   const positives = y.reduce((s, v) => s + v, 0);
 
@@ -195,13 +287,23 @@ function trainOnRows(rows) {
     trained: true,
     model: {
       kind: 'logistic_regression',
-      featureNames: [...FEATURES],
+      featureNames: features,
+      selectedAtN,
       ...final,
-      nReal: X.length,
-      nSamples: X.length,
+      nReal: sorted.length,
+      nSamples: sorted.length,
       nUsers: new Set(sorted.map((r) => r.userKey)).size,
-      classBalance: { successful: positives, not_successful: X.length - positives },
-      metrics: { holdout, walkForward: walk, trainedOn: { from: sorted[0].startTime, to: sorted[sorted.length - 1].startTime } },
+      classBalance: { successful: positives, not_successful: sorted.length - positives },
+      metrics: {
+        holdout,
+        walkForward: walk,          // all walk-forward predictions (for trends)
+        fresh: freshScores,         // newest 20%, never used for choices — the verdict
+        baselines,                  // simple estimates on the same fresh sessions
+        beatsBaselines,
+        trusted,
+        trustRule: `on the newest 20% of sessions: ROC-AUC >= ${MIN_AUC} and lower log-loss than every baseline`,
+        trainedOn: { from: sorted[0].startTime, to: sorted[sorted.length - 1].startTime },
+      },
     },
   };
 }
@@ -224,7 +326,8 @@ function retrainFromAllSessions({ trigger = 'session_end' } = {}) {
         .select('userId startTime endTime plannedDuration duration status distractionAttempts tabSwitches timezone source')
         .lean();
       const rows = buildTrainingRows(sessions).map(toModelInputs).filter((r) => r.source === 'real');
-      const result = trainOnRows(rows);
+      const previous = await MlModel.findOne().sort({ trainedAt: -1 }).select('featureNames selectedAtN').lean();
+      const result = trainOnRows(rows, { previous });
       if (!result.trained) return { trained: false, reason: result.reason };
 
       const trainedAt = new Date();
@@ -235,7 +338,8 @@ function retrainFromAllSessions({ trigger = 'session_end' } = {}) {
       const old = await MlModel.find().sort({ trainedAt: -1 }).skip(KEEP_MODELS).select('_id').lean();
       if (old.length) await MlModel.deleteMany({ _id: { $in: old.map((o) => o._id) } });
 
-      console.log(`[ML] Retrained ${version} on ${result.model.nReal} sessions in ${Date.now() - t0} ms — walk-forward AUC ${result.model.metrics.walkForward?.roc_auc ?? 'n/a'}`);
+      const m = result.model.metrics;
+      console.log(`[ML] Retrained ${version} on ${result.model.nReal} sessions in ${Date.now() - t0} ms — inputs [${result.model.featureNames.join(', ')}], walk-forward AUC ${m.walkForward?.roc_auc ?? 'n/a'}, log-loss ${m.walkForward?.log_loss ?? 'n/a'} | fresh AUC ${m.fresh?.roc_auc ?? 'n/a'}, log-loss ${m.fresh?.log_loss ?? 'n/a'} vs best baseline ${Math.min(...Object.values(m.baselines || {}).map((b) => b?.log_loss ?? Infinity))}, trusted: ${m.trusted}`);
       return { trained: true, version, metrics: result.model.metrics, nReal: result.model.nReal };
     } catch (err) {
       console.error('[ML] Node retrain failed:', err.message);
@@ -247,4 +351,4 @@ function retrainFromAllSessions({ trigger = 'session_end' } = {}) {
   return running;
 }
 
-module.exports = { FEATURES, trainOnRows, retrainFromAllSessions, fit, rocAuc, scores };
+module.exports = { FEATURES, CANDIDATES, trainOnRows, retrainFromAllSessions, fit, rocAuc, scores, selectFeatures };

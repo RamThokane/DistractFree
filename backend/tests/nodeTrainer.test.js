@@ -39,16 +39,22 @@ test('learns a real signal and validates it walk-forward', () => {
     rows.push({
       startTime: new Date(Date.UTC(2026, 0, 1) + i * 3600e3).toISOString(),
       userKey: `u${i % 4}`,
-      successRateLast5: last5, plannedDuration: 25, currentStreak: streak,
+      successRateLast5: last5, successRateLast20: 0.5, plannedDuration: 25, currentStreak: streak,
+      avgTabSwitchesLast5: 1, minutesSinceLastSession: 600, sessionsAlreadyToday: 0, hourSin: 0, hourCos: 1,
       hourBandSuccessRate: 0.5, avgDistractionsLast5: 1, isWeekend: 0,
       sessionSuccess: rnd() < 1 / (1 + Math.exp(-z)) ? 1 : 0,
     });
   }
   const r = trainOnRows(rows);
   assert.equal(r.trained, true);
-  assert.ok(r.model.coefficients[FEATURES.indexOf('currentStreak')] > 0);
+  // Inputs are chosen from the data: the true drivers should be picked, with the right sign
+  const iStreak = r.model.featureNames.indexOf('currentStreak');
+  assert.ok(iStreak !== -1, r.model.featureNames.join(','));
+  assert.ok(r.model.coefficients[iStreak] > 0);
   assert.ok(r.model.metrics.walkForward.roc_auc > 0.65, r.model.metrics.walkForward.roc_auc);
   assert.equal(r.model.nUsers, 4);
+  assert.equal(typeof r.model.metrics.trusted, 'boolean');
+  assert.ok(r.model.metrics.baselines.last5_success_rate);
 });
 
 test('refuses to train on too little data', () => {
