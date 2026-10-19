@@ -33,7 +33,7 @@ test.after(async () => {
 test.beforeEach(async () => {
   gemini.setTransport();
   delete process.env.AGENT_DAILY_LIMIT;
-  await Promise.all([User.deleteMany({}), FocusSession.deleteMany({}), ScheduledSession.deleteMany({}), AgentUsage.deleteMany({})]);
+  await Promise.all([User.deleteMany({}), FocusSession.deleteMany({}), ScheduledSession.deleteMany({}), AgentUsage.deleteMany({}), mongoose.model('BlockedWebsite').deleteMany({}), mongoose.model('BrowsingLog').deleteMany({}), mongoose.model('CoinTransaction').deleteMany({})]);
 });
 
 async function makeUser(name = 'Asha Rao') {
@@ -284,4 +284,138 @@ test('POST /chat: 503 without a key, 429 at the cap, 502 on Gemini errors (refun
   delete process.env.AGENT_DAILY_LIMIT;
   const bad = await callChat(me, { messages: [{ role: 'model', text: 'only the model' }] });
   assert.equal(bad.status, 400);
+});
+
+// ── Blocklist (phase 3) ────────────────────────────
+
+const BlockedWebsite = require('../models/BlockedWebsite');
+const BrowsingLog = require('../models/BrowsingLog');
+const CoinTransaction = require('../models/CoinTransaction');
+const { normaliseWebsiteUrl, isValidDomain, guessCategory } = require('../utils/websiteUrl');
+const websiteController = require('../controllers/websiteController');
+
+test('website addresses are normalised the same way everywhere', () => {
+  assert.equal(normaliseWebsiteUrl('https://www.YouTube.com/'), 'youtube.com');
+  assert.equal(normaliseWebsiteUrl('  http://News.YCombinator.com// '), 'news.ycombinator.com');
+  assert.ok(isValidDomain('news.ycombinator.com'));
+  assert.ok(!isValidDomain('youtube.com/watch?v=1'));
+  assert.ok(!isValidDomain('not a site'));
+  assert.ok(!isValidDomain('localhost'));
+  assert.equal(guessCategory('m.youtube.com'), 'streaming');
+  assert.equal(guessCategory('example.org'), 'other');
+});
+
+async function seedBlocklist(userId) {
+  const yt = await BlockedWebsite.create({ userId, websiteUrl: 'youtube.com', category: 'streaming', isActive: true });
+  const ig = await BlockedWebsite.create({ userId, websiteUrl: 'instagram.com', category: 'social_media', isActive: false });
+  return { yt, ig };
+}
+
+test('getBlocklist reports sites, strict mode, unlocks and unblocked distractions', async () => {
+  const me = await makeUser();
+  await seedBlocklist(me._id);
+  const at = new Date('2026-10-15T10:00:00Z');
+  await BrowsingLog.create([
+    { userId: me._id, website: 'youtube.com', timestamp: at, wasBlocked: true, duration: 0 },
+    { userId: me._id, website: 'm.youtube.com', timestamp: at, wasBlocked: true, duration: 0 },
+    { userId: me._id, website: 'reddit.com', timestamp: at, wasBlocked: false, duration: 600, category: 'social_media' },
+    { userId: me._id, website: 'docs.google.com', timestamp: at, wasBlocked: false, duration: 900, category: 'other' },
+  ]);
+  await CoinTransaction.create([
+    { userId: me._id, type: 'spent', amount: -5, balanceAfter: 15, description: 'Unlocked youtube.com during focus session', createdAt: at },
+    { userId: me._id, type: 'spent', amount: -5, balanceAfter: 10, description: 'Unlocked youtube.com', createdAt: at },
+  ]);
+  const other = await makeUser('Other');
+  await BlockedWebsite.create({ userId: other._id, websiteUrl: 'netflix.com' });
+
+  const r = await runTool('getBlocklist', {}, ctxFor(me._id));
+  assert.equal(r.strictMode, false);
+  assert.equal(r.coinUnlocksLast30Days, 2);
+  assert.deepEqual(r.blockedSites.map((s) => s.site).sort(), ['instagram.com', 'youtube.com']);
+  const yt = r.blockedSites.find((s) => s.site === 'youtube.com');
+  assert.equal(yt.blockedVisitsLast30Days, 2); // youtube.com + m.youtube.com
+  assert.equal(yt.coinUnlocksLast30Days, 2);
+  assert.equal(r.blockedSites.find((s) => s.site === 'instagram.com').enabled, false);
+  assert.deepEqual(r.visitedDuringSessionsButNotBlocked.map((s) => s.site), ['reddit.com']);
+});
+
+test('proposeBlocklistChange checks every change and saves nothing', async () => {
+  const me = await makeUser();
+  await seedBlocklist(me._id);
+  const r = await runTool('proposeBlocklistChange', {
+    changes: [
+      { action: 'add', websiteUrl: 'https://www.Reddit.com/', reason: 'You visited it 12 times in sessions' },
+      { action: 'add', websiteUrl: 'youtube.com', reason: 'x' },
+      { action: 'add', websiteUrl: 'instagram.com', reason: 'x' },
+      { action: 'enable', websiteUrl: 'instagram.com', reason: 'x' },
+      { action: 'remove', websiteUrl: 'youtube.com', reason: 'x' },
+      { action: 'disable', websiteUrl: 'netflix.com', reason: 'x' },
+      { action: 'add', websiteUrl: 'reddit.com', reason: 'duplicate' },
+      { action: 'add', websiteUrl: 'not a site', reason: 'x' },
+      { action: 'explode', websiteUrl: 'x.com', reason: 'x' },
+    ],
+    strictMode: true,
+  }, ctxFor(me._id));
+
+  const c = r.proposal.changes;
+  assert.equal(r.proposal.kind, 'blocklist');
+  assert.deepEqual(c.map((x) => x.valid), [true, false, false, true, true, false, false, false, false]);
+  assert.equal(c[0].site, 'reddit.com');
+  assert.equal(c[0].category, 'social_media');
+  assert.equal(c[0].reason, 'You visited it 12 times in sessions');
+  assert.equal(c[1].problem, 'Already blocked');
+  assert.match(c[2].problem, /enable it instead/);
+  assert.ok(c[3].websiteId);
+  assert.equal(c[5].problem, 'Not on your blocked list');
+  assert.equal(c[6].problem, 'Listed twice in this plan');
+  assert.equal(c[7].problem, 'Not a valid website address');
+  assert.equal(c[8].problem, 'Unknown action');
+  assert.deepEqual(r.proposal.strictMode, { to: true, current: false, valid: true, problem: null });
+
+  // Nothing changed
+  assert.equal(await BlockedWebsite.countDocuments({ userId: me._id }), 2);
+  assert.equal((await BlockedWebsite.findOne({ userId: me._id, websiteUrl: 'instagram.com' })).isActive, false);
+  assert.equal((await User.findById(me._id)).settings.strictMode, false);
+
+  const same = await runTool('proposeBlocklistChange', { strictMode: false }, ctxFor(me._id));
+  assert.equal(same.proposal.strictMode.valid, false);
+  assert.match((await runTool('proposeBlocklistChange', {}, ctxFor(me._id))).error, /at least one/);
+});
+
+test('applying a confirmed change only ever touches your own sites', async () => {
+  const me = await makeUser();
+  const other = await makeUser('Other');
+  const { yt } = await seedBlocklist(other._id);
+  let status = 200;
+  await websiteController.toggleWebsite({ user: { _id: me._id }, params: { id: String(yt._id) } }, {
+    status(code) { status = code; return this; },
+    json() { return this; },
+  });
+  assert.equal(status, 404);
+  assert.equal((await BlockedWebsite.findById(yt._id)).isActive, true);
+});
+
+test('a reply that points to cards without proposing anything gets one nudge', async () => {
+  const me = await makeUser();
+  const calls = scripted([
+    text('Review the changes below and press Apply.'),
+    callTool('proposeBlocklistChange', { changes: [{ action: 'add', websiteUrl: 'reddit.com', reason: 'x' }] }),
+    text('I drafted the change; tick it and press Apply.'),
+  ]);
+  const result = await chat({ userId: me._id, firstName: 'Asha', timezone: TZ, messages: [{ role: 'user', text: 'What should I block?' }], now: NOW });
+  assert.equal(calls.length, 3);
+  assert.match(calls[1].body.contents[calls[1].body.contents.length - 1].parts[0].text, /did not call a propose tool/);
+  assert.equal(result.proposals.length, 1);
+  assert.equal(result.proposals[0].kind, 'blocklist');
+
+  // Only once: a second reply like that is accepted as it is
+  const again = scripted([text('See the cards below.'), text('Still see the cards below.')]);
+  const r2 = await chat({ userId: me._id, firstName: 'Asha', timezone: TZ, messages: [{ role: 'user', text: 'hm' }], now: NOW });
+  assert.equal(again.length, 2);
+  assert.equal(r2.reply, 'Still see the cards below.');
+
+  // Ordinary answers aren't touched
+  const plain = scripted([text('Mornings are your best time.')]);
+  await chat({ userId: me._id, firstName: 'Asha', timezone: TZ, messages: [{ role: 'user', text: 'When?' }], now: NOW });
+  assert.equal(plain.length, 1);
 });

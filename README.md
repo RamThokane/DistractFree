@@ -30,6 +30,20 @@ See when you focus best. DistractFree predicts your chance of finishing a sessio
 
 ![AI insights](docs/screenshots/insights.png)
 
+### Focus coach
+A chat on your dashboard, powered by Google Gemini. Ask it things like "When do I focus best?" or "Why did my last sessions fail?" and it answers from your own numbers, the same ones the pages show. Ask it to "plan 2 sessions for tomorrow" and it suggests times, each with its predicted chance of success. Nothing is saved until you press Confirm.
+
+![Focus coach](docs/screenshots/focus-coach.png)
+
+It can also help with your blocked sites. It shows which sites distract you during sessions and suggests turning on strict mode if you often unlock sites with coins. You tick the changes you want and press Apply. Removing a site or turning strict mode off asks you twice.
+
+![Focus coach suggesting blocklist changes](docs/screenshots/focus-coach-blocklist.png)
+
+### Weekly report
+Every Monday you get a report on last week: your focus time compared with the week before, how many sessions went to plan, your best day and start time, what went well, what slipped, and one goal for this week. Schedule the goal in one click, or ask the coach about it. Turn on "Email my weekly report" in Settings to get it in your inbox too.
+
+![Weekly report](docs/screenshots/weekly-report.png)
+
 ### Productivity heatmap
 A year of focus in one view, with your best month, best week, most productive day and longest streak.
 

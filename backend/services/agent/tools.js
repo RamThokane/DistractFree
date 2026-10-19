@@ -10,7 +10,13 @@
  * the model never chooses whose data it reads.
  */
 
+const mongoose = require('mongoose');
 const FocusSession = require('../../models/FocusSession');
+const BlockedWebsite = require('../../models/BlockedWebsite');
+const BrowsingLog = require('../../models/BrowsingLog');
+const CoinTransaction = require('../../models/CoinTransaction');
+const User = require('../../models/User');
+const { normaliseWebsiteUrl, isValidDomain, guessCategory } = require('../../utils/websiteUrl');
 const { buildDashboard } = require('../dashboardService');
 const { buildFullInsights } = require('../insightsService');
 const { forecastForUser, recommendForUser } = require('../sessionRecommender');
@@ -20,6 +26,8 @@ const { getWeeklyReport: loadWeeklyReport } = require('./weeklyReportService');
 const { DAY_MS } = require('../../utils/timezone');
 
 const MAX_PROPOSED_SESSIONS = 5;
+const MAX_BLOCKLIST_CHANGES = 10;
+const BLOCKLIST_ACTIONS = ['add', 'enable', 'disable', 'remove'];
 const MAX_RESULT_CHARS = 9000;
 
 const clampInt = (value, min, max, fallback) => {
@@ -195,6 +203,62 @@ async function getWeeklyReport(ctx, args) {
   return { week: r.weekLabel, facts: r.facts, report: r.report };
 }
 
+/** A site matches a log/transaction host if it's the same domain or a subdomain of it. */
+const sameSite = (host, site) => host === site || host.endsWith(`.${site}`);
+
+async function getBlocklist(ctx) {
+  const userId = new mongoose.Types.ObjectId(ctx.userId);
+  const since = new Date(ctx.now.getTime() - 30 * DAY_MS);
+  const [sites, user, visits, unlocks] = await Promise.all([
+    BlockedWebsite.find({ userId }).sort({ createdAt: -1 }).lean(),
+    User.findById(userId).select('settings.strictMode').lean(),
+    // Sites visited during focus sessions (the extension only logs then)
+    BrowsingLog.aggregate([
+      { $match: { userId, timestamp: { $gte: since } } },
+      {
+        $group: {
+          _id: '$website',
+          visits: { $sum: 1 },
+          blockedVisits: { $sum: { $cond: ['$wasBlocked', 1, 0] } },
+          minutes: { $sum: { $divide: [{ $ifNull: ['$duration', 0] }, 60] } },
+          category: { $max: '$category' },
+        },
+      },
+      { $sort: { visits: -1 } },
+      { $limit: 60 },
+    ]),
+    CoinTransaction.find({ userId, type: 'spent', createdAt: { $gte: since }, description: /^Unlocked /i }).select('description').lean(),
+  ]);
+
+  const unlockHosts = unlocks.map((t) => normaliseWebsiteUrl(String(t.description).replace(/^Unlocked\s+/i, '').split(/\s/)[0]));
+  const listed = sites.map((s) => {
+    const own = visits.filter((v) => sameSite(normaliseWebsiteUrl(v._id || ''), s.websiteUrl));
+    return {
+      site: s.websiteUrl,
+      enabled: s.isActive,
+      category: s.category,
+      blockedVisitsLast30Days: own.reduce((n, v) => n + v.blockedVisits, 0),
+      coinUnlocksLast30Days: unlockHosts.filter((h) => sameSite(h, s.websiteUrl)).length,
+      timesBlockedAllTime: s.blockCount || 0,
+    };
+  });
+
+  // Distracting-looking sites visited during sessions that aren't on the list
+  const notBlocked = visits
+    .map((v) => ({ site: normaliseWebsiteUrl(v._id || ''), visits: v.visits, minutes: Math.round(v.minutes), category: v.category || guessCategory(normaliseWebsiteUrl(v._id || '')) }))
+    .filter((v) => isValidDomain(v.site) && !sites.some((s) => sameSite(v.site, s.websiteUrl)))
+    .filter((v) => v.category && v.category !== 'other')
+    .slice(0, 8);
+
+  return {
+    strictMode: Boolean(user?.settings?.strictMode),
+    strictModeMeans: 'Blocked sites cannot be unlocked with coins, in or out of a session.',
+    coinUnlocksLast30Days: unlocks.length,
+    blockedSites: listed,
+    visitedDuringSessionsButNotBlocked: notBlocked,
+  };
+}
+
 // ── Proposal tools (write nothing) ─────────────────
 
 const overlapsInPlan = (a, b) => a.start < b.end && b.start < a.end;
@@ -242,6 +306,59 @@ async function proposeSchedule(ctx, args) {
   return {
     proposal: { kind: 'schedule', items },
     note: 'Nothing is scheduled yet. The user sees these as cards and must press Confirm.',
+  };
+}
+
+async function proposeBlocklistChange(ctx, args) {
+  const requested = Array.isArray(args.changes) ? args.changes.slice(0, MAX_BLOCKLIST_CHANGES) : [];
+  const wantsStrict = typeof args.strictMode === 'boolean' ? args.strictMode : null;
+  if (!requested.length && wantsStrict === null) return { error: 'Give at least one change or a strictMode value' };
+
+  const [sites, user] = await Promise.all([
+    BlockedWebsite.find({ userId: ctx.userId }).select('websiteUrl isActive').lean(),
+    User.findById(ctx.userId).select('settings.strictMode').lean(),
+  ]);
+  const byUrl = new Map(sites.map((s) => [s.websiteUrl, s]));
+  const seen = new Set();
+
+  const changes = requested.map((c) => {
+    const action = BLOCKLIST_ACTIONS.includes(c?.action) ? c.action : null;
+    const site = normaliseWebsiteUrl(c?.websiteUrl || '');
+    const existing = byUrl.get(site);
+    const change = {
+      action,
+      site,
+      websiteId: existing ? String(existing._id) : null,
+      category: existing ? undefined : guessCategory(site),
+      reason: String(c?.reason || '').trim().slice(0, 160),
+      valid: true,
+      problem: null,
+    };
+    const fail = (problem) => Object.assign(change, { valid: false, problem });
+
+    if (!action) return fail('Unknown action');
+    if (!isValidDomain(site)) return fail('Not a valid website address');
+    if (seen.has(site)) return fail('Listed twice in this plan');
+    if (action === 'add' && existing) return fail(existing.isActive ? 'Already blocked' : 'Already on your list but turned off: enable it instead');
+    if (action !== 'add' && !existing) return fail('Not on your blocked list');
+    if (action === 'enable' && existing.isActive) return fail('Already blocked');
+    if (action === 'disable' && !existing.isActive) return fail('Already turned off');
+    // Only a valid change claims the site, so a fixed retry later in the list still counts
+    seen.add(site);
+    return change;
+  });
+
+  const currentStrict = Boolean(user?.settings?.strictMode);
+  const strictMode = wantsStrict === null ? null : {
+    to: wantsStrict,
+    current: currentStrict,
+    valid: wantsStrict !== currentStrict,
+    problem: wantsStrict === currentStrict ? `Strict mode is already ${currentStrict ? 'on' : 'off'}` : null,
+  };
+
+  return {
+    proposal: { kind: 'blocklist', changes, strictMode },
+    note: 'Nothing has changed yet. The user ticks the changes they want and presses Apply; removing a site or turning strict mode off asks them twice.',
   };
 }
 
@@ -331,6 +448,34 @@ const DECLARATIONS = [
       required: ['sessions'],
     },
   },
+  {
+    name: 'getBlocklist',
+    description: "The user's blocked sites (on/off, category, blocked visits and coin unlocks in the last 30 days), whether strict mode is on, total coin unlocks, and distracting-looking sites visited during focus sessions that are not blocked yet.",
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'proposeBlocklistChange',
+    description: 'Propose changes to the blocked-site list and/or strict mode. Saves NOTHING: the user reviews each change, ticks the ones they want and presses Apply. Only propose what the user asked for, or suggestions they asked for.',
+    parameters: {
+      type: 'object',
+      properties: {
+        changes: {
+          type: 'array',
+          description: 'Up to 10 changes',
+          items: {
+            type: 'object',
+            properties: {
+              action: { type: 'string', enum: ['add', 'enable', 'disable', 'remove'], description: 'add a new site; enable/disable one already on the list; remove it from the list' },
+              websiteUrl: { type: 'string', description: 'Domain, e.g. news.ycombinator.com' },
+              reason: { type: 'string', description: 'Short reason shown to the user, citing their data where possible' },
+            },
+            required: ['action', 'websiteUrl', 'reason'],
+          },
+        },
+        strictMode: { type: 'boolean', description: 'Optional: turn strict mode on (true) or off (false)' },
+      },
+    },
+  },
 ];
 
 const HANDLERS = {
@@ -341,7 +486,9 @@ const HANDLERS = {
   getRecommendation,
   listSchedule,
   getWeeklyReport,
+  getBlocklist,
   proposeSchedule,
+  proposeBlocklistChange,
 };
 
 /** Run one tool call. Errors come back as data, so the model can say what went wrong. */

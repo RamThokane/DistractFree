@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LuSparkles, LuSend, LuRotateCcw, LuCalendarPlus, LuCheck, LuX } from 'react-icons/lu';
+import { LuSparkles, LuSend, LuRotateCcw, LuCalendarPlus, LuCheck, LuX, LuShieldCheck } from 'react-icons/lu';
+import api from '../services/api';
 import { agentService, scheduleService } from '../services/endpoints';
+import { useAuth } from '../context/AuthContext';
 import { Badge, Button, Card, useToast } from './ui';
 import { apiErrorMessage, formatWhen, repeatLabel } from '../utils/schedule';
 
@@ -106,6 +108,166 @@ function ScheduleItem({ item, onConfirm, onDismiss }) {
   );
 }
 
+const ACTION_LABELS = {
+  add: 'Block',
+  enable: 'Turn blocking on for',
+  disable: 'Turn blocking off for',
+  remove: 'Remove from your list:',
+};
+
+/**
+ * Proposed blocklist / strict mode changes: tick the ones you want, Apply.
+ * Removing a site or turning strict mode off asks a second time. Applied with
+ * the same endpoints Settings uses, then the extension is told to re-sync.
+ */
+function BlocklistProposal({ proposal, onUpdate }) {
+  const toast = useToast();
+  const { updateUser } = useAuth();
+  const { changes, strictMode } = proposal;
+  const [selected, setSelected] = useState(() => new Set(changes.map((c, i) => (c.valid ? i : null)).filter((i) => i !== null)));
+  const [strictSelected, setStrictSelected] = useState(Boolean(strictMode?.valid));
+  const [stage, setStage] = useState(proposal.applied ? 'done' : 'review'); // review | confirm | applying | done
+  const results = proposal.applied?.results || {};
+
+  const toggle = (i) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(i)) next.delete(i); else next.add(i);
+    return next;
+  });
+
+  const chosen = changes.map((c, i) => ({ ...c, i })).filter((c) => selected.has(c.i));
+  const risky = [
+    ...chosen.filter((c) => c.action === 'remove').map((c) => `remove ${c.site}`),
+    ...(strictSelected && strictMode?.to === false ? ['turn strict mode off'] : []),
+  ];
+  const nothing = chosen.length === 0 && !strictSelected;
+
+  const apply = async () => {
+    if (risky.length && stage !== 'confirm') {
+      setStage('confirm');
+      return;
+    }
+    setStage('applying');
+    const out = {};
+    let current = [];
+    try {
+      current = (await api.get('/websites/list')).data.websites || [];
+    } catch {
+      // add still works; the rest report their own errors
+    }
+    for (const c of chosen) {
+      try {
+        const site = current.find((w) => w.websiteUrl === c.site);
+        if (c.action === 'add') {
+          await api.post('/websites/add', { websiteUrl: c.site, category: c.category });
+        } else if (!site) {
+          throw new Error('It’s no longer on your list.');
+        } else if (c.action === 'remove') {
+          await api.delete('/websites/remove', { data: { websiteId: site._id } });
+        } else if (site.isActive !== (c.action === 'enable')) {
+          await api.patch(`/websites/toggle/${site._id}`);
+        }
+        out[c.i] = { ok: true };
+      } catch (err) {
+        out[c.i] = { ok: false, error: apiErrorMessage(err) };
+      }
+    }
+    if (strictSelected && strictMode) {
+      try {
+        const res = await api.put('/auth/profile', { strictMode: strictMode.to });
+        if (res.data?.user) updateUser(res.data.user);
+        out.strict = { ok: true };
+      } catch (err) {
+        out.strict = { ok: false, error: apiErrorMessage(err) };
+      }
+    }
+    // Same signal Settings sends: the extension re-syncs straight away
+    window.dispatchEvent(new CustomEvent('DF_SETTINGS_CHANGED'));
+    const failed = Object.values(out).filter((r) => !r.ok).length;
+    if (failed) toast.error('Some changes didn’t apply', 'See the details in the chat.');
+    else toast.success('Blocklist updated', 'The extension picks this up right away.');
+    onUpdate({ applied: { results: out, skipped: changes.map((c, i) => i).filter((i) => !(i in out)), strictSkipped: !('strict' in out) } });
+    setStage('done');
+  };
+
+  const status = (i) => {
+    if (stage !== 'done') return null;
+    const r = results[i];
+    if (!r) return <span className="text-xs text-muted">Skipped</span>;
+    return r.ok ? <Badge tone="accent"><LuCheck size={12} aria-hidden="true" /> Done</Badge> : <span className="text-xs text-danger">{r.error}</span>;
+  };
+
+  return (
+    <div className="agent-proposal">
+      <p className="df-label flex items-center gap-1.5">
+        <LuShieldCheck size={13} aria-hidden="true" />
+        {stage === 'done' ? 'Blocklist changes' : 'Proposed blocklist changes · not applied yet'}
+      </p>
+      <ul>
+        {changes.map((c, i) => (
+          <li key={`${c.site}-${i}`} className="agent-proposal-item">
+            <label className="df-check min-w-0 flex-1">
+              {stage !== 'done' && (
+                <input
+                  type="checkbox"
+                  checked={selected.has(i)}
+                  onChange={() => toggle(i)}
+                  disabled={!c.valid || stage !== 'review'}
+                />
+              )}
+              <span className="min-w-0">
+                <span className="pg-row-title block">{ACTION_LABELS[c.action] || c.action} <span className="df-mono">{c.site}</span></span>
+                {c.reason && <span className="pg-note block text-xs mt-0.5">{c.reason}</span>}
+                {!c.valid && <span className="text-xs text-danger block mt-0.5">{c.problem}</span>}
+              </span>
+            </label>
+            {status(i)}
+          </li>
+        ))}
+        {strictMode && (
+          <li className="agent-proposal-item">
+            <label className="df-check min-w-0 flex-1">
+              {stage !== 'done' && (
+                <input
+                  type="checkbox"
+                  checked={strictSelected}
+                  onChange={() => setStrictSelected((v) => !v)}
+                  disabled={!strictMode.valid || stage !== 'review'}
+                />
+              )}
+              <span className="min-w-0">
+                <span className="pg-row-title block">Turn strict mode {strictMode.to ? 'on' : 'off'}</span>
+                <span className="pg-note block text-xs mt-0.5">
+                  {strictMode.to ? 'Blocked sites can’t be unlocked with coins.' : 'Blocked sites can be unlocked with coins again.'}
+                </span>
+                {!strictMode.valid && <span className="text-xs text-danger block mt-0.5">{strictMode.problem}</span>}
+              </span>
+            </label>
+            {stage === 'done' && (proposal.applied?.strictSkipped
+              ? <span className="text-xs text-muted">Skipped</span>
+              : results.strict?.ok ? <Badge tone="accent"><LuCheck size={12} aria-hidden="true" /> Done</Badge> : <span className="text-xs text-danger">{results.strict?.error}</span>)}
+          </li>
+        )}
+      </ul>
+      {stage !== 'done' && (
+        <div className="py-3 border-t border-line">
+          {stage === 'confirm' && (
+            <p role="alert" className="text-sm text-danger mb-2">
+              This will {risky.join(' and ')}. Are you sure?
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant={stage === 'confirm' ? 'danger' : 'primary'} onClick={apply} loading={stage === 'applying'} disabled={nothing}>
+              {stage === 'confirm' ? 'Yes, apply' : `Apply ${chosen.length + (strictSelected ? 1 : 0)} selected`}
+            </Button>
+            {stage === 'confirm' && <Button size="sm" variant="ghost" onClick={() => setStage('review')}>Go back</Button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Dashboard chat with the focus coach (Gemini via POST /api/agent/chat).
  * The coach reads your stats and can propose sessions; nothing is saved until
@@ -181,6 +343,13 @@ const AgentChat = () => {
         ...p,
         items: p.items.map((it, i) => (i === index ? { ...it, ...patch } : it)),
       })),
+    })));
+  };
+
+  const updateProposal = (messageId, proposalId, patch) => {
+    setMessages((prev) => prev.map((m) => (m.id !== messageId ? m : {
+      ...m,
+      proposals: m.proposals.map((p) => (p.id !== proposalId ? p : { ...p, ...patch })),
     })));
   };
 
@@ -261,6 +430,9 @@ const AgentChat = () => {
                   <span className="sr-only">{m.role === 'user' ? 'You said:' : 'Coach:'}</span>
                   <MessageText text={m.text} />
                 </div>
+                {(m.proposals || []).filter((p) => p.kind === 'blocklist').map((p) => (
+                  <BlocklistProposal key={p.id} proposal={p} onUpdate={(patch) => updateProposal(m.id, p.id, patch)} />
+                ))}
                 {(m.proposals || []).map((p) => p.kind === 'schedule' && (
                   <div key={p.id} className="agent-proposal">
                     <p className="df-label flex items-center gap-1.5">

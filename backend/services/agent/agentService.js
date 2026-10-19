@@ -21,6 +21,9 @@ const { buildSystemPrompt } = require('./systemPrompt');
 const MAX_TOOL_ROUNDS = 5;
 const MAX_HISTORY = 12;
 const MAX_MESSAGE_CHARS = 2000;
+// A reply that sends the user to proposal cards ("review the changes below and press Apply")
+const PROMISES_CARDS = /\b(below|press (apply|confirm)|cards?)\b/i;
+const NUDGE = '(System check, not from the user: your reply refers to changes or cards below, but you did not call a propose tool, so the user sees nothing to confirm. Call proposeSchedule or proposeBlocklistChange now, or answer again without mentioning cards.)';
 
 class AgentError extends Error {
   constructor(status, message) {
@@ -106,11 +109,18 @@ async function chat({ userId, firstName, timezone, messages, now = new Date() })
   let reply = '';
   let model = null;
 
+  let nudged = false;
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     // Last round: tools off, so the model has to answer with what it has
     const res = await generate({ systemInstruction, contents, tools: DECLARATIONS, toolMode: round < MAX_TOOL_ROUNDS ? 'AUTO' : 'NONE' });
     model = res.model;
     if (!res.functionCalls.length || round === MAX_TOOL_ROUNDS) {
+      // Talks about cards to confirm, but proposed nothing: ask once to fix that
+      if (!proposals.length && !nudged && round < MAX_TOOL_ROUNDS && PROMISES_CARDS.test(res.text)) {
+        nudged = true;
+        contents.push(res.content, { role: 'user', parts: [{ text: NUDGE }] });
+        continue;
+      }
       reply = res.text;
       break;
     }
