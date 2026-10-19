@@ -12,6 +12,7 @@ const CoinsPage = () => {
   const { balance, refreshBalance } = useCoins();
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [welcome, setWelcome] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
@@ -34,6 +35,7 @@ const CoinsPage = () => {
       }
       if (summaryRes.data.success) {
         setSummary(summaryRes.data.summary);
+        setWelcome(summaryRes.data.welcomeBonus || null);
       }
 
       refreshBalance();
@@ -68,6 +70,7 @@ const CoinsPage = () => {
   };
 
   const TYPE_LABEL = { earned: 'Earned', spent: 'Unlock', bonus: 'Bonus', penalty: 'Penalty' };
+  const isWelcome = (tx) => tx.type === 'bonus' && /^Welcome bonus/.test(tx.description || '');
   const TYPE_TONE = { earned: 'accent', spent: 'neutral', bonus: 'amber', penalty: 'danger' };
   const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   const fmtClock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -83,6 +86,12 @@ const CoinsPage = () => {
               <AnimatedCounter value={balance} duration={0.9} />
             </p>
             <p className="pg-sub">Earn coins through focus sessions, spend them on controlled breaks.</p>
+            {welcome && (
+              <p className="mt-3 inline-flex items-center gap-2 text-sm text-text-2">
+                <Badge tone="amber" mono>+{welcome.amount}</Badge>
+                Welcome bonus, received {new Date(welcome.receivedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+            )}
           </section>
 
           {/* ── Summary ── */}
@@ -90,7 +99,7 @@ const CoinsPage = () => {
             {[
               ['Total earned', summary ? `+${summary.earned?.total || 0}` : '—', summary ? `${summary.earned?.count || 0} transactions` : '', 'text-amber-ink'],
               ['Total spent', summary ? `−${summary.spent?.total || 0}` : '—', summary ? `${summary.spent?.count || 0} unlocks` : '', 'text-text'],
-              ['Bonuses', summary ? `+${summary.bonus?.total || 0}` : '—', summary ? `${summary.bonus?.count || 0} bonuses` : '', 'text-amber-ink'],
+              ['Bonuses', summary ? `+${summary.bonus?.total || 0}` : '—', summary ? (welcome ? `incl. +${welcome.amount} welcome bonus` : `${summary.bonus?.count || 0} bonuses`) : '', 'text-amber-ink'],
               ['Penalties', summary ? `−${summary.penalty?.total || 0}` : '—', summary ? `${summary.penalty?.count || 0} penalties` : '', 'text-danger'],
             ].map(([label, value, sub, tone]) => (
               <div key={label}>
@@ -141,7 +150,7 @@ const CoinsPage = () => {
                       {fmtDate(tx.createdAt)} <span className="opacity-70">{fmtClock(tx.createdAt)}</span>
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-medium text-text truncate">{tx.description || TYPE_LABEL[tx.type] || tx.type}</span>
+                      <span className="block text-sm font-medium text-text truncate">{isWelcome(tx) ? `Welcome bonus — your first ${tx.amount} Focus Coins` : (tx.description || TYPE_LABEL[tx.type] || tx.type)}</span>
                       <span className="md:hidden block df-mono text-xs text-muted mt-0.5">{fmtDate(tx.createdAt)} · {fmtClock(tx.createdAt)}</span>
                     </span>
                     <span className="hidden md:block"><Badge tone={TYPE_TONE[tx.type] || 'neutral'}>{TYPE_LABEL[tx.type] || tx.type}</Badge></span>

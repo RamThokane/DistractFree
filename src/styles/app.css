@@ -239,15 +239,19 @@
 .pg-amount--minus { color: var(--danger); }
 .pg-amount--coin { color: var(--amber-ink); }
 
-/* Stat strip: numbers separated by vertical hairlines, no boxes */
+/* Stat strip: numbers separated by vertical hairlines, no boxes.
+   Every row starts flush left; rows after the first get a top rule. */
 .pg-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .pg-stats > * { padding: 20px 20px 20px 0; }
-.pg-stats > * + * { padding-left: 20px; border-left: 1px solid var(--line); }
-@media (max-width: 767px) {
-  .pg-stats > :nth-child(odd) { padding-left: 0; border-left: 0; }
-  .pg-stats > :nth-child(n + 3) { border-top: 1px solid var(--line); }
+.pg-stats > :nth-child(even) { padding-left: 20px; border-left: 1px solid var(--line); }
+.pg-stats > :nth-child(n + 3) { border-top: 1px solid var(--line); }
+@media (min-width: 768px) {
+  .pg-stats--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pg-stats--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pg-stats--3 > *, .pg-stats--4 > * { padding-left: 20px; border-left: 1px solid var(--line); border-top: 0; }
+  .pg-stats--3 > :nth-child(3n + 1), .pg-stats--4 > :nth-child(4n + 1) { padding-left: 0; border-left: 0; }
+  .pg-stats--3 > :nth-child(n + 4), .pg-stats--4 > :nth-child(n + 5) { border-top: 1px solid var(--line); }
 }
-@media (min-width: 768px) { .pg-stats--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .pg-stats--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 /* Recharts: quiet axes and tooltips that use the tokens */
 .app-shell .recharts-cartesian-grid line { stroke: var(--line); }

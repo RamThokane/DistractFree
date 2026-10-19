@@ -2,6 +2,7 @@ const User = require('../models/User');
 const CoinTransaction = require('../models/CoinTransaction');
 const FocusSession = require('../models/FocusSession');
 const { syncUserStreak } = require('../services/streakService');
+const { ensureWelcomeBonus, findWelcomeBonus } = require('../utils/welcomeBonus');
 
 // ────────────────────────────────────────────────────
 // GET /api/coins/balance
@@ -30,6 +31,9 @@ exports.getHistory = async (req, res) => {
   try {
     const { page = 1, limit = 30, type } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Older accounts never got their welcome-bonus entry; add it once
+    await ensureWelcomeBonus(req.user);
 
     const filter = { userId: req.user._id };
     if (type) filter.type = type;
@@ -64,6 +68,7 @@ exports.getHistory = async (req, res) => {
 exports.getSummary = async (req, res) => {
   try {
     const userId = req.user._id;
+    await ensureWelcomeBonus(req.user);
 
     const summary = await CoinTransaction.aggregate([
       { $match: { userId } },
@@ -87,7 +92,12 @@ exports.getSummary = async (req, res) => {
       result[item._id] = { total: Math.abs(item.total), count: item.count };
     });
 
-    res.json({ success: true, summary: result });
+    const welcome = await findWelcomeBonus(userId);
+    res.json({
+      success: true,
+      summary: result,
+      welcomeBonus: welcome ? { amount: welcome.amount, receivedAt: welcome.createdAt } : null,
+    });
   } catch (error) {
     console.error('[Coins] Summary error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });

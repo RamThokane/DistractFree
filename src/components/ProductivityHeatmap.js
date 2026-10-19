@@ -218,7 +218,7 @@ const ProductivityHeatmap = () => {
           ['Longest streak', `${heatmap.longestStreak} days`, 'Consecutive focused days', 'text-amber-ink'],
           ['Data coverage', `${heatmap.coverage}%`, 'Of the selected year', 'text-text'],
         ].map(([label, value, sub, tone], i) => (
-          <div key={label} className={i >= 3 ? 'md:border-t md:border-line' : ''}>
+          <div key={label}>
             <dt className="df-label">{label}</dt>
             <dd className={`df-mono text-lg mt-1 ${tone}`}>{value || 'N/A'}</dd>
             {sub && <dd className="text-xs text-muted mt-0.5">{sub}</dd>}
