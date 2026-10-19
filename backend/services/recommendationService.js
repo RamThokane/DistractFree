@@ -41,8 +41,8 @@ function generateRecommendations(features, productivity, distraction, prediction
           id: 'session_too_long',
           category: 'Session Optimization',
           icon: '⏱️',
-          title: 'Optimal Session Length',
-          description: `Your distraction risk increases after ${optimal} minutes. Try ${optimal}-minute sessions for peak focus.`,
+          title: 'Try Shorter Sessions',
+          description: `Your sessions that go to plan average ${optimal} minutes, but your typical session lasts ${current}. Try ${optimal}-minute sessions.`,
           priority: 'high',
           metric: `${optimal} min`,
           metricLabel: 'Recommended',
@@ -53,7 +53,7 @@ function generateRecommendations(features, productivity, distraction, prediction
           category: 'Session Optimization',
           icon: '📈',
           title: 'Extend Your Sessions',
-          description: `Your average session is ${current} minutes, but your data shows you can focus well up to ${optimal} minutes. Try gradually increasing.`,
+          description: `Your typical session lasts ${current} minutes, and sessions that go to plan average ${optimal}. Try gradually lengthening them.`,
           priority: 'medium',
           metric: `${optimal} min`,
           metricLabel: 'Your sweet spot',
@@ -69,7 +69,7 @@ function generateRecommendations(features, productivity, distraction, prediction
         category: 'Session Optimization',
         icon: '☕',
         title: 'Strategic Breaks',
-        description: `Taking a 5-minute break every ${breakInterval} minutes reduces your tab-switching rate. Your current avg is ${features.tabSwitchCount} switches per session.`,
+        description: `You switch tabs about ${features.tabSwitchCount} times per session. A planned 5-minute break every ${breakInterval} minutes gives that urge a place to go.`,
         priority: 'medium',
         metric: `${breakInterval} min`,
         metricLabel: 'Break interval',
@@ -139,14 +139,14 @@ function generateRecommendations(features, productivity, distraction, prediction
     }
   }
 
-  // 6. Blocked site ratio
+  // 6. Blocked site ratio (inside focus sessions — the only time visits are logged)
   if (features.blockedVisitRatio > 15) {
     recs.push({
       id: 'high_blocked_ratio',
       category: 'Distraction Control',
       icon: '🚫',
       title: 'Frequent Blocked Site Visits',
-      description: `${features.blockedVisitRatio}% of your browsing hits blocked sites. Consider adding frequently visited distracting sites to your block list or enabling strict mode.`,
+      description: `During focus sessions, ${features.blockedVisitRatio}% of the sites you opened were blocked. Consider blocking the sites you keep opening, or enabling strict mode.`,
       priority: features.blockedVisitRatio > 30 ? 'high' : 'medium',
       metric: `${features.blockedVisitRatio}%`,
       metricLabel: 'Blocked ratio',
@@ -185,8 +185,8 @@ function generateRecommendations(features, productivity, distraction, prediction
       id: 'streak_strong',
       category: 'Behavioral Coaching',
       icon: '🏆',
-      title: 'Streak Champion',
-      description: `Your ${features.streakCount}-day streak shows exceptional discipline. You're in the top tier of focused users.`,
+      title: 'Strong Streak',
+      description: `${features.streakCount} days in a row with a finished session. Keep the habit going with one session today.`,
       priority: 'low',
       metric: `${features.streakCount} days`,
       metricLabel: 'Streak',
@@ -214,7 +214,7 @@ function generateRecommendations(features, productivity, distraction, prediction
       category: 'Behavioral Coaching',
       icon: '📉',
       title: 'Completion Rate Alert',
-      description: `Only ${features.completionRate}% of your sessions complete. Try shorter planned durations — completing a 15-min session beats abandoning a 60-min one.`,
+      description: `Only ${features.completionRate}% of your sessions in the last 7 days were finished. Try shorter planned durations — finishing a 25-min session beats abandoning a 60-min one.`,
       priority: 'high',
       metric: `${features.completionRate}%`,
       metricLabel: 'Completion rate',
@@ -227,8 +227,8 @@ function generateRecommendations(features, productivity, distraction, prediction
       id: 'burnout_risk',
       category: 'Behavioral Coaching',
       icon: '🧘',
-      title: 'Burnout Risk Detected',
-      description: `You're attempting long sessions (avg ${features.sessionDuration} min) but completing fewer than half. This pattern suggests burnout. Try 25-min sessions with proper breaks.`,
+      title: 'Sessions May Be Too Long',
+      description: `Your finished sessions average ${features.sessionDuration} minutes, yet fewer than half of your sessions get finished. Try 25-minute sessions with proper breaks.`,
       priority: 'high',
       metric: 'High',
       metricLabel: 'Risk level',
@@ -237,7 +237,7 @@ function generateRecommendations(features, productivity, distraction, prediction
 
   // Sort by priority: high first
   const priorityOrder = { high: 0, medium: 1, low: 2 };
-  recs.sort((a, b) => (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2));
+  recs.sort((a, b) => (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2));
 
   return recs;
 }

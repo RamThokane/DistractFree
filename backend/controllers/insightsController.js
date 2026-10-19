@@ -49,11 +49,11 @@ const {
 exports.getFullInsights = async (req, res) => {
   try {
     const userId = req.user._id;
-    const tz = req.query.tz || 'UTC'; // User's IANA timezone (e.g. 'Asia/Kolkata')
+    const tz = req.query.tz || 'UTC'; // User's IANA timezone (e.g. 'Asia/Kolkata'); validated downstream
 
     // Run all analytics in parallel for performance
     const [features, hourly, trends, breakdown, topSites] = await Promise.all([
-      computeUserFeatures(userId, 7),
+      computeUserFeatures(userId, 7, tz),
       getHourlyActivity(userId, 30, tz),
       getTrendAnalytics(userId, 7, tz),
       getDistractionBreakdown(userId, 7),
@@ -75,7 +75,11 @@ exports.getFullInsights = async (req, res) => {
     const recommendations = generateRecommendations(
       features, productivity, distraction, mlPrediction, trends
     );
-    const sessionRec = getSessionRecommendation(features, productivity);
+    // Same length as "Best next session", so the two never disagree
+    const nextBest = await recommendForUser(userId, { timezone: req.query.tz }).catch(() => null);
+    const sessionRec = nextBest?.status === 'ready'
+      ? getSessionRecommendation(features, { ...productivity, optimalSessionLength: nextBest.best.plannedDuration })
+      : getSessionRecommendation(features, productivity);
 
     // ── Assemble response ──────────────────────────
     res.json({
@@ -146,10 +150,10 @@ exports.predictDistraction = async (req, res) => {
     // Optional ?plannedDuration= lets a client preview a specific plan
     const plannedDuration = parseInt(req.query.plannedDuration) || undefined;
     const [features, prediction, breakdown, productivity] = await Promise.all([
-      computeUserFeatures(userId, 7),
+      computeUserFeatures(userId, 7, req.query.tz),
       forecastForUser(userId, { timezone: req.query.tz, plannedDuration }),
       getDistractionBreakdown(userId, 7),
-      getProductivityWindows(userId, 30),
+      getProductivityWindows(userId, 30, req.query.tz),
     ]);
     const sessionRec = getSessionRecommendation(features, productivity);
 

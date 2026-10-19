@@ -17,6 +17,32 @@ const mongoose = require('mongoose');
 const FocusSession = require('../models/FocusSession');
 const BrowsingLog = require('../models/BrowsingLog');
 const User = require('../models/User');
+const { isSessionSuccess } = require('../ml/target');
+const { isValidTimezone } = require('../ml/featureBuilder');
+const { computeStreak } = require('./streakService');
+
+/** A timezone MongoDB accepts; an unknown one used to crash the whole Insights call. */
+const safeTz = (tz) => (isValidTimezone(tz) ? tz : 'UTC');
+
+/*
+ * What the extension logs (extension/background.js):
+ *   - page-time visits, with seconds spent — ONLY while a focus session runs
+ *   - blocked attempts (wasBlocked) — at any time
+ *   - unlocks (wasUnlocked) — an action, not a visit
+ * So "share of visits that were blocked" only makes sense inside sessions,
+ * and unlock events never count as visits.
+ */
+const isUnlock = (l) => Boolean(l.wasUnlocked);
+
+/** Browser-internal pages, the extension itself and DistractFree aren't "sites". */
+const INTERNAL_HOSTS = new Set(['newtab', 'extensions', 'settings', 'history', 'downloads', 'localhost', '127.0.0.1', 'distractfree.site']);
+function isRealSite(host) {
+  const h = String(host || '').toLowerCase();
+  if (!h || !h.includes('.')) return false;                       // chrome://newtab → "newtab"
+  if (INTERNAL_HOSTS.has(h) || h.endsWith('.distractfree.site')) return false;
+  if (/^[a-p]{32}$/.test(h)) return false;                          // chrome-extension://<id>
+  return true;
+}
 
 // ── Time helpers ───────────────────────────────────
 const HOUR_LABELS = [
@@ -54,6 +80,7 @@ function formatHourRange(startHour) {
  * Hours with blocked attempts but no session: riskPercent = min(100, attempts × 10).
  */
 async function getHourlyActivity(userId, days = 30, tz = 'UTC') {
+  tz = safeTz(tz);
   const since = new Date();
   since.setDate(since.getDate() - days);
   const uid = new mongoose.Types.ObjectId(userId);
@@ -142,8 +169,11 @@ async function getProductivityWindows(userId, days = 30, tz = 'UTC', hourly = nu
     };
   }
 
-  // Highest focus score wins; ties go to fewer distractions
-  const ranked = [...sessionHours].sort((a, b) => b.focusScore - a.focusScore || a.blockedAttempts - b.blockedAttempts);
+  // Highest focus score wins; ties go to fewer distractions. Hours with a
+  // single session are only ranked if no hour has two or more — one lucky
+  // session shouldn't become "your best hour".
+  const solid = sessionHours.filter((h) => h.sessions >= 2);
+  const ranked = [...(solid.length ? solid : sessionHours)].sort((a, b) => b.focusScore - a.focusScore || a.blockedAttempts - b.blockedAttempts);
   const best = ranked[0];
   const worst = ranked.length > 1 && ranked[ranked.length - 1].focusScore < best.focusScore ? ranked[ranked.length - 1] : null;
 
@@ -153,16 +183,17 @@ async function getProductivityWindows(userId, days = 30, tz = 'UTC', hourly = nu
     userId: new mongoose.Types.ObjectId(userId),
     startTime: { $gte: since },
     status: 'completed',
-  }).select('duration distractionAttempts');
+  }).select('status duration plannedDuration distractionAttempts');
 
   const avgSessionMinutes = completedSessions.length > 0
     ? Math.round(completedSessions.reduce((s, x) => s + (x.duration || 0), 0) / completedSessions.length)
     : 0;
 
-  // Optimal session length: average length of low-distraction completed sessions
+  // Typical length of sessions that went to plan — the same success rule as
+  // the ML model (finished ≥ 90% of the plan, at most one blocked attempt)
   let optimalSessionLength = 25;
   if (completedSessions.length >= 3) {
-    const successful = completedSessions.filter((s) => s.distractionAttempts <= 1);
+    const successful = completedSessions.filter((s) => isSessionSuccess(s) === 1);
     if (successful.length > 0) {
       const avgSuccessful = successful.reduce((s, x) => s + x.duration, 0) / successful.length;
       optimalSessionLength = Math.max(10, Math.min(90, Math.round(avgSuccessful / 5) * 5));
@@ -213,6 +244,7 @@ async function getHighDistractionHours(userId, days = 30, tz = 'UTC', hourly = n
 // 7-DAY TREND ANALYTICS
 // ═══════════════════════════════════════════════════
 async function getTrendAnalytics(userId, days = 7, tz = 'UTC') {
+  tz = safeTz(tz);
   const since = new Date();
   since.setDate(since.getDate() - days);
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -310,15 +342,18 @@ async function getTrendAnalytics(userId, days = 7, tz = 'UTC') {
  * Compute a rich feature set from the user's real session and browsing data.
  * These features feed the ML prediction and the UI simultaneously.
  */
-async function computeUserFeatures(userId, days = 7) {
+async function computeUserFeatures(userId, days = 7, tz = 'UTC') {
+  tz = safeTz(tz);
   const since = new Date();
   since.setDate(since.getDate() - days);
   const uid = new mongoose.Types.ObjectId(userId);
 
-  const [sessions, browsingLogs, user] = await Promise.all([
-    FocusSession.find({ userId: uid, startTime: { $gte: since } }).sort({ startTime: -1 }),
+  const [sessions, browsingLogs, streak] = await Promise.all([
+    // Ended sessions only — a session still running isn't a failure
+    FocusSession.find({ userId: uid, startTime: { $gte: since }, status: { $in: ['completed', 'cancelled'] } }).sort({ startTime: -1 }),
     BrowsingLog.find({ userId: uid, timestamp: { $gte: since } }).sort({ timestamp: -1 }),
-    User.findById(userId),
+    // Same streak as the dashboard and top bar (computed from sessions, in the user's days)
+    computeStreak(uid, tz).catch(() => ({ current: 0 })),
   ]);
 
   const completedSessions = sessions.filter((s) => s.status === 'completed');
@@ -346,11 +381,13 @@ async function computeUserFeatures(userId, days = 7) {
     ? sessions.reduce((s, x) => s + (x.distractionAttempts || 0), 0) / totalSessions
     : 0;
 
-  // Browsing-level features
-  const totalBrowsing = browsingLogs.length;
-  const blockedVisits = browsingLogs.filter((l) => l.wasBlocked).length;
-  const unlockAttempts = browsingLogs.filter((l) => l.wasUnlocked).length;
-  const blockedVisitRatio = totalBrowsing > 0 ? blockedVisits / totalBrowsing : 0;
+  // Browsing-level features (see the note at the top: visits are only logged in sessions)
+  const visits = browsingLogs.filter((l) => !isUnlock(l) && isRealSite(l.website));
+  const inSession = visits.filter((l) => l.sessionId);
+  const totalBrowsing = visits.length;
+  const blockedVisits = visits.filter((l) => l.wasBlocked).length;
+  const unlockAttempts = browsingLogs.filter(isUnlock).length;
+  const blockedVisitRatio = inSession.length > 0 ? inSession.filter((l) => l.wasBlocked).length / inSession.length : 0;
 
   // Focus score: data-driven composite
   const focusScore = Math.round(
@@ -365,8 +402,8 @@ async function computeUserFeatures(userId, days = 7) {
   // Distraction score: exact complement of focus, so the two always add up to 100
   const distractionScore = 100 - focusScore;
 
-  // Time-of-day for current context
-  const hour = new Date().getHours();
+  // Time-of-day for current context, in the user's timezone (the server runs in UTC)
+  const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
   let timeOfDay;
   if (hour >= 5 && hour < 12) timeOfDay = 'morning';
   else if (hour >= 12 && hour < 17) timeOfDay = 'afternoon';
@@ -385,7 +422,7 @@ async function computeUserFeatures(userId, days = 7) {
     distractionScore,
     timeOfDay,
     dayOfWeek: new Date().getDay(),
-    streakCount: user?.currentStreak || 0,
+    streakCount: streak.current || 0,
     goalCompletionRate: 0, // computed elsewhere if daily goal is set
 
     // Metadata for UI
@@ -401,52 +438,81 @@ async function computeUserFeatures(userId, days = 7) {
 // ═══════════════════════════════════════════════════
 // DISTRACTION BREAKDOWN (browsing-level)
 // ═══════════════════════════════════════════════════
+/**
+ * Inside focus sessions only (that's the only time normal visits are logged):
+ *   visitRatio = blocked visits / all visits
+ *   switchRate = share of consecutive visits, within the same session, that
+ *                jump between a blocked site and a normal one
+ */
 async function getDistractionBreakdown(userId, days = 7) {
   const since = new Date();
   since.setDate(since.getDate() - days);
   const uid = new mongoose.Types.ObjectId(userId);
 
-  const logs = await BrowsingLog.find({ userId: uid, timestamp: { $gte: since } })
-    .sort({ timestamp: -1 });
+  const logs = (await BrowsingLog.find({ userId: uid, timestamp: { $gte: since }, sessionId: { $ne: null } })
+    .select('website wasBlocked wasUnlocked sessionId timestamp')
+    .sort({ timestamp: 1 })
+    .lean()).filter((l) => !isUnlock(l) && isRealSite(l.website));
 
   const totalVisits = logs.length;
   const blockedVisits = logs.filter((l) => l.wasBlocked).length;
 
-  // Context switches
+  // Switches are counted within each session, never across sessions or days
+  const bySession = new Map();
+  for (const l of logs) {
+    const k = String(l.sessionId);
+    if (!bySession.has(k)) bySession.set(k, []);
+    bySession.get(k).push(l);
+  }
   let switches = 0;
-  for (let i = 1; i < logs.length; i++) {
-    if (logs[i].wasBlocked !== logs[i - 1].wasBlocked) switches++;
+  let transitions = 0;
+  for (const list of bySession.values()) {
+    for (let i = 1; i < list.length; i++) {
+      transitions++;
+      if (list[i].wasBlocked !== list[i - 1].wasBlocked) switches++;
+    }
   }
 
   return {
     visitRatio: totalVisits > 0 ? Math.round((blockedVisits / totalVisits) * 100) : 0,
-    switchRate: logs.length > 1 ? Math.round((switches / (logs.length - 1)) * 100) : 0,
+    switchRate: transitions > 0 ? Math.round((switches / transitions) * 100) : 0,
     totalVisits,
     blockedVisits,
+    sessionsWithBrowsing: bySession.size,
+    days,
   };
 }
 
 // ═══════════════════════════════════════════════════
 // TOP SITES ANALYSIS
 // ═══════════════════════════════════════════════════
+/**
+ * Most visited sites: page visits during sessions plus blocked attempts at
+ * any time, by number of visits (time spent breaks ties). Unlocks are counted
+ * separately, and browser/extension/DistractFree pages are left out.
+ * totalDuration is in seconds.
+ */
 async function getTopSites(userId, days = 7) {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  return BrowsingLog.aggregate([
+  const rows = await BrowsingLog.aggregate([
     { $match: { userId: new mongoose.Types.ObjectId(userId), timestamp: { $gte: since } } },
     {
       $group: {
         _id: '$website',
-        visits: { $sum: 1 },
-        totalDuration: { $sum: '$duration' },
-        blockedVisits: { $sum: { $cond: ['$wasBlocked', 1, 0] } },
-        category: { $first: '$category' },
+        visits: { $sum: { $cond: ['$wasUnlocked', 0, 1] } },
+        totalDuration: { $sum: { $cond: ['$wasUnlocked', 0, '$duration'] } },
+        blockedVisits: { $sum: { $cond: [{ $and: ['$wasBlocked', { $not: ['$wasUnlocked'] }] }, 1, 0] } },
+        unlocks: { $sum: { $cond: ['$wasUnlocked', 1, 0] } },
+        category: { $max: '$category' },
       },
     },
-    { $sort: { totalDuration: -1 } },
-    { $limit: 10 },
+    { $match: { visits: { $gt: 0 } } },
+    { $sort: { visits: -1, totalDuration: -1, _id: 1 } },
+    { $limit: 40 },
   ]);
+  return rows.filter((r) => isRealSite(r._id)).slice(0, 10);
 }
 
 // ═══════════════════════════════════════════════════
@@ -837,6 +903,7 @@ function getWeekNumber(d) {
 }
 
 module.exports = {
+  isRealSite,
   getHourlyActivity,
   getProductivityWindows,
   getHighDistractionHours,

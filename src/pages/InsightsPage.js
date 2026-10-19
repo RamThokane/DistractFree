@@ -188,11 +188,18 @@ const InsightsPage = () => {
       <PredictionPanel prediction={prediction} features={features} dataStatus={dataStatus} />
 
       {/* B. Distraction breakdown */}
-      <Section id="breakdown-title" title="Distraction breakdown">
+      <Section
+        id="breakdown-title"
+        title="Distraction breakdown"
+        note={breakdown?.totalVisits ? `During focus sessions · last 7 days · ${breakdown.totalVisits} site visits in ${breakdown.sessionsWithBrowsing} session${breakdown.sessionsWithBrowsing === 1 ? '' : 's'}` : 'During focus sessions · last 7 days'}
+      >
+        {!breakdown?.totalVisits ? (
+          <p className="pg-note">No browsing recorded during focus sessions in the last 7 days. The extension records the sites you open while a session is running.</p>
+        ) : (
         <div className="grid md:grid-cols-2 gap-8">
           {[
-            { label: 'Blocked visit ratio', hint: 'Share of your visits that hit a blocked site', val: breakdown?.visitRatio || 0, warnAt: 30 },
-            { label: 'Context switch rate', hint: 'How often you jump between work and blocked sites', val: breakdown?.switchRate || 0, warnAt: 40 },
+            { label: 'Blocked visit ratio', hint: `Of the sites you opened during sessions, the share that were blocked (${breakdown.blockedVisits} of ${breakdown.totalVisits})`, val: breakdown.visitRatio || 0, warnAt: 30 },
+            { label: 'Context switch rate', hint: 'Within a session, how often your next site flips between a blocked one and a normal one', val: breakdown.switchRate || 0, warnAt: 40 },
           ].map((item) => (
             <div key={item.label}>
               <p className="df-mono text-t-40 text-text">{item.val}%</p>
@@ -201,6 +208,7 @@ const InsightsPage = () => {
             </div>
           ))}
         </div>
+        )}
       </Section>
 
       {/* C. Productivity windows */}
@@ -211,7 +219,7 @@ const InsightsPage = () => {
               ['Best focus hours', productivityWindows.bestFocusHours || 'N/A', 'text-accent'],
               ['Weakest hours', productivityWindows.weakestHours || 'N/A', 'text-amber-ink'],
               ['Avg session', `${productivityWindows.avgSessionMinutes || 0} min`, 'text-text'],
-              ['Optimal length', `${productivityWindows.optimalSessionLength || 25} min`, 'text-text'],
+              ['Length that goes to plan', `${productivityWindows.optimalSessionLength || 25} min`, 'text-text'],
             ].map(([label, value, tone]) => (
               <div key={label}>
                 <dt className="df-label">{label}</dt>
@@ -251,7 +259,7 @@ const InsightsPage = () => {
                 <span className="text-sm font-medium text-text">{h.window || h.label}</span>
                 <span>
                   <ProgressBar value={h.riskPercent} tone={h.riskPercent > 60 ? 'danger' : h.riskPercent > 30 ? 'amber' : 'accent'} />
-                  <span className="block text-xs text-muted mt-1">{h.blockedAttempts} blocked attempts{h.sessions > 0 ? ` · ${h.sessions} session${h.sessions > 1 ? 's' : ''}` : ''}</span>
+                  <span className="block text-xs text-muted mt-1">{h.blockedAttempts} blocked attempt{h.blockedAttempts === 1 ? '' : 's'}{h.sessions > 0 ? ` · ${h.sessions} session${h.sessions > 1 ? 's' : ''}` : ' · outside sessions'}</span>
                 </span>
                 <span className="df-mono text-sm text-right text-text">{h.riskPercent}%</span>
               </li>
@@ -354,7 +362,7 @@ const InsightsPage = () => {
 
       {/* G. Top sites */}
       {topSites?.length > 0 && (
-        <Section id="sites-title" title="Most visited sites" note="Last 7 days">
+        <Section id="sites-title" title="Most visited sites" note="Last 7 days · sites opened during focus sessions, plus blocked attempts at any time">
           <div className="hidden sm:grid grid-cols-[2rem_1fr_5rem_4rem_6rem] gap-4 pb-2 df-label">
             <span>#</span><span>Site</span><span className="text-right">Visits</span><span className="text-right">Time</span><span className="text-right">Blocked</span>
           </div>
@@ -364,7 +372,7 @@ const InsightsPage = () => {
                 <span className="df-mono text-xs text-muted">{String(i + 1).padStart(2, '0')}</span>
                 <span className="text-sm font-medium text-text truncate">{site._id}</span>
                 <span className="df-mono text-sm text-right text-text-2">{site.visits}<span className="sm:hidden text-muted"> visits</span></span>
-                <span className="hidden sm:block df-mono text-sm text-right text-text-2">{Math.round(site.totalDuration / 60)}m</span>
+                <span className="hidden sm:block df-mono text-sm text-right text-text-2">{site.totalDuration >= 60 ? `${Math.round(site.totalDuration / 60)}m` : site.totalDuration > 0 ? `${site.totalDuration}s` : '—'}</span>
                 <span className="hidden sm:block df-mono text-sm text-right">{site.blockedVisits > 0 ? <span className="text-text">{site.blockedVisits}</span> : <span className="text-muted">—</span>}</span>
               </li>
             ))}

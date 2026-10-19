@@ -416,6 +416,8 @@ async function logBrowsingEvent(url, wasBlocked = false, wasUnlocked = false, du
   // unlocked visits are always recorded so analytics see all distraction activity.
   if (!activeSession && !wasBlocked && !wasUnlocked) return;
 
+  // Browser pages, the block page and DistractFree itself aren't sites you visited
+  if (!/^https?:/i.test(url) || isInternalUrl(url)) return;
   const hostname = extractHostname(url);
   if (!hostname) return;
 
