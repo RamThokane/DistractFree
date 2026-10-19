@@ -421,3 +421,33 @@ test('a reply that points to cards without proposing anything gets one nudge', a
   await chat({ userId: me._id, firstName: 'Asha', timezone: TZ, messages: [{ role: 'user', text: 'When?' }], now: NOW });
   assert.equal(plain.length, 1);
 });
+
+test('a slow model is hedged: the next one is asked too and the first answer wins', async () => {
+  process.env.GEMINI_HEDGE_MS = '50';
+  const me = await makeUser();
+  const asked = [];
+  let aborted = false;
+  gemini.setTransport(({ model, signal }) => new Promise((resolve) => {
+    asked.push(model);
+    if (model === 'model-a') {
+      // Hangs until cancelled
+      signal.addEventListener('abort', () => { aborted = true; });
+      return;
+    }
+    resolve({ candidates: [{ content: { role: 'model', parts: text('Quick answer from B') } }] });
+  }));
+  try {
+    const started = Date.now();
+    const result = await chat({ userId: me._id, firstName: 'Asha', timezone: TZ, messages: [{ role: 'user', text: 'hi' }], now: NOW });
+    assert.equal(result.reply, 'Quick answer from B');
+    assert.deepEqual(asked, ['model-a', 'model-b']);
+    assert.ok(Date.now() - started < 2000);
+    assert.ok(aborted, 'the slow request is cancelled');
+    // Next time the slow model is asked after the fast one
+    asked.length = 0;
+    await chat({ userId: me._id, firstName: 'Asha', timezone: TZ, messages: [{ role: 'user', text: 'again' }], now: NOW });
+    assert.equal(asked[0], 'model-b');
+  } finally {
+    delete process.env.GEMINI_HEDGE_MS;
+  }
+});

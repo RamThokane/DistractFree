@@ -2,23 +2,28 @@
  * Gemini client — calls Google's Gemini API (generateContent) over HTTP, like
  * utils/mailer.js does for Resend; no SDK needed.
  *
+ * Gemini models often hang for a while when Google is short of capacity, and
+ * which ones hang changes from minute to minute. So a call is hedged: it asks
+ * the first model, and if no answer has come after HEDGE_MS it also asks the
+ * next one (immediately, if the first one failed). The first good answer wins;
+ * the other requests are cancelled. Models that failed or were too slow are
+ * tried last for a few minutes (per server instance).
+ *
  * Env:
  *   GEMINI_API_KEY          required; without it the assistant is switched off
- *   GEMINI_MODEL            first model to try (default gemini-3.5-flash-lite: fast
- *                           and rarely overloaded)
- *   GEMINI_FALLBACK_MODELS  comma-separated models tried in order when the one
- *                           before is overloaded, rate-limited or times out.
- *                           A model that failed that way is skipped for a few
- *                           minutes (per server instance).
+ *   GEMINI_MODEL            first model to ask (default gemini-3.5-flash-lite)
+ *   GEMINI_FALLBACK_MODELS  comma-separated models asked next, in order
+ *   GEMINI_HEDGE_MS         how long to wait before also asking the next model (default 4000)
  *
  * Tests swap the HTTP call out with setTransport(), so they never reach Google.
  */
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
-const DEFAULT_FALLBACKS = 'gemini-flash-lite-latest,gemini-flash-latest';
+const DEFAULT_FALLBACKS = 'gemini-3.1-flash-lite,gemini-3.5-flash,gemini-3.6-flash,gemini-flash-lite-latest,gemini-flash-latest';
 const COOLDOWN_MS = 3 * 60 * 1000;
-const TIMEOUT_MS = 15 * 1000;
+const DEFAULT_HEDGE_MS = 4000;
+const DEADLINE_MS = 30 * 1000;
 // Worth trying the next model: overloaded, rate-limited, or Google's side failed
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
@@ -31,8 +36,9 @@ class GeminiError extends Error {
 }
 
 const isConfigured = () => Boolean(process.env.GEMINI_API_KEY);
+const hedgeMs = () => Number(process.env.GEMINI_HEDGE_MS) || DEFAULT_HEDGE_MS;
 
-// model → time it may be tried again
+// model → time it may be asked first again
 const coolingDown = new Map();
 
 function modelChain() {
@@ -42,15 +48,22 @@ function modelChain() {
   return [...new Set(list)];
 }
 
+/** The chain with models that recently failed or were slow moved to the end. */
+function orderedChain() {
+  const now = Date.now();
+  const chain = modelChain();
+  return [...chain.filter((m) => !(coolingDown.get(m) > now)), ...chain.filter((m) => coolingDown.get(m) > now)];
+}
+
 /** POST one generateContent request to one model. */
-async function httpTransport({ model, body, timeoutMs }) {
+async function httpTransport({ model, body, signal }) {
   let res;
   try {
     res = await fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs),
+      signal,
     });
   } catch (err) {
     const timedOut = err.name === 'TimeoutError' || err.name === 'AbortError';
@@ -73,8 +86,28 @@ function setTransport(fn) {
   coolingDown.clear();
 }
 
+/** Ask one model; resolves with the parsed answer or throws a GeminiError. */
+async function ask(model, body, signal) {
+  const data = await transport({ model, body, signal });
+  const candidate = data?.candidates?.[0];
+  if (!candidate?.content) {
+    const reason = candidate?.finishReason || data?.promptFeedback?.blockReason || 'EMPTY';
+    throw new GeminiError(`${model} returned no content (${reason})`, { retryable: reason === 'EMPTY' });
+  }
+  const parts = candidate.content.parts || [];
+  return {
+    content: { role: 'model', parts },
+    parts,
+    // Thought summaries are not part of the answer
+    text: parts.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').trim(),
+    functionCalls: parts.filter((p) => p.functionCall).map((p) => p.functionCall),
+    finishReason: candidate.finishReason,
+    model,
+  };
+}
+
 /**
- * One generateContent call, falling back down the model chain.
+ * One generateContent call, hedged across the model chain (see top of file).
  *
  * @param {object}   req
  * @param {string}   req.systemInstruction
@@ -85,7 +118,7 @@ function setTransport(fn) {
  * @param {number}   [req.temperature]
  * @returns {Promise<{ content: object, parts: object[], text: string, functionCalls: object[], finishReason: string, model: string }>}
  */
-async function generate({ systemInstruction, contents, tools, toolMode = 'AUTO', responseSchema, temperature = 0.4, timeoutMs = TIMEOUT_MS }) {
+async function generate({ systemInstruction, contents, tools, toolMode = 'AUTO', responseSchema, temperature = 0.4, deadlineMs = DEADLINE_MS }) {
   if (!isConfigured()) throw new GeminiError('GEMINI_API_KEY is not set', { status: 503 });
 
   const body = {
@@ -102,37 +135,60 @@ async function generate({ systemInstruction, contents, tools, toolMode = 'AUTO',
     body.generationConfig.responseJsonSchema = responseSchema;
   }
 
-  // Skip models that just failed, unless that leaves none
-  const chain = modelChain();
-  const ready = chain.filter((m) => !(coolingDown.get(m) > Date.now()));
+  const models = orderedChain();
+  return new Promise((resolve, reject) => {
+    const pending = new Map(); // model → AbortController
+    let next = 0;
+    let settled = false;
+    let lastError = null;
+    let hedgeTimer = null;
 
-  let lastError;
-  for (const model of ready.length ? ready : chain) {
-    try {
-      const data = await transport({ model, body, timeoutMs });
-      const candidate = data?.candidates?.[0];
-      if (!candidate?.content) {
-        const reason = candidate?.finishReason || data?.promptFeedback?.blockReason || 'EMPTY';
-        throw new GeminiError(`${model} returned no content (${reason})`, { retryable: reason === 'EMPTY' });
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(hedgeTimer);
+      clearTimeout(deadline);
+      // Anything still running was slower than the winner: ask it later next time
+      for (const [model, controller] of pending) {
+        controller.abort();
+        coolingDown.set(model, Date.now() + COOLDOWN_MS);
       }
-      const parts = candidate.content.parts || [];
-      return {
-        content: { role: 'model', parts },
-        parts,
-        // Thought summaries are not part of the answer
-        text: parts.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').trim(),
-        functionCalls: parts.filter((p) => p.functionCall).map((p) => p.functionCall),
-        finishReason: candidate.finishReason,
-        model,
-      };
-    } catch (err) {
-      lastError = err instanceof GeminiError ? err : new GeminiError(err.message);
-      console.error('[Gemini]', lastError.message);
-      if (!lastError.retryable) break;
-      coolingDown.set(model, Date.now() + COOLDOWN_MS);
-    }
-  }
-  throw lastError;
+      fn(value);
+    };
+
+    const launch = () => {
+      clearTimeout(hedgeTimer);
+      if (settled || next >= models.length) return;
+      const model = models[next++];
+      const controller = new AbortController();
+      pending.set(model, controller);
+      ask(model, body, controller.signal).then(
+        (answer) => {
+          pending.delete(model);
+          finish(resolve, answer);
+        },
+        (err) => {
+          pending.delete(model);
+          if (settled) return;
+          lastError = err instanceof GeminiError ? err : new GeminiError(err.message);
+          console.error('[Gemini]', lastError.message);
+          // A bad request fails the same way on every model
+          if (!lastError.retryable) return finish(reject, lastError);
+          coolingDown.set(model, Date.now() + COOLDOWN_MS);
+          if (next < models.length) launch();
+          else if (pending.size === 0) finish(reject, lastError);
+        }
+      );
+      if (next < models.length) hedgeTimer = setTimeout(launch, hedgeMs());
+    };
+
+    const deadline = setTimeout(() => {
+      console.error('[Gemini] No model answered in time');
+      finish(reject, new GeminiError('No Gemini model answered in time', { retryable: true }));
+    }, deadlineMs);
+
+    launch();
+  });
 }
 
 module.exports = { GeminiError, isConfigured, modelChain, generate, setTransport };
