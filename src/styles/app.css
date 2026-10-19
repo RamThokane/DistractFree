@@ -1,10 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   DistractFree app — shell (top bar, drawer) and the page
+   DistractFree app — shell (sidebar, top bar, drawer) and the page
    patterns shared by the signed-in screens. Tokens only.
    ═══════════════════════════════════════════════════════════════ */
 
 .app-shell {
   --topbar-h: 64px;
+  --sidebar-w: 248px;
   min-height: 100vh;
   background: var(--paper);
   color: var(--text);
@@ -21,25 +22,6 @@
   border-radius: var(--r-sm);
 }
 .app-brand:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-
-/* ── Horizontal nav (same language as the landing nav) ── */
-.app-hnav { display: none; align-items: center; gap: 2px; margin: 0 auto; }
-@media (min-width: 1360px) { .app-hnav { display: flex; } }
-.app-hnav-link {
-  position: relative;
-  padding: 8px 12px;
-  border-radius: var(--r-sm);
-  font-size: var(--fs-14);
-  font-weight: 500;
-  color: var(--muted);
-  white-space: nowrap;
-  transition: color var(--dur-fast) ease;
-}
-.app-hnav-link:hover, .app-hnav-link.is-active { color: var(--text); }
-.app-hnav-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.app-hnav-rule { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 1.5px; border-radius: 1px; background: var(--accent); }
-/* Hamburger only below 1360px (9 links need the room) (doubled class beats .app-icon-btn) */
-@media (min-width: 1360px) { .app-icon-btn.app-menu-toggle { display: none; } }
 
 .app-avatar-btn { border: 0; background: none; padding: 2px; border-radius: 50%; cursor: pointer; margin-left: 4px; }
 .app-avatar-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
@@ -197,13 +179,13 @@
   z-index: 70;
   top: 0;
   bottom: 0;
-  right: 0;
+  left: 0;
   width: min(300px, 86vw);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   background: var(--paper);
-  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
   box-shadow: var(--shadow-pop);
 }
 
@@ -309,4 +291,28 @@
   .agent-msg--user { max-width: 88%; }
   .agent-proposal { min-width: 0; }
   .agent-proposal-item { flex-wrap: wrap; }
+}
+
+/* ── Sidebar (≥1024px): fixed on the left; the top bar and page sit to its right ── */
+.app-sidebar { display: none; }
+.app-sidebar-brand { flex-shrink: 0; height: var(--topbar-h); padding: 0 20px; border-bottom: 1px solid var(--line); border-radius: 0; }
+@media (min-width: 1024px) {
+  .app-sidebar {
+    position: fixed;
+    z-index: 40;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--sidebar-w);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--paper);
+    border-right: 1px solid var(--line);
+  }
+  .app-topbar, .app-main { margin-left: var(--sidebar-w); }
+  .app-topbar-inner { justify-content: flex-end; max-width: none; }
+  .app-topbar-brand { display: none; }
+  /* doubled class beats .app-icon-btn */
+  .app-icon-btn.app-menu-toggle { display: none; }
 }

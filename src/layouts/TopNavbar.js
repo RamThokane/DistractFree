@@ -25,8 +25,9 @@ import {
 } from 'react-icons/lu';
 
 /* ═══════════════════════════════════════════════════════════════
-   App navigation — a flat horizontal bar (same as the landing nav)
-   with a drawer on smaller screens.
+   App navigation — a fixed left sidebar on wide screens (≥1024px), and
+   a top bar with a drawer that slides in from the left below that.
+   The top bar always holds the status chips and the account menu.
    ═══════════════════════════════════════════════════════════════ */
 
 export const navItems = [
@@ -57,6 +58,38 @@ function useDismiss(open, ref, close) {
     };
   }, [open, ref, close]);
 }
+
+/** The section links, with icons (sidebar and drawer). */
+const NavLinks = ({ onNavigate, label }) => (
+  <nav className="flex flex-col gap-0.5 p-3" aria-label={label}>
+    {navItems.map(({ to, icon: Icon, label: text }) => (
+      <NavLink
+        key={to}
+        to={to}
+        end={to === '/dashboard'}
+        onClick={onNavigate}
+        className={({ isActive }) => `app-drawer-link ${isActive ? 'is-active' : ''}`}
+      >
+        <Icon aria-hidden="true" />
+        <span>{text}</span>
+      </NavLink>
+    ))}
+  </nav>
+);
+
+/** Streak and log out, at the bottom of the sidebar and drawer. */
+const NavFooter = ({ streak, onLogout }) => (
+  <div className="mt-auto p-3 border-t border-line flex flex-col gap-2">
+    <div className="flex items-center justify-between px-3 py-2 text-sm">
+      <span className="text-muted flex items-center gap-1.5"><LuFlame className="text-amber" aria-hidden="true" />Streak</span>
+      <span className="df-mono text-text">{streak} days</span>
+    </div>
+    <button onClick={onLogout} className="app-menu-item app-menu-item--danger rounded-md">
+      <LuLogOut aria-hidden="true" />
+      Log out
+    </button>
+  </div>
+);
 
 const TopNavbar = () => {
   const { user, logout } = useAuth();
@@ -132,38 +165,28 @@ const TopNavbar = () => {
 
   return (
     <>
+      {/* ── Sidebar (≥1024px) ── */}
+      <aside className="app-sidebar" aria-label="Sidebar">
+        <Link to="/dashboard" className="app-brand app-sidebar-brand" aria-label="DistractFree dashboard">
+          <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
+          <Wordmark className="df-wordmark--logo" />
+        </Link>
+        <NavLinks label="Main navigation" />
+        <NavFooter streak={streak} onLogout={handleLogout} />
+      </aside>
+
       <header className={`app-topbar ${scrolled ? 'is-scrolled' : ''}`} role="banner">
         <div className="app-topbar-inner">
-          {/* Left — logo */}
-          <Link to="/dashboard" className="app-brand shrink-0" aria-label="DistractFree dashboard">
-            <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
-            <Wordmark className="df-wordmark--logo hidden sm:inline" />
-          </Link>
-
-          {/* Center — section links (≥1360px) */}
-          <nav className="app-hnav" aria-label="Main navigation">
-            {navItems.map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/dashboard'}
-                className={({ isActive }) => `app-hnav-link ${isActive ? 'is-active' : ''}`}
-              >
-                {({ isActive }) => (
-                  <>
-                    <span>{label}</span>
-                    {isActive && (
-                      <motion.span
-                        className="app-hnav-rule"
-                        layoutId="appNavRule"
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
-                      />
-                    )}
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </nav>
+          {/* Left — menu button and logo (on wide screens both live in the sidebar) */}
+          <div className="flex items-center gap-1 app-topbar-brand">
+            <button className="app-icon-btn app-menu-toggle -ml-2" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+              <LuMenu />
+            </button>
+            <Link to="/dashboard" className="app-brand shrink-0" aria-label="DistractFree dashboard">
+              <img src="/favicon.svg" alt="" className="w-7 h-7 rounded-md" />
+              <Wordmark className="df-wordmark--logo hidden sm:inline" />
+            </Link>
+          </div>
 
           {/* Right — status + account */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
@@ -289,15 +312,11 @@ const TopNavbar = () => {
               </AnimatePresence>
             </div>
 
-            {/* Hamburger (<1360px) */}
-            <button className="app-icon-btn app-menu-toggle -mr-2" onClick={() => setMobileOpen(true)} aria-label="Open menu">
-              <LuMenu />
-            </button>
           </div>
         </div>
       </header>
 
-      {/* ── Drawer (<1360px) ── */}
+      {/* ── Drawer (<1024px), slides in from the left ── */}
       <AnimatePresence>
         {mobileOpen && (
           <>
@@ -314,9 +333,9 @@ const TopNavbar = () => {
               role="dialog"
               aria-modal="true"
               aria-label="Menu"
-              initial={{ x: 300 }}
+              initial={{ x: -300 }}
               animate={{ x: 0 }}
-              exit={{ x: 300 }}
+              exit={{ x: -300 }}
               transition={{ duration: 0.22, ease: 'easeOut' }}
             >
               <div className="flex items-center justify-between h-16 px-5 border-b border-line">
@@ -329,34 +348,8 @@ const TopNavbar = () => {
                 </button>
               </div>
 
-              <nav className="flex flex-col gap-0.5 p-3" aria-label="Mobile navigation">
-                {navItems.map(({ to, icon: Icon, label }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={to === '/dashboard'}
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) => `app-drawer-link ${isActive ? 'is-active' : ''}`}
-                  >
-                    <Icon aria-hidden="true" />
-                    <span>{label}</span>
-                  </NavLink>
-                ))}
-              </nav>
-
-              <div className="mt-auto p-3 border-t border-line flex flex-col gap-2">
-                <div className="flex items-center justify-between px-3 py-2 text-sm">
-                  <span className="text-muted flex items-center gap-1.5"><LuFlame className="text-amber" aria-hidden="true" />Streak</span>
-                  <span className="df-mono text-text">{streak} days</span>
-                </div>
-                <button
-                  onClick={() => { setMobileOpen(false); handleLogout(); }}
-                  className="app-menu-item app-menu-item--danger rounded-md"
-                >
-                  <LuLogOut aria-hidden="true" />
-                  Log out
-                </button>
-              </div>
+              <NavLinks label="Mobile navigation" onNavigate={() => setMobileOpen(false)} />
+              <NavFooter streak={streak} onLogout={() => { setMobileOpen(false); handleLogout(); }} />
             </motion.div>
           </>
         )}

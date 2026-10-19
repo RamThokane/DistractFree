@@ -21,6 +21,7 @@ test.before(async () => {
   process.env.GEMINI_API_KEY = 'test-key';
   process.env.GEMINI_MODEL = 'model-a';
   process.env.GEMINI_FALLBACK_MODELS = 'model-b';
+  process.env.AGENT_RETRY_PAUSE_MS = '0';
   mongod = await MongoMemoryServer.create();
   await mongoose.connect(mongod.getUri());
   await Promise.all([AgentUsage.syncIndexes(), ScheduledSession.syncIndexes()]);
@@ -450,4 +451,18 @@ test('a slow model is hedged: the next one is asked too and the first answer win
   } finally {
     delete process.env.GEMINI_HEDGE_MS;
   }
+});
+
+test('if every model is busy, the step is retried once and can still succeed', async () => {
+  const me = await makeUser();
+  let calls = 0;
+  gemini.setTransport(async () => {
+    calls++;
+    // First attempt: both models busy; the retry gets through
+    if (calls <= 2) throw new gemini.GeminiError('busy', { status: 503, retryable: true });
+    return { candidates: [{ content: { role: 'model', parts: text('Back again') } }] };
+  });
+  const result = await chat({ userId: me._id, firstName: 'Asha', timezone: TZ, messages: [{ role: 'user', text: 'hi' }], now: NOW });
+  assert.equal(result.reply, 'Back again');
+  assert.equal(calls, 3);
 });

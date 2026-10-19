@@ -308,7 +308,15 @@ const AgentChat = ({ initialQuestion }) => {
     setPending(true);
     try {
       const history = next.filter((m) => m.role === 'user' || m.role === 'model').slice(-HISTORY_SENT).map(({ role, text: t }) => ({ role, text: t }));
-      const res = await agentService.chat(history);
+      let res;
+      try {
+        res = await agentService.chat(history);
+      } catch (err) {
+        // Gemini busy (502): one quiet retry before showing an error
+        if (err?.response?.status !== 502) throw err;
+        await new Promise((r) => setTimeout(r, 2000));
+        res = await agentService.chat(history);
+      }
       setMessages((prev) => [...prev, { id: newId(), role: 'model', text: res.data.reply, proposals: res.data.proposals || [] }]);
       if (res.data.usage) setStatus((s) => ({ ...s, remainingToday: res.data.usage.remainingToday }));
     } catch (err) {

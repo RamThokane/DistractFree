@@ -21,6 +21,7 @@ const { buildSystemPrompt } = require('./systemPrompt');
 const MAX_TOOL_ROUNDS = 5;
 const MAX_HISTORY = 12;
 const MAX_MESSAGE_CHARS = 2000;
+const RETRY_PAUSE_MS = 1500;
 // A reply that sends the user to proposal cards ("review the changes below and press Apply")
 const PROMISES_CARDS = /\b(below|press (apply|confirm)|cards?)\b/i;
 const NUDGE = '(System check, not from the user: your reply refers to changes or cards below, but you did not call a propose tool, so the user sees nothing to confirm. Call proposeSchedule or proposeBlocklistChange now, or answer again without mentioning cards.)';
@@ -76,6 +77,18 @@ async function remainingToday(userId, now = new Date(), tz = 'UTC') {
 
 // ── Conversation ───────────────────────────────────
 
+/** generate(), tried once more after a short pause if every model was busy. */
+async function generateWithRetry(req) {
+  try {
+    return await generate(req);
+  } catch (err) {
+    if (!(err instanceof GeminiError) || !err.retryable) throw err;
+    console.error('[Agent] All models busy, retrying once:', err.message);
+    await new Promise((r) => setTimeout(r, Number(process.env.AGENT_RETRY_PAUSE_MS ?? RETRY_PAUSE_MS)));
+    return generate(req);
+  }
+}
+
 /** The client's messages as Gemini contents: plain text only, last MAX_HISTORY, starting and ending with the user. */
 function cleanHistory(messages) {
   if (!Array.isArray(messages)) throw new AgentError(400, 'messages must be a list');
@@ -119,7 +132,7 @@ async function chat({ userId, firstName, timezone, messages, now = new Date() })
   let nudged = false;
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     // Last round: tools off, so the model has to answer with what it has
-    const res = await generate({ systemInstruction, contents, tools: DECLARATIONS, toolMode: round < MAX_TOOL_ROUNDS ? 'AUTO' : 'NONE' });
+    const res = await generateWithRetry({ systemInstruction, contents, tools: DECLARATIONS, toolMode: round < MAX_TOOL_ROUNDS ? 'AUTO' : 'NONE' });
     model = res.model;
     if (!res.functionCalls.length || round === MAX_TOOL_ROUNDS) {
       // Talks about cards to confirm, but proposed nothing: ask once to fix that
