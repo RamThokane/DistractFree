@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { formatTime, getRandomQuote, motivationalQuotes } from '../utils/helpers';
 import { SESSION_PRESETS } from '../utils/coinRules';
+import { pageTitle } from '../components/RouteTitle';
 import { LuPlay, LuSquare, LuLock, LuCalendarDays, LuRotateCcw, LuX, LuCoins } from 'react-icons/lu';
 
 // Live state (a simple rule over this session's counts, computed on the server)
@@ -326,6 +327,14 @@ const FocusSession = () => {
       completeSession();
     }
   }, [timeLeft, isRunning, completeSession]);
+
+  // ── Tab title: live countdown while a session runs ──
+  useEffect(() => {
+    document.title = isRunning
+      ? `${formatTime(timeLeft)} · Focusing — DistractFree`
+      : isComplete ? pageTitle('Session complete') : pageTitle('Focus session');
+  }, [isRunning, isComplete, timeLeft]);
+  useEffect(() => () => { document.title = pageTitle('Focus session'); }, []);
 
   // ── Rotate quotes ──
   useEffect(() => {

@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { CoinProvider } from './context/CoinContext';
 import { ToastProvider } from './components/ui';
 import ProtectedRoute from './components/ProtectedRoute';
+import RouteTitle from './components/RouteTitle';
 import DashboardLayout from './layouts/DashboardLayout';
 
 // Pages
@@ -41,6 +42,7 @@ function App() {
       <ToastProvider>
         <MotionConfig reducedMotion="user">
         <Router>
+          <RouteTitle />
           <AnimatePresence mode="wait">
             <Routes>
               {/* Public routes */}
