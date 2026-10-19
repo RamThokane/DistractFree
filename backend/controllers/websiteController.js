@@ -4,24 +4,7 @@ const CoinTransaction = require('../models/CoinTransaction');
 const FocusSession = require('../models/FocusSession');
 const { UNLOCK_COST } = require('../utils/coinCalculator');
 const { createNotification } = require('./notificationController');
-
-// Known distracting domains → category (feeds analytics and the ML model)
-const KNOWN_CATEGORIES = {
-  social_media: ['facebook.com', 'instagram.com', 'x.com', 'twitter.com', 'tiktok.com', 'snapchat.com', 'linkedin.com', 'pinterest.com', 'reddit.com', 'threads.net'],
-  streaming: ['youtube.com', 'netflix.com', 'primevideo.com', 'hotstar.com', 'twitch.tv', 'disneyplus.com', 'hulu.com', 'jiocinema.com'],
-  entertainment: ['9gag.com', 'imgur.com', 'buzzfeed.com', 'spotify.com'],
-  news: ['cnn.com', 'bbc.com', 'news.google.com', 'ndtv.com', 'timesofindia.indiatimes.com', 'nytimes.com'],
-  shopping: ['amazon.com', 'amazon.in', 'flipkart.com', 'myntra.com', 'ebay.com', 'meesho.com'],
-  gaming: ['steampowered.com', 'epicgames.com', 'roblox.com', 'chess.com', 'miniclip.com'],
-  messaging: ['web.whatsapp.com', 'whatsapp.com', 'discord.com', 'telegram.org', 'messenger.com'],
-};
-
-function guessCategory(domain) {
-  for (const [category, domains] of Object.entries(KNOWN_CATEGORIES)) {
-    if (domains.some((d) => domain === d || domain.endsWith('.' + d))) return category;
-  }
-  return 'other';
-}
+const { normaliseWebsiteUrl, guessCategory } = require('../utils/websiteUrl');
 
 // ────────────────────────────────────────────────────
 // POST /api/websites/add
@@ -39,11 +22,7 @@ exports.addWebsite = async (req, res) => {
     }
 
     // Normalise URL — strip protocol and trailing slash
-    const normalised = websiteUrl
-      .replace(/^https?:\/\//, '')
-      .replace(/^www\./, '')
-      .replace(/\/+$/, '')
-      .toLowerCase();
+    const normalised = normaliseWebsiteUrl(websiteUrl);
 
     // Check for duplicate
     const existing = await BlockedWebsite.findOne({ userId, websiteUrl: normalised });

@@ -31,6 +31,13 @@ export const scheduleService = {
   startNow: (id) => api.post(`/schedule/${id}/start-now`),
 };
 
+/* ── AI assistant (Gemini, server-side) ── */
+// messages: [{ role: 'user' | 'model', text }] — the recent conversation
+export const agentService = {
+  status: () => api.get('/agent/status'),
+  chat: (messages) => api.post('/agent/chat', { messages, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }, { timeout: 90000 }),
+};
+
 /* ── Coins ── */
 export const coinService = {
   getBalance: () => api.get('/coins/balance', { params: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } }),

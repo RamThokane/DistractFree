@@ -499,15 +499,26 @@ async function sendScheduledReminders(userId, now = new Date()) {
 
 // ── Commands ───────────────────────────────────────
 
-async function createSchedule(userId, input, now = new Date()) {
+/**
+ * Validate a new schedule without saving it: the same checks createSchedule
+ * runs (fields, repeat days, overlaps). Throws a ScheduleError if it can't be
+ * created. The AI assistant uses this to propose sessions safely.
+ * @returns {Promise<object>} the fields createSchedule would store
+ */
+async function checkSchedule(userId, input, now = new Date()) {
   const fields = cleanFields(input, { now });
   const repeat = fields.repeat || 'none';
   const candidate = { plannedDuration: fields.plannedDuration, startAt: fields.startAt, repeat, repeatDays: fields.repeatDays || [], timezone: fields.timezone || 'UTC' };
   candidate.repeatDays = normaliseRepeatDays(candidate);
 
   await assertNoOverlap(userId, candidate, {}, now);
-  const doc = await ScheduledSession.create({ userId, title: fields.title, subject: fields.subject || '', ...candidate });
-  return repeat === 'none' ? docView(doc, null, now) : virtualView(doc, doc.startAt, now);
+  return { title: fields.title, subject: fields.subject || '', ...candidate };
+}
+
+async function createSchedule(userId, input, now = new Date()) {
+  const fields = await checkSchedule(userId, input, now);
+  const doc = await ScheduledSession.create({ userId, ...fields });
+  return fields.repeat === 'none' ? docView(doc, null, now) : virtualView(doc, doc.startAt, now);
 }
 
 /** Edit a whole series in place. */
@@ -689,6 +700,7 @@ module.exports = {
   listOccurrences,
   nextOccurrence,
   scheduleSummary,
+  checkSchedule,
   assertNoOverlap,
   resolveTarget,
   processDueSchedules,

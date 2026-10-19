@@ -22,6 +22,7 @@ const mlRoutes = require('./routes/mlRoutes');
 const browsingRoutes = require('./routes/browsingRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
+const agentRoutes = require('./routes/agentRoutes');
 
 const app = express();
 
@@ -129,6 +130,7 @@ app.use('/api/ml', mlRoutes);
 app.use('/api/browsing', browsingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/agent', agentRoutes);
 
 // Health check (public)
 app.get('/api/health', (_req, res) => {

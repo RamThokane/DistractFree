@@ -35,9 +35,11 @@ const NextScheduledCard = () => {
     load();
     const id = setInterval(load, REFRESH_MS);
     window.addEventListener('DF_ACTIVE_SESSION_CHANGED', load);
+    window.addEventListener('DF_SCHEDULE_CHANGED', load);
     return () => {
       clearInterval(id);
       window.removeEventListener('DF_ACTIVE_SESSION_CHANGED', load);
+      window.removeEventListener('DF_SCHEDULE_CHANGED', load);
     };
   }, [load]);
 
