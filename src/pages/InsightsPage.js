@@ -139,23 +139,40 @@ const InsightsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchInsights = useCallback(async () => {
+  // `silent` refreshes in place: no skeleton, and a failed refresh keeps what's shown
+  const fetchInsights = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const res = await api.get(`/insights/full?tz=${encodeURIComponent(tz)}`);
       if (res.data?.success) setData(res.data);
-      else setError('Failed to load insights');
+      else if (!silent) setError('Failed to load insights');
     } catch (err) {
       console.error('[Insights] Fetch error:', err);
-      setError('Failed to load insights.');
+      if (!silent) setError('Failed to load insights.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => { fetchInsights(); }, [fetchInsights]);
+
+  // Keep the numbers current: refresh every minute while the page is visible,
+  // and straight away when you come back to it from browsing
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') fetchInsights({ silent: true }); };
+    const timer = setInterval(refresh, 60000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [fetchInsights]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return (

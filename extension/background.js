@@ -375,24 +375,63 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 // ── Tab activity tracking ──────────────────────────
 
-let activeTabUrl = '';
-let activeTabStartTime = Date.now();
+// The page in front of the user and when they got there. Kept in session
+// storage: the MV3 service worker sleeps after ~30s idle, which wiped the
+// in-memory copy and silently dropped most visits.
+let trackedPage = null; // { url, start }
+const trackedPageLoaded = chrome.storage.session
+  .get('trackedPage')
+  .then((d) => { trackedPage = d.trackedPage || null; })
+  .catch(() => {});
+
+/**
+ * Move the visit tracker to `url` (null = nothing in front, e.g. the browser
+ * lost focus). The time spent on the previous site is logged when it was
+ * during a session. Staying on the same site (SPA routes, page reloads, a
+ * second tab of it) continues the same visit.
+ */
+async function trackPage(url) {
+  await trackedPageLoaded;
+  const next = url && /^https?:/i.test(url) ? url : null;
+  if (trackedPage && next && extractHostname(trackedPage.url) === extractHostname(next)) return;
+
+  const now = Date.now();
+  if (trackedPage && activeSession) {
+    // Time before the session started doesn't count
+    const start = Math.max(trackedPage.start, activeSession.startTime || 0);
+    const duration = Math.round((now - start) / 1000);
+    if (duration > 2) logBrowsingEvent(trackedPage.url, false, false, duration);
+  }
+  trackedPage = next ? { url: next, start: now } : null;
+  chrome.storage.session.set({ trackedPage }).catch(() => {});
+}
+
+// Navigating within the active tab
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url && tab.active) {
+    chrome.windows.getLastFocused().then((win) => {
+      if (win.id === tab.windowId && win.focused) trackPage(changeInfo.url);
+    }).catch(() => {});
+  }
+});
+
+// Switching windows, or leaving the browser altogether
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return trackPage(null);
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, windowId });
+    trackPage(tab?.url || null);
+  } catch {
+    trackPage(null);
+  }
+});
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   await loadPromise;
-  // Record time on previous tab
-  if (activeTabUrl && activeSession) {
-    const duration = Math.round((Date.now() - activeTabStartTime) / 1000);
-    if (duration > 2) {
-      logBrowsingEvent(activeTabUrl, false, false, duration);
-    }
-  }
-
-  // Track new active tab
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
-    activeTabUrl = tab.url || '';
-    activeTabStartTime = Date.now();
+    const activeTabUrl = tab.url || '';
+    trackPage(activeTabUrl);
 
     // Live-state tracking
     if (activeSession) {
@@ -404,7 +443,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
       }
     }
   } catch {
-    activeTabUrl = '';
+    trackPage(null);
   }
 });
 
@@ -511,6 +550,12 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
 
 // Drop the local session state (timer, alarms, telemetry sync)
 async function clearLocalSession() {
+  // Log the visit in progress while it still belongs to the session
+  if (activeSession) {
+    const current = trackedPage?.url || null;
+    await trackPage(null);
+    await trackPage(current);
+  }
   activeSession = null;
   temporarilyUnlocked.clear();
   await chrome.storage.local.remove(['activeSession', 'sessionTelemetry']);
