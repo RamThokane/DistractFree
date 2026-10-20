@@ -22,6 +22,7 @@ import {
   LuFlame,
   LuMessageCircle,
   LuNotebookText,
+  LuGrid3X3,
   LuPanelLeftClose,
   LuPanelLeftOpen,
 } from 'react-icons/lu';
@@ -40,6 +41,7 @@ export const navItems = [
   { to: '/dashboard/insights', icon: LuSparkles, label: 'AI Insights' },
   { to: '/dashboard/coach', icon: LuMessageCircle, label: 'Focus Coach' },
   { to: '/dashboard/weekly-report', icon: LuNotebookText, label: 'Weekly Report' },
+  { to: '/dashboard/heatmap', icon: LuGrid3X3, label: 'Heatmap' },
   { to: '/dashboard/leaderboard', icon: LuTrophy, label: 'Leaderboard' },
   { to: '/dashboard/settings', icon: LuSettings, label: 'Settings' },
 ];

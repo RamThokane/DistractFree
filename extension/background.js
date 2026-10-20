@@ -81,6 +81,9 @@ async function loadFromStorage() {
     'strictMode',
     'sessionTelemetry',
   ]);
+  // Coin unlocks live in session storage: the worker sleeps well within 2 minutes
+  const { unlocks } = await chrome.storage.session.get('unlocks').catch(() => ({}));
+  temporarilyUnlocked = new Map(Object.entries(unlocks || {}).filter(([, until]) => until > Date.now()));
 
   authToken = data.authToken || null;
   blockedSites = data.blockedSites || [];
@@ -107,6 +110,15 @@ async function loadFromStorage() {
     startSessionTimer();
     startLiveSync();
   }
+}
+
+function saveUnlocks() {
+  chrome.storage.session.set({ unlocks: Object.fromEntries(temporarilyUnlocked) }).catch(() => {});
+}
+
+function clearUnlocks() {
+  temporarilyUnlocked.clear();
+  saveUnlocks();
 }
 
 // ── Live-state telemetry ───────────────────────────
@@ -149,7 +161,7 @@ async function pushTelemetry() {
       }),
     });
   } catch (e) {
-    console.warn('[Live Sync] Failed:', e.message);
+    console.log('[Live Sync] Failed:', e.message);
   }
 }
 
@@ -177,10 +189,23 @@ async function apiRequest(endpoint, options = {}) {
   if (!authToken) throw new Error('Not authenticated');
 
   const url = `${API_BASE}${endpoint}`;
-  const response = await fetch(url, {
-    headers: getAuthHeaders(),
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: getAuthHeaders(),
+      ...options,
+    });
+  } catch {
+    throw new Error('Offline or server unreachable');
+  }
+
+  // The sign-in expired or was revoked: forget it instead of failing every minute.
+  // Signing in again on the website (or the popup) restores it.
+  if (response.status === 401) {
+    authToken = null;
+    await chrome.storage.local.remove(['authToken', 'userName', 'userEmail']);
+    throw new Error('Not authenticated');
+  }
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -200,7 +225,7 @@ async function syncBlockedSites() {
       strictMode = !!me.user?.settings?.strictMode;
       await chrome.storage.local.set({ strictMode });
     } catch (e) {
-      console.warn('[DistractFree] Could not refresh settings:', e.message);
+      console.log('[DistractFree] Could not refresh settings:', e.message);
     }
 
     const data = await apiRequest('/websites/list');
@@ -221,7 +246,7 @@ async function syncBlockedSites() {
     console.log('[DistractFree] Synced', blockedSites.length, 'blocked sites:', blockedSites.map(s => s.url));
     return blockedSites.length;
   } catch (err) {
-    console.error('[DistractFree] Sync failed:', err.message);
+    console.log('[DistractFree] Sync failed:', err.message);
     return 0;
   }
 }
@@ -288,6 +313,7 @@ function isBlocked(url) {
       return false; // Still unlocked
     } else {
       temporarilyUnlocked.delete(hostname); // Expired
+      saveUnlocks();
     }
   }
 
@@ -334,7 +360,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
     chrome.tabs.update(details.tabId, {
       url: `${blockPageUrl}?${params.toString()}`,
-    });
+    }).catch(() => {}); // tab closed meanwhile
 
     // Log every blocked attempt (linked to the session when one is running)
     logBrowsingEvent(url, true, false);
@@ -366,7 +392,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
       chrome.tabs.update(tabId, {
         url: `${blockPageUrl}?${params.toString()}`,
-      });
+      }).catch(() => {}); // tab closed meanwhile
       // In-page navigations (single-page apps) only show up here
       countBlockedAttempt(tabId, changeInfo.url);
     }
@@ -476,7 +502,7 @@ async function logBrowsingEvent(url, wasBlocked = false, wasUnlocked = false, du
       }),
     });
   } catch (err) {
-    console.warn('[DistractFree] Failed to log browse event:', err.message);
+    console.log('[DistractFree] Failed to log browse event:', err.message);
   }
 }
 
@@ -504,7 +530,7 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
     };
 
     await chrome.storage.local.set({ activeSession });
-    temporarilyUnlocked.clear();
+    clearUnlocks();
 
     // Live-state tracking reset & start
     await resetTelemetry(activeSession.sessionId);
@@ -516,7 +542,7 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
     return { success: true, session: data.session };
   } catch (err) {
     if (err.message.includes('409') || err.message.toLowerCase().includes('already have an active')) {
-      console.warn('[DistractFree] Backend thinks we have an active session. Syncing with it.');
+      console.log('[DistractFree] Backend thinks we have an active session. Syncing with it.');
       // Fetch the active session from backend
       try {
         const activeData = await apiRequest('/session/active');
@@ -531,7 +557,7 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
             blockedSites: activeData.session.blockedSitesUsed || [],
           };
           await chrome.storage.local.set({ activeSession });
-          temporarilyUnlocked.clear();
+          clearUnlocks();
           startSessionTimer();
           // The website started this session: count and report its activity here too
           await resetTelemetry(activeSession.sessionId);
@@ -539,11 +565,11 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
           return { success: true, session: activeData.session };
         }
       } catch (syncErr) {
-        console.error('[DistractFree] Failed to sync active session:', syncErr);
+        console.log('[DistractFree] Failed to sync active session:', syncErr);
       }
       return { success: false, code: 409, message: 'You already have an active focus session running. Please complete or cancel it from the dashboard.' };
     }
-    console.error('[DistractFree] Failed to start session:', err.message);
+    console.log('[DistractFree] Failed to start session:', err.message);
     return { success: false, message: err.message };
   }
 }
@@ -557,7 +583,7 @@ async function clearLocalSession() {
     await trackPage(current);
   }
   activeSession = null;
-  temporarilyUnlocked.clear();
+  clearUnlocks();
   await chrome.storage.local.remove(['activeSession', 'sessionTelemetry']);
   sessionTelemetry = { ...EMPTY_TELEMETRY };
   stopSessionTimer();
@@ -607,11 +633,11 @@ async function reconcileSession() {
           iconUrl: 'icons/icon128.png',
           title: `Focus session started: ${data.schedule?.title || 'Scheduled session'}`,
           message: `${serverSession.plannedDuration} minutes${data.schedule?.subject ? ` · ${data.schedule.subject}` : ''}. Blocked sites stay blocked — good luck!`,
-        });
+        }, () => void chrome.runtime.lastError);
       }
     }
   } catch (err) {
-    console.warn('[DistractFree] Session reconcile failed:', err.message);
+    console.log('[DistractFree] Session reconcile failed:', err.message);
   }
 }
 
@@ -635,7 +661,7 @@ async function endFocusSession(cancelled = false) {
       await clearLocalSession();
       return { success: true, alreadyEnded: true };
     }
-    console.error('[DistractFree] Failed to end session:', err.message);
+    console.log('[DistractFree] Failed to end session:', err.message);
     return { success: false, message: err.message };
   }
 }
@@ -694,14 +720,14 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     return;
   }
   if (alarm.name === 'sessionEnd') {
-    endFocusSession(false);
+    await endFocusSession(false);
     // Notify the user
     chrome.notifications?.create('sessionComplete', {
       type: 'basic',
       iconUrl: 'icons/icon128.png',
       title: 'Focus Session Complete! 🎉',
       message: 'Great job! Your focus session has ended. Check your earned coins!',
-    });
+    }, () => void chrome.runtime.lastError);
   }
 });
 
@@ -720,6 +746,7 @@ async function unlockWebsite(websiteId, websiteUrl) {
     // Temporarily allow the URL for 2 minutes
     const hostname = extractHostname(websiteUrl) || websiteUrl;
     temporarilyUnlocked.set(hostname, Date.now() + 2 * 60 * 1000);
+    saveUnlocks();
     logBrowsingEvent(websiteUrl, false, true);
 
     console.log('[DistractFree] Unlocked:', hostname);
@@ -746,7 +773,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       activeSession = null;
       blockedSites = [];
       strictMode = false;
-      temporarilyUnlocked.clear();
+      clearUnlocks();
       await chrome.storage.local.clear();
       console.log('[DistractFree] Logged out');
       sendResponse({ success: true });
@@ -847,7 +874,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   };
 
   if (handlers[message.type]) {
-    loadPromise.then(() => handlers[message.type]());
+    loadPromise
+      .then(() => handlers[message.type]())
+      .catch((err) => {
+        console.log('[DistractFree]', message.type, 'failed:', err?.message || err);
+        try { sendResponse({ success: false, message: err?.message || 'Something went wrong' }); } catch { /* sender gone */ }
+      });
     return true; // keep message channel open for async response
   }
 });

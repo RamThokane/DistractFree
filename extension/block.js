@@ -25,6 +25,19 @@ try {
   const confirmYes = document.getElementById('unlock-confirm-yes');
   const confirmNo = document.getElementById('unlock-cancel');
 
+  // Message the service worker; resolves undefined if it can't answer
+  // (reading lastError keeps Chrome from reporting it as an error)
+  const ask = (message) => new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        if (chrome.runtime.lastError) return resolve(undefined);
+        resolve(response);
+      });
+    } catch {
+      resolve(undefined); // extension reloaded
+    }
+  });
+
   // ── State ───────────────────────────────────────
   let isStrictMode = params.get('strict') === '1';
   let hasActiveSession = false;
@@ -112,15 +125,13 @@ try {
   // ── Fetch User Settings (Strict Mode) ───────────
   const checkUser = async () => {
     try {
-      const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'GET_USER' }, resolve);
-      });
+      const response = await ask({ type: 'GET_USER' });
       if (response && response.user && response.user.settings) {
         isStrictMode = !!response.user.settings.strictMode;
         updateUI();
       }
     } catch (e) {
-      console.error('[Block] Failed to fetch user settings:', e);
+      console.log('[Block] Failed to fetch user settings:', e);
     }
   };
   checkUser();
@@ -128,9 +139,7 @@ try {
   // ── Poll Session Status Every Second ────────────
   const updateStatus = async () => {
     try {
-      const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'GET_STATUS' }, resolve);
-      });
+      const response = await ask({ type: 'GET_STATUS' });
 
       const timerLabel = document.getElementById('timer-label');
       const subtitle = document.getElementById('subtitle');
@@ -150,7 +159,7 @@ try {
       }
       updateUI();
     } catch (e) {
-      console.error('[Block] Status poll error:', e);
+      console.log('[Block] Status poll error:', e);
     }
   };
 
@@ -179,22 +188,13 @@ try {
     unlockBtn.textContent = 'Unlocking…';
 
     try {
-      const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage(
-          { type: 'UNLOCK_WEBSITE', websiteId: siteId, websiteUrl: siteUrl },
-          resolve
-        );
-      });
+      const response = await ask({ type: 'UNLOCK_WEBSITE', websiteId: siteId, websiteUrl: siteUrl });
 
       if (response && response.success) {
         unlockBtn.textContent = 'Unlocked! Redirecting…';
         unlockBtn.classList.add('btn-success');
         setTimeout(() => {
-          try {
-            chrome.tabs.update({ url: siteUrl });
-          } catch (err) {
-            window.location.href = siteUrl;
-          }
+          window.location.href = siteUrl;
         }, 800);
       } else {
         const errorMsg = response?.message || 'Unlock Failed';
@@ -219,13 +219,9 @@ try {
 
   // ── Go Back Button ──────────────────────────────
   document.getElementById('go-back-btn').addEventListener('click', () => {
-    try {
-      chrome.tabs.update({ url: 'https://www.google.com' });
-    } catch (err) {
-      window.location.href = 'https://www.google.com';
-    }
+    window.location.href = 'https://www.google.com';
   });
 
 } catch (err) {
-  console.error('[Block] Page initialization failed:', err);
+  console.log('[Block] Page initialization failed:', err);
 }

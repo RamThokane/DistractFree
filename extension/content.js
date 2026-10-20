@@ -22,14 +22,43 @@
     return;
   }
 
+  // After the extension is reloaded or updated, scripts already running in open
+  // tabs lose their connection to it and every chrome.* call throws
+  // "Extension context invalidated". These helpers go quiet instead.
+  const timers = [];
+  const alive = () => {
+    try { return !!chrome.runtime?.id; } catch { return false; }
+  };
+  const stopIfDead = () => {
+    if (alive()) return false;
+    timers.forEach(clearInterval);
+    return true;
+  };
+  function send(message, callback) {
+    if (stopIfDead()) return;
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        if (chrome.runtime.lastError) return; // worker restarting; the next check catches up
+        if (callback) callback(response);
+      });
+    } catch { /* extension reloaded */ }
+  }
+  function store(method, arg, callback) {
+    if (stopIfDead()) return;
+    try {
+      chrome.storage.local[method](arg, () => {
+        if (chrome.runtime.lastError) return;
+        if (callback) callback();
+      });
+    } catch { /* extension reloaded */ }
+  }
+
   // ────────────────────────────────────────────────
   // 1. URL Blocking Check
   // ────────────────────────────────────────────────
-  chrome.runtime.sendMessage(
+  send(
     { type: 'CHECK_URL', url: window.location.href },
     (response) => {
-      if (chrome.runtime.lastError) return;
-
       if (response && response.blocked) {
         // The background.js webNavigation handler will redirect,
         // but as a failsafe, we also block content rendering here
@@ -108,7 +137,7 @@
       const theme = document.documentElement.getAttribute('data-theme');
       if ((theme === 'light' || theme === 'dark') && theme !== lastTheme) {
         lastTheme = theme;
-        try { chrome.storage.local.set({ theme }); } catch (e) { /* extension reloaded */ }
+        store('set', { theme });
       }
     };
     syncTheme();
@@ -134,14 +163,14 @@
     // Also poll periodically in case the user just logged in
     // (the 'storage' event doesn't fire for same-tab writes)
     let lastKnownToken = localStorage.getItem('df_token');
-    setInterval(() => {
+    timers.push(setInterval(() => {
       const currentToken = localStorage.getItem('df_token');
       if (currentToken !== lastKnownToken) {
         lastKnownToken = currentToken;
         console.log('[DistractFree] Dashboard token changed (poll detected)');
         syncTokenToExtension();
       }
-    }, 2000);
+    }, 2000));
   }
 
   function syncTokenToExtension() {
@@ -149,32 +178,20 @@
 
     if (token) {
       // Store the dashboard token into chrome.storage.local
-      chrome.storage.local.set({ authToken: token }, () => {
-        if (chrome.runtime.lastError) {
-          console.warn('[DistractFree] Failed to sync token:', chrome.runtime.lastError.message);
-          return;
-        }
+      store('set', { authToken: token }, () => {
         console.log('[DistractFree] Dashboard token synced to extension storage');
 
         // Notify the background service worker
-        chrome.runtime.sendMessage({ type: 'LOGIN', token: token }, (response) => {
-          if (chrome.runtime.lastError) return;
+        // Signing in also syncs the blocked sites
+        send({ type: 'LOGIN', token: token }, () => {
           console.log('[DistractFree] Background notified of dashboard login');
-        });
-
-        // Also sync blocked sites
-        chrome.runtime.sendMessage({ type: 'SYNC_BLOCKED_SITES' }, () => {
-          if (chrome.runtime.lastError) return;
         });
       });
     } else {
       // User logged out on dashboard — clear extension auth too
-      chrome.storage.local.remove(['authToken', 'userName', 'userEmail'], () => {
-        if (chrome.runtime.lastError) return;
+      store('remove', ['authToken', 'userName', 'userEmail'], () => {
         console.log('[DistractFree] Dashboard logout synced to extension');
-        chrome.runtime.sendMessage({ type: 'LOGOUT' }, () => {
-          if (chrome.runtime.lastError) return;
-        });
+        send({ type: 'LOGOUT' });
       });
     }
   }
@@ -196,9 +213,7 @@
 
     // Blocked sites or strict mode changed on the website — re-sync immediately
     window.addEventListener('DF_SETTINGS_CHANGED', () => {
-      chrome.runtime.sendMessage({ type: 'SYNC_BLOCKED_SITES' }, () => {
-        if (chrome.runtime.lastError) return;
-      });
+      send({ type: 'SYNC_BLOCKED_SITES' });
     });
 
     // Keep localStorage watcher as a fallback
@@ -208,13 +223,13 @@
           const actionData = JSON.parse(event.newValue);
           syncSessionAction(actionData);
         } catch (e) {
-          console.error('[DistractFree] Error parsing session action', e);
+          /* not ours, or half-written */
         }
       }
     });
 
     let lastKnownAction = localStorage.getItem('df_session_action');
-    setInterval(() => {
+    timers.push(setInterval(() => {
       const currentAction = localStorage.getItem('df_session_action');
       if (currentAction && currentAction !== lastKnownAction) {
         lastKnownAction = currentAction;
@@ -222,58 +237,28 @@
           const actionData = JSON.parse(currentAction);
           syncSessionAction(actionData);
         } catch (e) {
-          console.error('[DistractFree] Error parsing session action from poll', e);
+          /* not ours, or half-written */
         }
       }
-    }, 2000);
+    }, 2000));
   }
 
   function syncSessionAction(actionData) {
     if (actionData.action === 'start') {
       console.log('[DistractFree] Starting session from dashboard:', actionData.duration);
-      chrome.runtime.sendMessage({ 
-        type: 'START_SESSION', 
+      send({
+        type: 'START_SESSION',
         plannedDuration: actionData.duration,
         selectedSites: null // uses default/all
-      }, () => {
-        if (chrome.runtime.lastError) return;
       });
     } else if (actionData.action === 'end') {
       // The dashboard has already ended the session on the server (completed or
       // cancelled) — the extension only needs to drop its local timer.
       console.log('[DistractFree] Session ended on dashboard');
-      chrome.runtime.sendMessage({ type: 'SESSION_ENDED_EXTERNALLY' }, () => {
-        if (chrome.runtime.lastError) return;
-      });
+      send({ type: 'SESSION_ENDED_EXTERNALLY' });
     }
   }
 
-  // ────────────────────────────────────────────────
-  // 3. Track time spent on page
-  // ────────────────────────────────────────────────
-  let startTime = Date.now();
-  let isVisible = true;
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      isVisible = false;
-    } else {
-      isVisible = true;
-      startTime = Date.now();
-    }
-  });
-
-  // Report time spent when navigating away
-  window.addEventListener('beforeunload', () => {
-    if (!isVisible) return;
-
-    const duration = Math.round((Date.now() - startTime) / 1000);
-    if (duration < 2) return;
-
-    chrome.runtime.sendMessage({
-      type: 'PAGE_TIME',
-      url: window.location.href,
-      duration,
-    });
-  });
+  // Time on each site is measured by the service worker (it sees tab and
+  // window focus changes), so nothing is reported from here.
 })();

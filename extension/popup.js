@@ -83,14 +83,14 @@ function sendMessage(message) {
     try {
       chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {
-          console.warn('[Popup] sendMessage error:', chrome.runtime.lastError.message);
+          console.log('[Popup] sendMessage error:', chrome.runtime.lastError.message);
           resolve({});
           return;
         }
         resolve(response || {});
       });
     } catch (err) {
-      console.warn('[Popup] sendMessage exception:', err);
+      console.log('[Popup] sendMessage exception:', err);
       resolve({});
     }
   });
@@ -163,7 +163,7 @@ async function validateToken(token) {
     const data = await response.json();
     return data.success ? data.user : null;
   } catch (err) {
-    console.warn('[Popup] Token validation error:', err);
+    console.log('[Popup] Token validation error:', err);
     return null;
   }
 }
@@ -190,7 +190,7 @@ async function tryGetDashboardToken() {
           },
           (results) => {
             if (chrome.runtime.lastError) {
-              console.warn('[Popup] executeScript error:', chrome.runtime.lastError.message);
+              console.log('[Popup] executeScript error:', chrome.runtime.lastError.message);
               resolve(null);
               return;
             }
@@ -201,7 +201,7 @@ async function tryGetDashboardToken() {
         );
       });
     } catch (err) {
-      console.warn('[Popup] tryGetDashboardToken error:', err);
+      console.log('[Popup] tryGetDashboardToken error:', err);
       resolve(null);
     }
   });
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (ok) return;
     }
   } catch (err) {
-    console.warn('[Popup] Dashboard token check failed:', err);
+    console.log('[Popup] Dashboard token check failed:', err);
   }
 
   // Step 3: Show login form
@@ -345,7 +345,7 @@ async function handleLogin() {
       data.user.name
     );
   } catch (err) {
-    console.error('[Popup] Login error:', err);
+    console.log('[Popup] Login error:', err);
     if (err.message && err.message.includes('Failed to fetch')) {
       showError('Cannot connect to server. Please check your internet connection.');
     } else {
@@ -396,7 +396,7 @@ if (syncDashboardBtn) {
       // No token found
       showError(`No active dashboard session found.\n\n1. Open ${DASHBOARD_URL} in a tab\n2. Sign in on the dashboard\n3. Come back and click this button again`);
     } catch (err) {
-      console.error('[Popup] Sync error:', err);
+      console.log('[Popup] Sync error:', err);
       showError('Sync failed. Make sure the dashboard is open and you are signed in.');
     } finally {
       syncDashboardBtn.disabled = false;
