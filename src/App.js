@@ -6,7 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { CoinProvider } from './context/CoinContext';
 import { ToastProvider } from './components/ui';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute, { GuestRoute } from './components/ProtectedRoute';
 import RouteTitle from './components/RouteTitle';
 import DashboardLayout from './layouts/DashboardLayout';
 
@@ -48,9 +48,9 @@ function App() {
           <AnimatePresence mode="wait">
             <Routes>
               {/* Public routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/" element={<GuestRoute><LandingPage /></GuestRoute>} />
+              <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+              <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
               <Route path="/styleguide" element={<StyleguidePage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />

@@ -68,7 +68,9 @@ const protect = async (req, res, next) => {
  */
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    // Renewed on every visit (GET /auth/me), so users stay signed in until
+    // they log out — or stay away longer than this
+    expiresIn: process.env.JWT_EXPIRES_IN || '90d',
   });
 };
 

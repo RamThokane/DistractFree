@@ -210,6 +210,8 @@ exports.getMe = async (req, res) => {
 
     res.json({
       success: true,
+      // A fresh token each visit keeps the sign-in from expiring while in use
+      token: generateToken(user._id),
       user: {
         id: user._id,
         name: user.name,

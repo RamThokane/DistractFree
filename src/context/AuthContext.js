@@ -22,22 +22,29 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      try {
-        const res = await api.get('/auth/me', { params: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
-        if (res.data.success) {
-          setUser(res.data.user);
-        } else {
-          // Token invalid — clean up
-          localStorage.removeItem('df_token');
-          setToken(null);
+      // Only a rejected token signs the user out. A slow or unreachable server
+      // (cold start, network blip) is retried and the saved sign-in is kept.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const res = await api.get('/auth/me', { params: { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
+          if (res.data.success) {
+            // Renewed token: stays valid as long as the user keeps visiting.
+            // Saved without setToken so this effect doesn't run again.
+            if (res.data.token) localStorage.setItem('df_token', res.data.token);
+            setUser(res.data.user);
+          }
+          break;
+        } catch (err) {
+          if (err.response?.status === 401) {
+            localStorage.removeItem('df_token');
+            setToken(null);
+            break;
+          }
+          console.error('[Auth] Failed to fetch user:', err.message);
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
         }
-      } catch (err) {
-        console.error('[Auth] Failed to fetch user:', err.message);
-        localStorage.removeItem('df_token');
-        setToken(null);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     fetchUser();
