@@ -234,6 +234,8 @@ exports.getMe = async (req, res) => {
 // ────────────────────────────────────────────────────
 // PUT /api/auth/profile
 // ────────────────────────────────────────────────────
+const NOTIFICATION_KEYS = ['focusReminder', 'streakAlert', 'weeklyReport', 'weeklyReportEmail', 'coinEarned'];
+
 exports.updateProfile = async (req, res) => {
   try {
     const { name, theme, strictMode, notifications, dailyGoal } = req.body;
@@ -247,11 +249,11 @@ exports.updateProfile = async (req, res) => {
     
     if (theme) user.settings.theme = theme;
     if (strictMode !== undefined) user.settings.strictMode = strictMode;
-    if (notifications) {
-      user.settings.notifications = {
-        ...user.settings.notifications,
-        ...notifications
-      };
+    // Set only the switches that were sent, so saving one never resets another
+    if (notifications && typeof notifications === 'object') {
+      for (const key of NOTIFICATION_KEYS) {
+        if (typeof notifications[key] === 'boolean') user.set(`settings.notifications.${key}`, notifications[key]);
+      }
     }
 
     // Daily goal update

@@ -199,8 +199,18 @@ const SettingsPage = () => {
     }
   };
 
-  const toggleNotification = (key) => {
-    setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
+  // Each switch saves as soon as it's flipped (like strict mode)
+  const toggleNotification = async (key) => {
+    const value = !notifications[key];
+    setNotifications((prev) => ({ ...prev, [key]: value }));
+    try {
+      const res = await api.put('/auth/profile', { notifications: { [key]: value } });
+      if (res.data.success) updateUser(res.data.user);
+    } catch (err) {
+      console.error('Failed to save notification setting:', err);
+      setNotifications((prev) => ({ ...prev, [key]: !value }));
+      toast.error('Couldn’t save that setting', 'Check your connection and try again.');
+    }
   };
 
   const handleSave = async () => {
