@@ -40,7 +40,7 @@ It can also help with your blocked sites. It shows which sites distract you duri
 ![Focus coach suggesting blocklist changes](docs/screenshots/focus-coach-blocklist.png)
 
 ### Weekly report
-Its own page in the top menu. Every Monday (in your timezone) you get a report on last week: your focus time compared with the week before, how many sessions went to plan, your best day and start time, what went well, what slipped, and one goal for this week. Schedule the goal in one click, ask the coach about it, or look back at earlier weeks. Turn on "Email my weekly report" in Settings to get it in your inbox too.
+Its own page in the top menu. Every Monday (in your timezone) you get a report on last week: your focus time compared with the week before, how many sessions went to plan, your best day and start time, what went well, what slipped, one goal for this week. Schedule the goal in one click, ask the coach about it, or look back at earlier weeks. Turn on "Email my weekly report" in Settings to get it in your inbox too.
 
 ![Weekly report](docs/screenshots/weekly-report.png)
 
