@@ -732,10 +732,12 @@ const LandingPage = () => {
             <img src="/favicon.svg" alt="DistractFree Logo" className="w-6 h-6 rounded-md" />
             <span className="text-sm text-fg-2">&copy; 2026 <Wordmark /></span>
           </div>
-          <div className="flex gap-6 text-sm text-fg-2">
-            <a href="#privacy" className="lp-footer-link">Privacy</a>
-            <a href="#terms" className="lp-footer-link">Terms</a>
-            <a href="mailto:thokaneram@gmail.com?subject=DistractFree%20Query" className="lp-footer-link">Contact</a>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-fg-2">
+            <Link to="/privacy" className="lp-footer-link">Privacy</Link>
+            <Link to="/terms" className="lp-footer-link">Terms</Link>
+            <a href="mailto:thokaneram@gmail.com?subject=DistractFree%20Query" className="lp-footer-link">
+              Contact: thokaneram@gmail.com
+            </a>
           </div>
         </div>
       </footer>

@@ -11,6 +11,8 @@ const TITLES = {
   '/register': 'Create your account',
   '/forgot-password': 'Forgot password',
   '/reset-password': 'Choose a new password',
+  '/privacy': 'Privacy Policy',
+  '/terms': 'Terms of Service',
   '/dashboard': 'Dashboard',
   '/dashboard/focus': 'Focus session',
   '/dashboard/calendar': 'Calendar',

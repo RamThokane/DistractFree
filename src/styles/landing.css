@@ -595,3 +595,14 @@ html.dark .lp::before { filter: invert(1); }
   .lp-text-link::after,
   .lp-btn { transition: none; }
 }
+
+/* ── Privacy / Terms pages ── */
+.lp-legal-title { font-size: clamp(2.4rem, 5vw, 3.4rem); line-height: 1.05; }
+.lp-legal-date { margin-top: 0.75rem; font-size: 0.875rem; color: var(--lp-muted); }
+.lp-legal-intro { margin-top: 1.5rem; font-size: 1.05rem; line-height: 1.65; }
+.lp-legal section { margin-top: 2.25rem; }
+.lp-legal h2 { font-family: var(--lp-serif); font-size: 1.6rem; line-height: 1.2; margin-bottom: 0.75rem; }
+.lp-legal ul { list-style: disc; padding-left: 1.25rem; display: grid; gap: 0.5rem; }
+.lp-legal li, .lp-legal section p { line-height: 1.65; color: var(--lp-text); }
+.lp-legal li::marker { color: var(--lp-accent); }
+.lp-legal-link { color: var(--lp-accent); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
