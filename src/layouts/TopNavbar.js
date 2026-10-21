@@ -17,6 +17,7 @@ import {
   LuTrophy,
   LuSettings,
   LuLogOut,
+  LuCrown,
   LuMenu,
   LuX,
   LuBell,
@@ -353,6 +354,10 @@ const TopNavbar = () => {
                         {user?.email && <p className="text-xs text-muted truncate mt-0.5">{user.email}</p>}
                       </div>
                     </div>
+                    <button onClick={() => { setShowProfile(false); navigate('/dashboard/premium'); }} className="app-menu-item">
+                      <LuCrown aria-hidden="true" />
+                      {user?.plan?.name === 'premium' ? 'Premium · active' : user?.plan?.name === 'owner' ? 'Plan · unlimited' : 'Upgrade to Premium'}
+                    </button>
                     <button onClick={() => { setShowProfile(false); navigate('/dashboard/settings'); }} className="app-menu-item">
                       <LuSettings aria-hidden="true" />
                       Settings

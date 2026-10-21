@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LuSparkles, LuSend, LuRotateCcw, LuCalendarPlus, LuCheck, LuX, LuShieldCheck } from 'react-icons/lu';
+import { Link } from 'react-router-dom';
+import { LuSparkles, LuSend, LuRotateCcw, LuCalendarPlus, LuCheck, LuX, LuShieldCheck, LuCrown } from 'react-icons/lu';
 import api from '../services/api';
 import { agentService, scheduleService } from '../services/endpoints';
 import { useAuth } from '../context/AuthContext';
@@ -275,7 +276,7 @@ function BlocklistProposal({ proposal, onUpdate }) {
  */
 const AgentChat = ({ initialQuestion }) => {
   const toast = useToast();
-  const [status, setStatus] = useState(null); // { enabled, remainingToday, dailyLimit }
+  const [status, setStatus] = useState(null); // { enabled, remainingToday, dailyLimit, plan }; limits null = unlimited
   const [messages, setMessages] = useState(loadSaved);
   const [input, setInput] = useState('');
   const [pending, setPending] = useState(false);
@@ -322,10 +323,13 @@ const AgentChat = ({ initialQuestion }) => {
     } catch (err) {
       const code = err?.response?.status;
       if (code === 503) setStatus({ enabled: false });
-      if (code === 429 && err.response.data?.remainingToday === 0) setStatus((s) => ({ ...s, remainingToday: 0 }));
+      const capped = code === 429 && err.response.data?.remainingToday === 0;
+      if (capped) setStatus((s) => ({ ...s, remainingToday: 0, plan: err.response.data.plan || s?.plan }));
       // Take the unanswered message back out so a retry doesn't send it twice
       setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
       setInput(text);
+      // Out of free chats: the upgrade box below says it instead
+      if (capped && err.response.data.upgrade) return;
       setError({ text: apiErrorMessage(err, 'The coach could not answer. Please try again.'), retry: code !== 503 && code !== 400 });
     } finally {
       setPending(false);
@@ -488,9 +492,21 @@ const AgentChat = ({ initialQuestion }) => {
                 <LuSend size={16} aria-hidden="true" />
               </Button>
             </div>
+            {outOfMessages && status?.plan === 'free' && (
+              <div className="rounded-lg border border-line bg-paper-2 px-4 py-3 mb-3 flex flex-wrap items-center justify-between gap-3" role="status">
+                <p className="text-sm text-text-2">
+                  You've used your {status.dailyLimit} free chats for today. Premium gives you 50 chats a day for ₹100 (30 days).
+                </p>
+                <Button as={Link} to="/dashboard/premium" size="sm" icon={<LuCrown size={14} aria-hidden="true" />}>Upgrade</Button>
+              </div>
+            )}
             <p className="agent-meta">
               Enter to send · Shift+Enter for a new line
-              {typeof status?.remainingToday === 'number' && ` · ${status.remainingToday} message${status.remainingToday === 1 ? '' : 's'} left today`}
+              {typeof status?.remainingToday === 'number' && typeof status?.dailyLimit === 'number'
+                ? ` · ${status.remainingToday} of ${status.dailyLimit} chats left today`
+                : typeof status?.remainingToday === 'number' && ` · ${status.remainingToday} message${status.remainingToday === 1 ? '' : 's'} left today`}
+              {status?.plan === 'owner' && ' · Unlimited chats'}
+              {status?.plan === 'free' && status?.remainingToday !== 0 && <> · <Link to="/dashboard/premium" className="df-link">Get 50 a day</Link></>}
             </p>
           </form>
         )}

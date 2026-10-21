@@ -735,6 +735,7 @@ const LandingPage = () => {
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-fg-2">
             <Link to="/privacy" className="lp-footer-link">Privacy</Link>
             <Link to="/terms" className="lp-footer-link">Terms</Link>
+            <Link to="/refund" className="lp-footer-link">Refunds</Link>
             <Link to="/contact" className="lp-footer-link">Contact</Link>
           </div>
         </div>

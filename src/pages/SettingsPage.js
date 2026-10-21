@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PageTransition from '../components/PageTransition';
 import PDFReportGenerator from '../components/PDFReportGenerator';
 import UserAvatar from '../components/UserAvatar';
@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import { AnimatePresence } from 'framer-motion';
-import { LuPlus, LuGlobe, LuShieldCheck, LuTrash2, LuCheck, LuLogOut } from 'react-icons/lu';
+import { LuPlus, LuGlobe, LuShieldCheck, LuTrash2, LuCheck, LuLogOut, LuCrown } from 'react-icons/lu';
 import { Button, Input, Modal, Select, Toggle, Badge, Skeleton, EmptyState, useToast } from '../components/ui';
 import { UNLOCK_COST } from '../utils/coinRules';
 
@@ -506,6 +506,27 @@ const SettingsPage = () => {
                 <LuCheck aria-hidden="true" /> Saved
               </span>
             )}
+          </div>
+        </Section>
+
+        {/* ── Plan ── */}
+        <Section id="plan-title" title="Plan" desc="Premium raises your focus coach chats from 2 to 50 a day.">
+          <div className="rounded-lg border border-line px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-text">
+                {user?.plan?.name === 'owner' ? 'Unlimited' : user?.plan?.name === 'premium' ? 'Premium' : 'Free'}
+              </p>
+              <p className="text-sm text-muted">
+                {user?.plan?.name === 'owner'
+                  ? 'Unlimited focus coach chats.'
+                  : user?.plan?.name === 'premium'
+                    ? `50 chats a day until ${new Date(user.plan.premiumUntil).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}.`
+                    : '2 focus coach chats a day.'}
+              </p>
+            </div>
+            <Button as={Link} to="/dashboard/premium" variant="secondary" icon={<LuCrown size={16} aria-hidden="true" />}>
+              {user?.plan?.name === 'free' || !user?.plan ? 'Upgrade' : 'Manage'}
+            </Button>
           </div>
         </Section>
 

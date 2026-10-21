@@ -5,8 +5,8 @@ import Wordmark from '../components/Wordmark';
 import '../styles/landing.css';
 
 /* ═══════════════════════════════════════════════════════════════
-   DistractFree — Privacy Policy and Terms of Service
-   One page component, two documents. Shares the landing styles.
+   DistractFree — Privacy Policy, Terms of Service, Refund Policy
+   One page component, three documents. Shares the landing styles.
    ═══════════════════════════════════════════════════════════════ */
 
 export const CONTACT_EMAIL = 'thokaneram@gmail.com';
@@ -42,7 +42,8 @@ const PRIVACY = {
     {
       heading: 'Sharing',
       items: [
-        'Your data is shared only with the services that run DistractFree: our hosting provider (Vercel), our database, Google Sign-In and Google Gemini.',
+        'Your data is shared only with the services that run DistractFree: our hosting provider (Vercel), our database, Google Sign-In, Google Gemini and, when you buy Premium, our payment provider Cashfree Payments.',
+        'Cashfree handles your card, UPI or bank details directly. We never see or store them; we keep only the order id, amount, date and status of each payment.',
         'The leaderboard shows your display name and focus score to other users.',
         'We may disclose data if the law requires it.',
       ],
@@ -59,7 +60,8 @@ const PRIVACY = {
       heading: 'Your choices',
       items: [
         'You can remove sites from your block list, turn notifications off, or uninstall the extension at any time to stop activity tracking.',
-        <>To get a copy of your data or have your account and data deleted, email <Mail />. We will respond within 30 days.</>,
+        <>You can delete your account and its data at any time from Settings. Payment records (order id, amount, date) are kept for accounting, without your name or email.</>,
+        <>To get a copy of your data, email <Mail />. We will respond within 30 days.</>,
       ],
     },
     {
@@ -98,6 +100,15 @@ const TERMS = {
       items: ['Coins are a motivation tool inside the app only. They have no cash value and cannot be sold, transferred or exchanged for money.'],
     },
     {
+      heading: 'Premium',
+      items: [
+        'Free accounts get 2 focus coach chats a day. Premium gives 50 chats a day for 30 days, for a one-time payment of ₹100.',
+        'Premium does not renew automatically. When the 30 days end your account returns to the free plan until you buy again; buying before then adds 30 days to the end of your current Premium.',
+        'Payments are processed by Cashfree Payments.',
+        <>Refunds are covered by our <Link to="/refund" className="lp-legal-link">Refund &amp; Cancellation Policy</Link>.</>,
+      ],
+    },
+    {
       heading: 'AI features',
       items: ['The focus coach, insights and weekly reports are generated automatically and may be inaccurate. They are suggestions, not professional, medical or psychological advice.'],
     },
@@ -112,7 +123,7 @@ const TERMS = {
     {
       heading: 'Ending your account',
       items: [
-        <>You can stop using DistractFree at any time. To delete your account, email <Mail />.</>,
+        'You can stop using DistractFree at any time, and delete your account from Settings. Deleting your account ends any Premium time left, without a refund.',
         'We may suspend or close accounts that break these terms.',
       ],
     },
@@ -127,8 +138,40 @@ const TERMS = {
   ],
 };
 
+const REFUND = {
+  title: 'Refund & Cancellation Policy',
+  intro: 'This policy covers DistractFree Premium, the only paid part of DistractFree.',
+  sections: [
+    {
+      heading: 'What you pay for',
+      items: ['Premium costs ₹100 (one-time payment) and gives 50 focus coach chats a day for 30 days from the moment the payment succeeds. It starts immediately.'],
+    },
+    {
+      heading: 'Cancellation',
+      items: [
+        'Premium is a one-time purchase and does not renew automatically, so there is no subscription to cancel. It simply ends after 30 days.',
+        'Nothing is charged again unless you choose to buy Premium again.',
+      ],
+    },
+    {
+      heading: 'Refunds',
+      items: [
+        'Because Premium starts as soon as you pay, payments are non-refundable once Premium is active, including for unused days.',
+        'You get a full refund if you were charged but Premium was not activated, or if you were charged more than once for the same purchase.',
+        <>To ask for a refund, email <Mail /> within 7 days of the payment with the order id shown in Settings → Premium. Approved refunds are sent back to the original payment method within 5–7 working days.</>,
+      ],
+    },
+    {
+      heading: 'Failed payments',
+      items: ['If money left your account but the payment shows as failed, it is usually returned automatically by your bank or by Cashfree within 5–7 working days. If it is not, contact us with the details.'],
+    },
+  ],
+};
+
+const DOCS = { privacy: PRIVACY, terms: TERMS, refund: REFUND };
+
 const LegalPage = ({ kind }) => {
-  const doc = kind === 'terms' ? TERMS : PRIVACY;
+  const doc = DOCS[kind] || PRIVACY;
 
   return (
     <div className="lp min-h-screen antialiased relative overflow-clip">
@@ -166,6 +209,7 @@ const LegalPage = ({ kind }) => {
           <div className="flex gap-6">
             <Link to="/privacy" className="lp-footer-link">Privacy</Link>
             <Link to="/terms" className="lp-footer-link">Terms</Link>
+            <Link to="/refund" className="lp-footer-link">Refunds</Link>
             <Link to="/contact" className="lp-footer-link">Contact</Link>
           </div>
         </div>
