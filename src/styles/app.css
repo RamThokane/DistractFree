@@ -37,6 +37,16 @@
   font-size: var(--fs-14);
   font-weight: 600;
 }
+/* Premium: a gold ring with a soft, slowly breathing glow */
+.app-avatar--premium {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--amber), 0 0 14px 4px rgb(var(--c-amber) / 0.55);
+  animation: app-avatar-glow 2.8s ease-in-out infinite;
+}
+@keyframes app-avatar-glow {
+  0%, 100% { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--amber), 0 0 10px 2px rgb(var(--c-amber) / 0.4); }
+  50% { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--amber), 0 0 20px 6px rgb(var(--c-amber) / 0.7); }
+}
+@media (prefers-reduced-motion: reduce) { .app-avatar--premium { animation: none; } }
 .app-streak-chip {
   align-items: center;
   gap: 5px;

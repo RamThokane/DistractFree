@@ -13,6 +13,12 @@ const { validationResult } = require('express-validator');
 const { createNotification } = require('./notificationController');
 const { syncUserStreak, resolveTimezone } = require('../services/streakService');
 const { planFor, remindIfEndingSoon } = require('../services/premium/planService');
+
+/** The plan as the website reads it: { name, dailyChats (null = unlimited), premiumUntil } */
+const planView = (user) => {
+  const { plan, dailyLimit, premiumUntil } = planFor(user);
+  return { name: plan, dailyChats: dailyLimit, premiumUntil };
+};
 const crypto = require('crypto');
 const { sendEmail, isConfigured: emailConfigured } = require('../utils/mailer');
 
@@ -116,6 +122,7 @@ exports.login = async (req, res) => {
         focusCoins: user.focusCoins,
         currentStreak: user.currentStreak,
         avatar: user.avatar,
+        plan: planView(user),
       },
     });
   } catch (error) {
@@ -201,6 +208,7 @@ exports.googleAuth = async (req, res) => {
         currentStreak: user.currentStreak,
         avatar: user.avatar,
         hasPassword: Boolean(user.password),
+        plan: planView(user),
       },
     });
   } catch (error) {
@@ -217,7 +225,6 @@ exports.getMe = async (req, res) => {
     const user = await User.findById(req.user._id).select('+password');
     await syncUserStreak(user, req.query.tz);
     await remindIfEndingSoon(user);
-    const { plan, dailyLimit, premiumUntil } = planFor(user);
 
     res.json({
       success: true,
@@ -236,7 +243,7 @@ exports.getMe = async (req, res) => {
         createdAt: user.createdAt,
         // Google-only accounts have no password, so they confirm deletion with their email
         hasPassword: Boolean(user.password),
-        plan: { name: plan, dailyChats: dailyLimit, premiumUntil },
+        plan: planView(user),
       },
     });
   } catch (error) {
