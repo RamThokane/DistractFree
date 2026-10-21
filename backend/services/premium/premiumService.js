@@ -19,10 +19,16 @@ const webhookUrl = () => {
   return base.startsWith('https://') ? `${base.replace(/\/+$/, '')}/api/premium/webhook` : undefined;
 };
 
-/** Indian mobile number as 10 digits, or null. Accepts +91 / 0 prefixes, spaces and dashes. */
+/**
+ * A mobile number in the form Cashfree wants, or null:
+ *   Indian   → 10 digits (accepts +91 / 91 / 0 in front)
+ *   abroad   → + country code + number, e.g. +14155550100 (also accepts 00 for +)
+ */
 function normalisePhone(raw) {
-  const digits = String(raw || '').replace(/[\s-]/g, '').replace(/^(\+?91|0)(?=\d{10}$)/, '');
-  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
+  const s = String(raw || '').replace(/[\s\-().]/g, '').replace(/^00/, '+');
+  const indian = s.match(/^(?:\+91|91|0)?([6-9]\d{9})$/);
+  if (indian) return indian[1];
+  return /^\+[1-9]\d{6,14}$/.test(s) ? s : null;
 }
 
 /** Start a ₹100 order. @returns {Promise<{ orderId, paymentSessionId, mode }>} */

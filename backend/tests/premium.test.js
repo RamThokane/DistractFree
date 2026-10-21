@@ -82,11 +82,18 @@ test('buying again adds 30 days onto the end of the current Premium', async () =
   assert.equal((await extendPremium(user._id, later)).getTime(), later.getTime() + 30 * DAY);
 });
 
-test('mobile numbers are normalised to 10 digits', () => {
+test('mobile numbers: Indian as 10 digits, foreign with + and country code', () => {
   assert.equal(normalisePhone('+91 98765-43210'), '9876543210');
+  assert.equal(normalisePhone('919067637964'), '9067637964');
   assert.equal(normalisePhone('09876543210'), '9876543210');
+  assert.equal(normalisePhone('+1 (415) 555-0100'), '+14155550100');
+  assert.equal(normalisePhone('0044 7911 123456'), '+447911123456');
+  assert.equal(normalisePhone('+971501234567'), '+971501234567');
+  // Foreign numbers need the +, so they can't be mistaken for Indian ones
+  assert.equal(normalisePhone('14155550100'), null);
   assert.equal(normalisePhone('12345'), null);
   assert.equal(normalisePhone('5876543210'), null);
+  assert.equal(normalisePhone('+0123456789'), null);
 });
 
 test('an order is created for ₹100 with the server price, and the owner cannot buy', async () => {

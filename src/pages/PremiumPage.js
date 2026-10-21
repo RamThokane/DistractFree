@@ -103,9 +103,12 @@ const PremiumPage = () => {
 
   const pay = async (e) => {
     e.preventDefault();
-    const digits = phone.replace(/[\s-]/g, '').replace(/^(\+?91|0)(?=\d{10}$)/, '');
-    if (!/^[6-9]\d{9}$/.test(digits)) {
-      setPhoneError('Enter a valid 10-digit mobile number.');
+    // Same rules as the server: Indian → 10 digits, abroad → + country code + number
+    const s = phone.replace(/[\s\-().]/g, '').replace(/^00/, '+');
+    const indian = s.match(/^(?:\+91|91|0)?([6-9]\d{9})$/);
+    const digits = indian ? indian[1] : /^\+[1-9]\d{6,14}$/.test(s) ? s : null;
+    if (!digits) {
+      setPhoneError('Enter a valid mobile number. Outside India, start with + and your country code.');
       return;
     }
     setPhoneError('');
@@ -196,19 +199,18 @@ const PremiumPage = () => {
                   <Input
                     label="Mobile number"
                     type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel-national"
-                    placeholder="10-digit number"
+                    autoComplete="tel"
+                    placeholder="98765 43210 or +1 415 555 0100"
                     value={phone}
                     onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
                     error={phoneError}
-                    hint="Cashfree needs it for the payment."
+                    hint="Outside India? Start with + and your country code. Cashfree needs it for the payment."
                   />
                   <Button type="submit" block className="mt-4" loading={paying} icon={<LuCrown size={16} aria-hidden="true" />}>
                     {isPremium ? `Extend for ₹${status.price}` : `Pay ₹${status.price}`}
                   </Button>
                   <p className="text-xs text-muted mt-3">
-                    Secure payment by Cashfree (UPI, cards, net banking). By paying you agree to the{' '}
+                    Secure payment by Cashfree: UPI, cards and net banking in India; international cards elsewhere. By paying you agree to the{' '}
                     <Link to="/terms" className="df-link">Terms</Link> and{' '}
                     <Link to="/refund" className="df-link">Refund Policy</Link>.
                   </p>

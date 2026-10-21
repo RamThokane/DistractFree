@@ -63,7 +63,7 @@ exports.createOrder = async (req, res) => {
   }
   const phone = normalisePhone(req.body?.phone);
   if (!phone) {
-    return res.status(400).json({ success: false, message: 'Enter a valid 10-digit mobile number.' });
+    return res.status(400).json({ success: false, message: 'Enter a valid mobile number. Outside India, start with + and your country code.' });
   }
   try {
     const order = await startOrder(req.user, phone);
