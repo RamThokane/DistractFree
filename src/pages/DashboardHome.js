@@ -10,7 +10,6 @@ import { LuTarget, LuArrowUpRight, LuArrowDownRight, LuTimer } from 'react-icons
 import AnimatedCounter from '../components/AnimatedCounter';
 import PageTransition from '../components/PageTransition';
 import NextScheduledCard from '../components/NextScheduledCard';
-import SessionRecommendation from '../components/SessionRecommendation';
 import { Button, Card, Input, Modal, ProgressBar, Skeleton, SkeletonText, ErrorState, EmptyState, Badge } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -84,7 +83,7 @@ const RiskCard = memo(({ prediction, details }) => {
           <p className="text-xs text-muted mt-4">
             {isModel
               ? prediction.isColdStart ? 'Not personalised yet — it learns from your sessions.' : 'From your AI model, personalised to your sessions.'
-              : isHistory ? 'Based on how your past sessions went — same scoring as “Best next session”.' : 'Based on your past sessions so far.'}
+              : isHistory ? 'Based on how your past sessions went.' : 'Based on your past sessions so far.'}
           </p>
         </>
       ) : (
@@ -173,7 +172,7 @@ const DashboardHome = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
-  const [recent, setRecent] = useState({ sessions: null, coins: null });
+  const [recentSessions, setRecentSessions] = useState(null);
 
   // Fetch dashboard data from backend
   const fetchDashboard = useCallback(async () => {
@@ -197,16 +196,12 @@ const DashboardHome = () => {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  // Recent activity (read-only, same endpoints the Focus and Coins pages use)
+  // Recent sessions (read-only, same endpoint the Focus page uses)
   useEffect(() => {
     let alive = true;
-    Promise.allSettled([api.get('/session/history'), api.get('/coins/history')]).then(([s, c]) => {
-      if (!alive) return;
-      setRecent({
-        sessions: s.status === 'fulfilled' ? (s.value.data.sessions || []).slice(0, 5) : [],
-        coins: c.status === 'fulfilled' ? (c.value.data.transactions || []).slice(0, 5) : [],
-      });
-    });
+    api.get('/session/history')
+      .then((res) => { if (alive) setRecentSessions((res.data.sessions || []).slice(0, 5)); })
+      .catch(() => { if (alive) setRecentSessions([]); });
     return () => { alive = false; };
   }, []);
 
@@ -322,13 +317,8 @@ const DashboardHome = () => {
         </div>
       </div>
 
-      {/* ── Best next session (time × length) ── */}
-      <div className="mt-10">
-        <SessionRecommendation />
-      </div>
-
       {/* ── Next scheduled session ── */}
-      <div className="mt-8">
+      <div className="mt-10">
         <NextScheduledCard />
       </div>
 
@@ -367,13 +357,13 @@ const DashboardHome = () => {
             <h3 id="recent-sessions" className="pg-h2">Recent sessions</h3>
             <Link to="/dashboard/insights" className="df-link text-sm">History</Link>
           </div>
-          {recent.sessions === null ? (
+          {recentSessions === null ? (
             <SkeletonText lines={5} />
-          ) : recent.sessions.length === 0 ? (
+          ) : recentSessions.length === 0 ? (
             <p className="pg-note">No sessions yet. Your first one will show up here.</p>
           ) : (
             <div>
-              {recent.sessions.map((s) => (
+              {recentSessions.map((s) => (
                 <div key={s._id} className="pg-row">
                   <div className="pg-row-main">
                     <p className="pg-row-title">{s.duration} of {s.plannedDuration} min</p>
@@ -389,75 +379,47 @@ const DashboardHome = () => {
         </section>
       </div>
 
-      {/* ── Coins + distraction ── */}
-      <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 mt-10">
-        <section className="lg:col-span-5" aria-labelledby="coin-activity">
-          <div className="pg-section-head">
-            <h3 id="coin-activity" className="pg-h2">Coin activity</h3>
-            <Link to="/dashboard/coins" className="df-link text-sm">Wallet</Link>
-          </div>
-          {recent.coins === null ? (
-            <SkeletonText lines={5} />
-          ) : recent.coins.length === 0 ? (
-            <p className="pg-note">No coins yet. A finished 25-minute session earns your first ones.</p>
+      {/* ── Coins earned + distraction ── */}
+      <div className="grid sm:grid-cols-2 gap-8 lg:gap-10 mt-10">
+        <div>
+          <h3 className="pg-h3">Coins earned</h3>
+          <p className="pg-note mb-4">Per day this week</p>
+          {coinsEarnedWeekly.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={coinsEarnedWeekly} margin={{ left: -24, right: 4 }}>
+                <defs>
+                  <linearGradient id="coinFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chart.amber} stopOpacity={0.18} />
+                    <stop offset="100%" stopColor={chart.amber} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke={chart.grid} />
+                <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTooltip unit=" coins" />} cursor={{ stroke: chart.grid }} />
+                <Area type="monotone" dataKey="coins" stroke={chart.amber} strokeWidth={2} fill="url(#coinFill)" dot={false} activeDot={{ r: 4, fill: chart.amber, stroke: chart.surface, strokeWidth: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
           ) : (
-            <div>
-              {recent.coins.map((t) => (
-                <div key={t._id} className="pg-row">
-                  <div className="pg-row-main">
-                    <p className="pg-row-title truncate">{t.description || (t.amount > 0 ? 'Earned' : 'Spent')}</p>
-                    <p className="pg-row-meta">{fmtDay(t.createdAt)} · {fmtTime(t.createdAt)}</p>
-                  </div>
-                  <span className={`pg-amount ${t.amount > 0 ? 'pg-amount--coin' : 'pg-amount--minus'}`}>
-                    {t.amount > 0 ? '+' : '−'}{Math.abs(t.amount)}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <p className="pg-note">No coin data yet.</p>
           )}
-        </section>
-
-        <div className="lg:col-span-7 grid sm:grid-cols-2 gap-8">
-          <div>
-            <h3 className="pg-h3">Coins earned</h3>
-            <p className="pg-note mb-4">Per day this week</p>
-            {coinsEarnedWeekly.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
-                <AreaChart data={coinsEarnedWeekly} margin={{ left: -24, right: 4 }}>
-                  <defs>
-                    <linearGradient id="coinFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={chart.amber} stopOpacity={0.18} />
-                      <stop offset="100%" stopColor={chart.amber} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} stroke={chart.grid} />
-                  <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip content={<ChartTooltip unit=" coins" />} cursor={{ stroke: chart.grid }} />
-                  <Area type="monotone" dataKey="coins" stroke={chart.amber} strokeWidth={2} fill="url(#coinFill)" dot={false} activeDot={{ r: 4, fill: chart.amber, stroke: chart.surface, strokeWidth: 2 }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="pg-note">No coin data yet.</p>
-            )}
-          </div>
-          <div>
-            <h3 className="pg-h3">Distraction trend</h3>
-            <p className="pg-note mb-4">Blocked-site attempts during sessions. Lower is better.</p>
-            {distractionTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={distractionTrend} margin={{ left: -24, right: 4 }}>
-                  <CartesianGrid vertical={false} stroke={chart.grid} />
-                  <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip content={<ChartTooltip unit=" attempts" />} cursor={{ stroke: chart.grid }} />
-                  <Line type="monotone" dataKey="score" name="Blocked attempts" stroke={chart.text} strokeWidth={1.75} dot={{ fill: chart.text, r: 2.5, strokeWidth: 0 }} activeDot={{ r: 4, fill: chart.text, stroke: chart.surface, strokeWidth: 2 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="pg-note">No distraction data yet.</p>
-            )}
-          </div>
+        </div>
+        <div>
+          <h3 className="pg-h3">Distraction trend</h3>
+          <p className="pg-note mb-4">Blocked-site attempts during sessions. Lower is better.</p>
+          {distractionTrend.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={distractionTrend} margin={{ left: -24, right: 4 }}>
+                <CartesianGrid vertical={false} stroke={chart.grid} />
+                <XAxis dataKey="day" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<ChartTooltip unit=" attempts" />} cursor={{ stroke: chart.grid }} />
+                <Line type="monotone" dataKey="score" name="Blocked attempts" stroke={chart.text} strokeWidth={1.75} dot={{ fill: chart.text, r: 2.5, strokeWidth: 0 }} activeDot={{ r: 4, fill: chart.text, stroke: chart.surface, strokeWidth: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="pg-note">No distraction data yet.</p>
+          )}
         </div>
       </div>
     </PageTransition>
