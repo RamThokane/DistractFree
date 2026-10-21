@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, googleAuth, getMe, updateProfile, forgotPassword, resetPassword } = require('../controllers/authController');
+const { register, login, googleAuth, getMe, updateProfile, forgotPassword, resetPassword, deleteAccount } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { validateRegister, validateLogin, validateForgotPassword, validateResetPassword } = require('../middleware/validateRequest');
 
@@ -19,5 +19,6 @@ router.post('/reset-password', validateResetPassword, resetPassword);
 
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
+router.delete('/account', protect, deleteAccount);
 
 module.exports = router;

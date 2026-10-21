@@ -5,8 +5,9 @@ import PDFReportGenerator from '../components/PDFReportGenerator';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
+import { AnimatePresence } from 'framer-motion';
 import { LuPlus, LuGlobe, LuShieldCheck, LuTrash2, LuCheck, LuLogOut } from 'react-icons/lu';
-import { Button, Input, Select, Toggle, Badge, Skeleton, EmptyState, useToast } from '../components/ui';
+import { Button, Input, Modal, Select, Toggle, Badge, Skeleton, EmptyState, useToast } from '../components/ui';
 import { UNLOCK_COST } from '../utils/coinRules';
 
 /* Module scope: defining these inside the component would remount the
@@ -38,6 +39,57 @@ const Section = ({ id, title, desc, children }) => (
   </section>
 );
 
+/* ── Delete account: confirm with the password (or the email, for Google-only accounts) ── */
+const DeleteAccountModal = ({ user, onDeleted, onClose }) => {
+  const usesPassword = user?.hasPassword !== false;
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async (e) => {
+    e?.preventDefault();
+    if (!value.trim()) {
+      setError(usesPassword ? 'Enter your password.' : 'Type your account email.');
+      return;
+    }
+    setDeleting(true);
+    setError('');
+    try {
+      await api.delete('/auth/account', { data: usesPassword ? { password: value } : { confirmEmail: value } });
+      onDeleted();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Couldn’t delete your account. Try again.');
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="Delete your account?"
+      onClose={deleting ? () => {} : onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={deleting}>Cancel</Button>
+          <Button variant="danger" loading={deleting} onClick={handleDelete} icon={<LuTrash2 size={16} aria-hidden="true" />}>
+            Delete permanently
+          </Button>
+        </>
+      }
+    >
+      <p className="text-sm text-text-2 mb-5">
+        This permanently deletes your account, focus sessions, coins, blocked sites, schedules and reports. It can’t be undone.
+      </p>
+      <form onSubmit={handleDelete}>
+        {usesPassword ? (
+          <Input label="Confirm your password" type="password" autoComplete="current-password" autoFocus value={value} onChange={(e) => { setValue(e.target.value); setError(''); }} error={error} />
+        ) : (
+          <Input label={`Type ${user?.email} to confirm`} type="email" autoComplete="off" autoFocus value={value} onChange={(e) => { setValue(e.target.value); setError(''); }} error={error} />
+        )}
+      </form>
+    </Modal>
+  );
+};
+
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
   const { user, updateUser, logout } = useAuth();
@@ -62,6 +114,7 @@ const SettingsPage = () => {
   const [displayName, setDisplayName] = useState('');
   const [displayEmail, setDisplayEmail] = useState('');
   const [saved, setSaved] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
   // Populate user data when available
   useEffect(() => {
@@ -455,7 +508,7 @@ const SettingsPage = () => {
         </Section>
 
         {/* ── Danger zone ── */}
-        <Section id="danger-title" title="Danger zone" desc="Signing out removes your session from this browser. Your data stays in your account.">
+        <Section id="danger-title" title="Danger zone" desc="Signing out keeps your data. Deleting your account removes it for good.">
           <div className="rounded-lg border border-danger/40 px-5 py-4 flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-text">Log out of this device</p>
@@ -465,7 +518,25 @@ const SettingsPage = () => {
               Log out
             </Button>
           </div>
+          <div className="rounded-lg border border-danger/40 px-5 py-4 flex flex-wrap items-center justify-between gap-4 mt-4">
+            <div>
+              <p className="text-sm font-semibold text-text">Delete account</p>
+              <p className="text-sm text-muted">Permanently removes your account and all of its data.</p>
+            </div>
+            <Button variant="danger" onClick={() => setShowDelete(true)} icon={<LuTrash2 size={16} aria-hidden="true" />}>
+              Delete account
+            </Button>
+          </div>
         </Section>
+        <AnimatePresence>
+          {showDelete && (
+            <DeleteAccountModal
+              user={user}
+              onClose={() => setShowDelete(false)}
+              onDeleted={() => { logout(); navigate('/'); }}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

@@ -1,5 +1,12 @@
 const User = require('../models/User');
 const CoinTransaction = require('../models/CoinTransaction');
+const FocusSession = require('../models/FocusSession');
+const BlockedWebsite = require('../models/BlockedWebsite');
+const BrowsingLog = require('../models/BrowsingLog');
+const Notification = require('../models/Notification');
+const ScheduledSession = require('../models/ScheduledSession');
+const WeeklyReport = require('../models/WeeklyReport');
+const AgentUsage = require('../models/AgentUsage');
 const { generateToken } = require('../middleware/authMiddleware');
 const { verifyGoogleToken } = require('../config/googleAuth');
 const { validationResult } = require('express-validator');
@@ -143,7 +150,7 @@ exports.googleAuth = async (req, res) => {
     // Find or create user
     let user = await User.findOne({
       $or: [{ googleId: googleUser.googleId }, { email: googleUser.email }],
-    });
+    }).select('+password');
 
     if (user) {
       // Link Google ID if user exists by email but doesn't have googleId
@@ -192,6 +199,7 @@ exports.googleAuth = async (req, res) => {
         focusCoins: user.focusCoins,
         currentStreak: user.currentStreak,
         avatar: user.avatar,
+        hasPassword: Boolean(user.password),
       },
     });
   } catch (error) {
@@ -205,7 +213,7 @@ exports.googleAuth = async (req, res) => {
 // ────────────────────────────────────────────────────
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).select('+password');
     await syncUserStreak(user, req.query.tz);
 
     res.json({
@@ -223,6 +231,8 @@ exports.getMe = async (req, res) => {
         settings: user.settings,
         dailyGoal: user.dailyGoal,
         createdAt: user.createdAt,
+        // Google-only accounts have no password, so they confirm deletion with their email
+        hasPassword: Boolean(user.password),
       },
     });
   } catch (error) {
@@ -382,6 +392,48 @@ exports.resetPassword = async (req, res) => {
     res.json({ success: true, message: 'Password updated. You can sign in now.' });
   } catch (error) {
     console.error('[Auth] Reset password error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ────────────────────────────────────────────────────
+// DELETE /api/auth/account
+// Permanently removes the user and everything tied to them.
+// Password accounts confirm with their password; Google-only accounts with their email.
+// ────────────────────────────────────────────────────
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { password, confirmEmail } = req.body || {};
+
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.password) {
+      if (!password || !(await user.comparePassword(password))) {
+        return res.status(401).json({ success: false, message: 'Incorrect password' });
+      }
+    } else if (!confirmEmail || String(confirmEmail).trim().toLowerCase() !== user.email) {
+      return res.status(400).json({ success: false, message: 'Type your account email to confirm' });
+    }
+
+    const userId = user._id;
+    await Promise.all([
+      FocusSession.deleteMany({ userId }),
+      CoinTransaction.deleteMany({ userId }),
+      BlockedWebsite.deleteMany({ userId }),
+      BrowsingLog.deleteMany({ userId }),
+      Notification.deleteMany({ userId }),
+      ScheduledSession.deleteMany({ userId }),
+      WeeklyReport.deleteMany({ userId }),
+      AgentUsage.deleteMany({ userId }),
+    ]);
+    await User.deleteOne({ _id: userId });
+
+    res.json({ success: true, message: 'Account deleted' });
+  } catch (error) {
+    console.error('[Auth] DeleteAccount error:', error.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
