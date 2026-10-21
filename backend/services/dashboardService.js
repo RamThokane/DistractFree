@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const FocusSession = require('../models/FocusSession');
 const User = require('../models/User');
 const { toClientPrediction } = require('./predictionService');
+const { goalMinutesFor } = require('../utils/dailyGoal');
 const { forecastForUser } = require('./sessionRecommender');
 const { computeStreak, resolveTimezone } = require('./streakService');
 const { localDayNumber, dayFromNumber, zonedTimeToUtc } = require('../utils/timezone');
@@ -113,7 +114,7 @@ async function buildDashboard(userIdInput, requestedTz, { now = new Date() } = {
       isColdStart: client.isColdStart,
     },
     dailyGoal: user.dailyGoal || { focusMinutes: 0, sessions: 0 },
-    goalMinutes: user.settings?.dailyGoalMinutes || 120,
+    goalMinutes: goalMinutesFor(user),
     weeklyFocusData,
     distractionTrend,
     coinsEarnedWeekly,

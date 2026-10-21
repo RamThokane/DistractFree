@@ -17,6 +17,7 @@ const { processDueSchedules, scheduleSummary } = require('../services/scheduleSe
 const { buildDashboard } = require('../services/dashboardService');
 const { computeStreak, streakAfterCompletion, resolveTimezone } = require('../services/streakService');
 const { localDayNumber, dayFromNumber, zonedTimeToUtc } = require('../utils/timezone');
+const { goalMinutesFor } = require('../utils/dailyGoal');
 
 // ────────────────────────────────────────────────────
 // POST /api/session/start
@@ -140,7 +141,7 @@ exports.endSession = async (req, res) => {
         );
 
       // Daily goal reached — only on the session that crosses the goal
-      const goal = user.settings?.dailyGoalMinutes || 0;
+      const goal = goalMinutesFor(user);
       if (goal > 0) {
         // Start of the user's local day (not the server's)
         const tz = streakBefore.timezone;

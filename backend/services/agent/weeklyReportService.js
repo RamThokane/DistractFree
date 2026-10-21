@@ -23,6 +23,7 @@ const { ENDED_STATUSES, isSessionSuccess } = require('../../ml/target');
 const { computeStreak, resolveTimezone } = require('../streakService');
 const { generate, isConfigured } = require('./geminiClient');
 const { zoneOr, localParts, zonedTimeToUtc, localDayNumber, dayFromNumber } = require('../../utils/timezone');
+const { goalMinutesFor } = require('../../utils/dailyGoal');
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const STALE_CLAIM_MS = 2 * 60 * 1000;
@@ -126,7 +127,7 @@ async function computeWeekFacts(userIdInput, week, tz, { now = new Date() } = {}
     .sort((a, b) => b.wentToPlan - a.wentToPlan || b.minutes - a.minutes)[0] || null;
 
   const spent = coins.filter((c) => c.amount < 0);
-  const goalMinutes = user?.dailyGoal?.focusMinutes || user?.settings?.dailyGoalMinutes || 120;
+  const goalMinutes = goalMinutesFor(user);
 
   return {
     weekStart: dayKey(week.startDay),

@@ -250,7 +250,7 @@ const DashboardHome = () => {
   const todayFocusMinutes = data?.todayFocusMinutes || 0;
   const coinsEarnedToday = data?.coinsEarnedToday || 0;
   const currentStreak = data?.currentStreak || user?.currentStreak || 0;
-  const goalMinutes = data?.dailyGoal?.focusMinutes || data?.goalMinutes || 120;
+  const goalMinutes = data?.goalMinutes || 120;
   const weeklyFocusData = data?.weeklyFocusData || [];
   const distractionTrend = data?.distractionTrend || [];
   const coinsEarnedWeekly = data?.coinsEarnedWeekly || [];

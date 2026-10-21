@@ -78,7 +78,7 @@ async function getDashboardStats(ctx) {
       focusMinutes: d.todayFocusMinutes,
       sessions: d.sessionsToday,
       coinsEarned: d.coinsEarnedToday,
-      goalMinutes: d.dailyGoal?.focusMinutes || d.goalMinutes,
+      goalMinutes: d.goalMinutes,
     },
     focusCoinsBalance: d.focusCoins,
     currentStreakDays: d.currentStreak,
