@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageTransition from '../components/PageTransition';
 import PDFReportGenerator from '../components/PDFReportGenerator';
+import UserAvatar from '../components/UserAvatar';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
@@ -491,6 +492,14 @@ const SettingsPage = () => {
 
         {/* ── Account ── */}
         <Section id="account-title" title="Account" desc="Your name appears on the dashboard and leaderboard.">
+          <div className="flex items-center gap-4 mb-6">
+            <UserAvatar user={user} size={56} className="flex-shrink-0" />
+            <p className="pg-note max-w-sm">
+              Your picture comes from your Google account, or from{' '}
+              <a href="https://gravatar.com" target="_blank" rel="noopener noreferrer" className="df-link">Gravatar</a>{' '}
+              for your email address.
+            </p>
+          </div>
           <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
             <Input label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoComplete="name" />
             <Input label="Email" type="email" value={displayEmail} onChange={(e) => setDisplayEmail(e.target.value)} disabled hint="Email can't be changed here." />

@@ -7,6 +7,7 @@ import { getGreeting } from '../utils/helpers';
 import api from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
 import Wordmark from '../components/Wordmark';
+import UserAvatar from '../components/UserAvatar';
 import {
   LuLayoutDashboard,
   LuTimer,
@@ -198,7 +199,6 @@ const TopNavbar = () => {
   // Close the drawer when the route changes
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  const initial = user?.name?.charAt(0)?.toUpperCase() || 'U';
   const streak = user?.currentStreak || 0;
 
   return (
@@ -334,7 +334,7 @@ const TopNavbar = () => {
                 aria-label="Account menu"
                 aria-expanded={showProfile}
               >
-                <span className="app-avatar" aria-hidden="true">{initial}</span>
+                <UserAvatar user={user} />
               </button>
 
               <AnimatePresence>
@@ -346,9 +346,12 @@ const TopNavbar = () => {
                     transition={{ duration: 0.15 }}
                     className="app-popover app-popover--down"
                   >
-                    <div className="app-popover-head">
-                      <p className="text-sm font-semibold text-text truncate">{user?.name || 'User'}</p>
-                      {user?.email && <p className="text-xs text-muted truncate mt-0.5">{user.email}</p>}
+                    <div className="app-popover-head flex items-center gap-3">
+                      <UserAvatar user={user} size={40} className="flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-text truncate">{user?.name || 'User'}</p>
+                        {user?.email && <p className="text-xs text-muted truncate mt-0.5">{user.email}</p>}
+                      </div>
                     </div>
                     <button onClick={() => { setShowProfile(false); navigate('/dashboard/settings'); }} className="app-menu-item">
                       <LuSettings aria-hidden="true" />
