@@ -66,6 +66,16 @@ const userSchema = new mongoose.Schema(
         ref: 'BlockedWebsite',
       },
     ],
+    // Premium (₹100 for 30 days): active while this is in the future
+    premiumUntil: {
+      type: Date,
+      default: null,
+    },
+    // The premiumUntil we last sent an "ending soon" reminder for, so it goes out once per period
+    premiumReminderFor: {
+      type: Date,
+      default: null,
+    },
     dailyGoal: {
       focusMinutes: { type: Number, default: 0 },
       sessions: { type: Number, default: 0 },

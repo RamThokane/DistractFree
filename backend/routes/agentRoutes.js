@@ -12,7 +12,7 @@ router.get('/cron/weekly-emails', runWeeklyEmails);
 
 router.use(protect);
 
-// Per user, on top of the daily cap (AGENT_DAILY_LIMIT, stored in the database)
+// Per user, on top of the plan's daily cap (stored in the database)
 const chatLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,

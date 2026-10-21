@@ -12,6 +12,7 @@ const { verifyGoogleToken } = require('../config/googleAuth');
 const { validationResult } = require('express-validator');
 const { createNotification } = require('./notificationController');
 const { syncUserStreak, resolveTimezone } = require('../services/streakService');
+const { planFor, remindIfEndingSoon } = require('../services/premium/planService');
 const crypto = require('crypto');
 const { sendEmail, isConfigured: emailConfigured } = require('../utils/mailer');
 
@@ -215,6 +216,8 @@ exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('+password');
     await syncUserStreak(user, req.query.tz);
+    await remindIfEndingSoon(user);
+    const { plan, dailyLimit, premiumUntil } = planFor(user);
 
     res.json({
       success: true,
@@ -233,6 +236,7 @@ exports.getMe = async (req, res) => {
         createdAt: user.createdAt,
         // Google-only accounts have no password, so they confirm deletion with their email
         hasPassword: Boolean(user.password),
+        plan: { name: plan, dailyChats: dailyLimit, premiumUntil },
       },
     });
   } catch (error) {

@@ -33,7 +33,7 @@ test.after(async () => {
 });
 test.beforeEach(async () => {
   gemini.setTransport();
-  delete process.env.AGENT_DAILY_LIMIT;
+  delete process.env.OWNER_EMAILS;
   await Promise.all([User.deleteMany({}), FocusSession.deleteMany({}), ScheduledSession.deleteMany({}), AgentUsage.deleteMany({}), mongoose.model('BlockedWebsite').deleteMany({}), mongoose.model('BrowsingLog').deleteMany({}), mongoose.model('CoinTransaction').deleteMany({})]);
 });
 
@@ -237,17 +237,16 @@ test('a non-retryable error does not try other models', async () => {
 // ── Daily cap and controller ───────────────────────
 
 test('the daily cap is enforced atomically and refunds give a message back', async () => {
-  process.env.AGENT_DAILY_LIMIT = '2';
   const userId = new mongoose.Types.ObjectId();
-  assert.equal(await reserveMessage(userId, NOW, TZ), 1);
-  assert.equal(await reserveMessage(userId, NOW, TZ), 0);
-  assert.equal(await reserveMessage(userId, NOW, TZ), null);
+  assert.equal(await reserveMessage(userId, NOW, TZ, 2), 1);
+  assert.equal(await reserveMessage(userId, NOW, TZ, 2), 0);
+  assert.equal(await reserveMessage(userId, NOW, TZ, 2), null);
   await refundMessage(userId, NOW, TZ);
-  assert.equal(await remainingToday(userId, NOW, TZ), 1);
+  assert.equal(await remainingToday(userId, NOW, TZ, 2), 1);
   // The cap resets at the user's midnight: 00:10 IST is still 20 Oct in UTC, but a new day in India
-  assert.equal(await reserveMessage(userId, new Date('2026-10-20T18:40:00Z'), TZ), 1);
+  assert.equal(await reserveMessage(userId, new Date('2026-10-20T18:40:00Z'), TZ, 2), 1);
   // (counted in UTC it would still be 20 Oct, sharing the old day's last message)
-  assert.equal(await reserveMessage(userId, new Date('2026-10-20T18:40:00Z'), 'UTC'), 0);
+  assert.equal(await reserveMessage(userId, new Date('2026-10-20T18:40:00Z'), 'UTC', 2), 0);
 });
 
 async function callChat(user, bodyIn) {
@@ -273,18 +272,26 @@ test('POST /chat: 503 without a key, 429 at the cap, 502 on Gemini errors (refun
   const failed = await callChat(me, body);
   assert.equal(failed.status, 502);
   assert.doesNotMatch(failed.payload.message, /down|503/);
-  assert.equal(await remainingToday(me._id, new Date(), TZ), 50);
+  assert.equal(await remainingToday(me._id, new Date(), TZ, 2), 2);
 
-  scripted([text('Hi Asha!')]);
+  // Free plan: 2 chats a day, then a 429 that offers the upgrade
+  scripted([text('Hi Asha!'), text('Hi again')]);
   const ok = await callChat(me, body);
   assert.equal(ok.status, 200);
   assert.equal(ok.payload.reply, 'Hi Asha!');
-  assert.equal(ok.payload.usage.remainingToday, 49);
+  assert.equal(ok.payload.usage.remainingToday, 1);
+  assert.equal((await callChat(me, body)).payload.usage.remainingToday, 0);
+  const full = await callChat(me, body);
+  assert.equal(full.status, 429);
+  assert.equal(full.payload.upgrade, true);
 
-  process.env.AGENT_DAILY_LIMIT = '1';
-  assert.equal((await callChat(me, body)).status, 429);
+  // The owner has no cap and nothing is counted
+  process.env.OWNER_EMAILS = ` other@x.dev, ${me.email.toUpperCase()} `;
+  scripted([text('Unlimited')]);
+  const owner = await callChat(me, body);
+  assert.equal(owner.status, 200);
+  assert.equal(owner.payload.usage.remainingToday, null);
 
-  delete process.env.AGENT_DAILY_LIMIT;
   const bad = await callChat(me, { messages: [{ role: 'model', text: 'only the model' }] });
   assert.equal(bad.status, 400);
 });

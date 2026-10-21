@@ -33,7 +33,6 @@ class AgentError extends Error {
   }
 }
 
-const dailyLimit = () => Number(process.env.AGENT_DAILY_LIMIT) || 50;
 /** The user's local calendar day, YYYY-MM-DD, so the cap resets at their midnight. */
 const localDay = (now, tz) => {
   try {
@@ -46,19 +45,19 @@ const localDay = (now, tz) => {
 // ── Daily cap ──────────────────────────────────────
 
 /**
- * Count one message against today's cap.
+ * Count one message against today's cap (the user's plan sets `limit`).
  * @returns {Promise<number|null>} messages left today, or null if the cap is reached
  */
-async function reserveMessage(userId, now = new Date(), tz = 'UTC') {
+async function reserveMessage(userId, now, tz, limit) {
   try {
     // Matches only while under the cap; at the cap the upsert's insert hits the
     // unique { userId, day } index, which is how "full" is detected atomically.
     const doc = await AgentUsage.findOneAndUpdate(
-      { userId, day: localDay(now, tz), count: { $lt: dailyLimit() } },
+      { userId, day: localDay(now, tz), count: { $lt: limit } },
       { $inc: { count: 1 } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
-    return Math.max(0, dailyLimit() - doc.count);
+    return Math.max(0, limit - doc.count);
   } catch (err) {
     if (err.code === 11000) return null;
     throw err;
@@ -70,9 +69,9 @@ async function refundMessage(userId, now = new Date(), tz = 'UTC') {
   await AgentUsage.updateOne({ userId, day: localDay(now, tz), count: { $gt: 0 } }, { $inc: { count: -1 } }).catch(() => {});
 }
 
-async function remainingToday(userId, now = new Date(), tz = 'UTC') {
+async function remainingToday(userId, now, tz, limit) {
   const doc = await AgentUsage.findOne({ userId, day: localDay(now, tz) }).select('count').lean();
-  return Math.max(0, dailyLimit() - (doc?.count || 0));
+  return Math.max(0, limit - (doc?.count || 0));
 }
 
 // ── Conversation ───────────────────────────────────
@@ -170,7 +169,6 @@ module.exports = {
   GeminiError,
   MAX_TOOL_ROUNDS,
   MAX_HISTORY,
-  dailyLimit,
   reserveMessage,
   refundMessage,
   remainingToday,

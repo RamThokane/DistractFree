@@ -23,6 +23,7 @@ const browsingRoutes = require('./routes/browsingRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
 const agentRoutes = require('./routes/agentRoutes');
+const premiumRoutes = require('./routes/premiumRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 
 const app = express();
@@ -84,7 +85,8 @@ app.use(
 );
 
 // ── Body parsing ───────────────────────────────────
-app.use(express.json({ limit: '10mb' }));
+// rawBody: the exact bytes, for checking Cashfree's webhook signature
+app.use(express.json({ limit: '10mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Logging ────────────────────────────────────────
@@ -140,6 +142,7 @@ app.use('/api/browsing', browsingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/agent', agentRoutes);
+app.use('/api/premium', premiumRoutes);
 app.use('/api/contact', contactRoutes);
 
 // Health check (public)
