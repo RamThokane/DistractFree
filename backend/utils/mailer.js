@@ -18,7 +18,7 @@ const fromAddress = () => process.env.MAIL_FROM
 
 const isConfigured = () => Boolean(process.env.RESEND_API_KEY);
 
-async function sendEmail({ to, subject, text, html }) {
+async function sendEmail({ to, subject, text, html, replyTo }) {
   if (!isConfigured()) {
     if (process.env.NODE_ENV !== 'production') {
       console.log(`\n[Mail] (dev, not sent) To: ${to}\nSubject: ${subject}\n\n${text}\n`);
@@ -33,7 +33,7 @@ async function sendEmail({ to, subject, text, html }) {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from: fromAddress(), to: [to], subject, text, html }),
+    body: JSON.stringify({ from: fromAddress(), to: [to], subject, text, html, ...(replyTo && { reply_to: replyTo }) }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');

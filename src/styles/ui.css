@@ -145,6 +145,7 @@ html.dark .df-grain::before { filter: invert(1); }
   transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
 .df-input::placeholder { color: var(--faint); }
+.df-textarea { height: auto; min-height: 140px; padding: 10px 14px; line-height: 1.5; resize: vertical; }
 .df-input:hover, .df-select:hover { border-color: var(--muted); }
 .df-input:focus, .df-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(var(--c-accent) / 0.18); }
 .df-input:disabled, .df-select:disabled { opacity: 0.55; cursor: not-allowed; }

@@ -156,7 +156,7 @@ const LegalPage = ({ kind }) => {
 
         <section>
           <h2>Contact</h2>
-          <p>Questions about this {kind === 'terms' ? 'agreement' : 'policy'}? Email <Mail />.</p>
+          <p>Questions about this {kind === 'terms' ? 'agreement' : 'policy'}? Send us a message on the <Link to="/contact" className="lp-legal-link">contact page</Link>.</p>
         </section>
       </main>
 
@@ -166,7 +166,7 @@ const LegalPage = ({ kind }) => {
           <div className="flex gap-6">
             <Link to="/privacy" className="lp-footer-link">Privacy</Link>
             <Link to="/terms" className="lp-footer-link">Terms</Link>
-            <Link to="/" className="lp-footer-link">Home</Link>
+            <Link to="/contact" className="lp-footer-link">Contact</Link>
           </div>
         </div>
       </footer>

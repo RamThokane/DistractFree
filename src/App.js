@@ -28,6 +28,7 @@ import StyleguidePage from './pages/StyleguidePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import LegalPage from './pages/LegalPage';
+import ContactPage from './pages/ContactPage';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || (() => {
   if (process.env.NODE_ENV !== 'production') {
@@ -57,6 +58,7 @@ function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/privacy" element={<LegalPage kind="privacy" />} />
               <Route path="/terms" element={<LegalPage kind="terms" />} />
+              <Route path="/contact" element={<ContactPage />} />
 
               {/* Protected dashboard routes */}
               <Route

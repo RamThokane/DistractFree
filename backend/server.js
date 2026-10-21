@@ -23,6 +23,7 @@ const browsingRoutes = require('./routes/browsingRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
 const agentRoutes = require('./routes/agentRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 
 const app = express();
 
@@ -120,6 +121,14 @@ const resetLimiter = rateLimit({
 app.use('/api/auth/forgot-password', resetLimiter);
 app.use('/api/auth/reset-password', authLimiter);
 
+// Contact form: each message emails the site owner, so keep it tight
+const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isProduction ? 5 : 50,
+  message: { success: false, message: 'Too many messages. Try again in an hour.' },
+});
+app.use('/api/contact', contactLimiter);
+
 // ── Routes ─────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/session', sessionRoutes);
@@ -131,6 +140,7 @@ app.use('/api/browsing', browsingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/agent', agentRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Health check (public)
 app.get('/api/health', (_req, res) => {

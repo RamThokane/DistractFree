@@ -13,6 +13,7 @@ const TITLES = {
   '/reset-password': 'Choose a new password',
   '/privacy': 'Privacy Policy',
   '/terms': 'Terms of Service',
+  '/contact': 'Contact us',
   '/dashboard': 'Dashboard',
   '/dashboard/focus': 'Focus session',
   '/dashboard/calendar': 'Calendar',

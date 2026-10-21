@@ -56,6 +56,17 @@ const validateForgotPassword = [
   handleValidationErrors,
 ];
 
+const validateContact = [
+  body('name')
+    .trim().isLength({ min: 1, max: 100 }).withMessage('Name is required'),
+  body('email')
+    .isEmail().withMessage('Valid email is required')
+    .normalizeEmail(),
+  body('message')
+    .trim().isLength({ min: 10, max: 5000 }).withMessage('Message must be 10–5000 characters'),
+  handleValidationErrors,
+];
+
 const validateResetPassword = [
   body('email')
     .isEmail().withMessage('Valid email is required')
@@ -210,6 +221,7 @@ module.exports = {
   validateLogin,
   validateForgotPassword,
   validateResetPassword,
+  validateContact,
   validateStartSession,
   validateEndSession,
   validateAddWebsite,
