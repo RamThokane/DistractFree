@@ -101,7 +101,7 @@ const LeaderboardPage = () => {
               {entry.isCurrentUser && <Badge tone="accent">You</Badge>}
             </p>
             <p className="mt-1 text-sm text-muted">
-              <span className="df-mono text-text">{entry.hours}h</span> focused · <span className="df-mono text-amber-ink">{entry.coins}</span> coins
+              <span className="df-mono text-text">{entry.hours}h</span> focused · <span className="df-mono text-amber-ink">{entry.coins}</span> coins earned
             </p>
           </li>
         ))}
@@ -112,7 +112,7 @@ const LeaderboardPage = () => {
         <span>Rank</span>
         <span>Name</span>
         <span className="text-right">{period === 'week' ? 'Weekly hours' : 'Total hours'}</span>
-        <span className="text-right">Coins</span>
+        <span className="text-right">Earned</span>
       </div>
       <ol className="pg-rows">
         {leaderboard.map((entry) => (
