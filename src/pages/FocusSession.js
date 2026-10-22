@@ -76,6 +76,10 @@ const FocusSession = () => {
   const [schedule, setSchedule] = useState(null);
   const intervalRef = useRef(null);
   const pollIntervalRef = useRef(null);
+  // Sessions this page already finished. The server can still report one as active
+  // until its end request lands (or if that request failed), and it must not be
+  // re-adopted — that would flip "Start another" straight back to "Done".
+  const finishedIdsRef = useRef(new Set());
 
   const liveKey = LEGACY_STATUS[mlStatus] || (LIVE_STATES[mlStatus] ? mlStatus : 'low');
   const liveState = LIVE_STATES[liveKey];
@@ -103,6 +107,12 @@ const FocusSession = () => {
     const totalSecs = session.plannedDuration * 60;
     const remaining = totalSecs - elapsedSecs;
 
+    if (finishedIdsRef.current.has(session._id)) {
+      // Already shown as done here; quietly retry the end in case it didn't land
+      api.post('/session/end', { sessionId: session._id, cancelled: false }).catch(() => {});
+      return;
+    }
+
     setActiveSessionId(session._id);
     if (session.mlStatus) setMlStatus(session.mlStatus);
     setLiveCounts(countsOf(session));
@@ -115,6 +125,9 @@ const FocusSession = () => {
       setIsRunning(true);
       setIsComplete(false);
     } else {
+      // Ran out while nobody was watching: show it as done and end it on the server
+      finishedIdsRef.current.add(session._id);
+      api.post('/session/end', { sessionId: session._id, cancelled: false }).catch(() => {});
       setTimeLeft(0);
       setIsRunning(false);
       setIsComplete(true);
@@ -136,7 +149,7 @@ const FocusSession = () => {
   const isStrictMode = user?.settings?.strictMode || false;
 
   // ── Start Session (API-backed) ──
-  const startTimer = useCallback(async () => {
+  const startTimer = useCallback(async function startTimer(retried = false) {
     try {
       const plannedDuration = Math.round(presetTotal / 60);
       // Timezone lets the server compute hour-of-day features in the user's local time
@@ -163,7 +176,17 @@ const FocusSession = () => {
       console.error('[FocusSession] Start error:', err);
       // If session already exists, try to resume
       if (err.response?.status === 409 && err.response?.data?.session) {
-        adoptSession(err.response.data.session, err.response.data.serverTime, null);
+        const existing = err.response.data.session;
+        if (!retried && finishedIdsRef.current.has(existing._id)) {
+          // The last session's end hadn't landed yet — end it, then start fresh
+          try {
+            await api.post('/session/end', { sessionId: existing._id, cancelled: false });
+          } catch {
+            // already ended elsewhere — the retry will tell
+          }
+          return startTimer(true);
+        }
+        adoptSession(existing, err.response.data.serverTime, null);
       }
     }
   }, [presetTotal, adoptSession]);
@@ -189,6 +212,7 @@ const FocusSession = () => {
     setIsRunning(false);
     setIsComplete(true);
     if (activeSessionId) {
+      finishedIdsRef.current.add(activeSessionId);
       try {
         const res = await api.post('/session/end', { sessionId: activeSessionId, cancelled: false });
         if (res.data.success) {
@@ -437,7 +461,7 @@ const FocusSession = () => {
               {/* Controls */}
               <div className="flex items-center gap-3 mt-10">
                 {!isRunning && !isComplete && (
-                  <Button size="lg" onClick={startTimer} icon={<LuPlay size={18} aria-hidden="true" />}>
+                  <Button size="lg" onClick={() => startTimer()} icon={<LuPlay size={18} aria-hidden="true" />}>
                     Start focus
                   </Button>
                 )}
