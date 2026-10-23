@@ -72,6 +72,8 @@ jobs:
           git add ml/model/*.json
           git diff --cached --quiet && exit 0
           git commit -m "Retrain session-success models (scheduled)"
+          # The regenerated training CSV comes from the database and is never committed
+          git checkout -- .
           git pull --rebase
           git push
 
