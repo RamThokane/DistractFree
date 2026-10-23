@@ -41,7 +41,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
@@ -52,7 +52,9 @@ jobs:
           cache-dependency-path: backend/ml/requirements.txt
 
       - name: Install dependencies
+        # The lock file is written by npm 11; npm 10 rejects its optional peer entries
         run: |
+          npm install -g npm@11.7.0
           npm ci --omit=dev
           pip install -r ml/requirements.txt
 
