@@ -10,6 +10,7 @@ const { planFor, extendPremium, remindIfEndingSoon } = require('../services/prem
 const { normalisePhone, confirmOrder } = require('../services/premium/premiumService');
 const premiumController = require('../controllers/premiumController');
 const Notification = require('../models/Notification');
+const mailer = require('../utils/mailer');
 
 const DAY = 24 * 60 * 60 * 1000;
 let mongod;
@@ -128,8 +129,23 @@ test('a paid order grants 30 days exactly once, however many times it is confirm
   assert.equal(pending.body.plan, 'free');
 
   orders[body.orderId].order_status = 'PAID';
-  const results = await Promise.all([confirmOrder(body.orderId), confirmOrder(body.orderId), confirmOrder(body.orderId)]);
+  const sent = [];
+  const originalSend = mailer.sendEmail;
+  mailer.sendEmail = async (msg) => { sent.push(msg); return { delivered: true }; };
+  let results;
+  try {
+    results = await Promise.all([confirmOrder(body.orderId), confirmOrder(body.orderId), confirmOrder(body.orderId)]);
+  } finally {
+    mailer.sendEmail = originalSend;
+  }
   assert.ok(results.every((p) => p.status === 'paid'));
+
+  // The owner is emailed once about the payment
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, 'thokaneram@gmail.com');
+  assert.match(sent[0].text, new RegExp(body.orderId));
+  assert.match(sent[0].text, new RegExp(user.email));
+  assert.match(sent[0].text, /Cashfree payment ID: 555/);
 
   const after = await User.findById(user._id);
   const days = (after.premiumUntil - Date.now()) / DAY;

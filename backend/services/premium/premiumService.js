@@ -6,9 +6,14 @@
 
 const crypto = require('crypto');
 const Payment = require('../../models/Payment');
+const User = require('../../models/User');
+const mailer = require('../../utils/mailer');
 const cashfree = require('./cashfree');
 const { PREMIUM_PRICE_INR, extendPremium } = require('./planService');
 const { createNotification } = require('../../controllers/notificationController');
+
+// Who is emailed about every successful payment
+const PAYMENT_ALERT_TO = () => process.env.PAYMENT_ALERT_EMAIL || 'thokaneram@gmail.com';
 
 const clientUrl = () => (process.env.CLIENT_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/+$/, '');
 
@@ -89,7 +94,33 @@ async function confirmOrder(orderId) {
 
   const day = premiumUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
   await createNotification(won.userId, 'system', 'Premium is active', `Thanks for upgrading! You have 50 chats a day until ${day}.`);
+  await notifyOwnerOfPayment(won, day);
   return won;
+}
+
+/** Email the owner about a successful payment. Never fails the payment itself. */
+async function notifyOwnerOfPayment(payment, premiumUntilDay) {
+  try {
+    const user = await User.findById(payment.userId).select('name email').lean();
+    const who = user ? `${user.name} <${user.email}>` : `user ${payment.userId}`;
+    const paidAt = payment.paidAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+    const lines = [
+      `Customer: ${who}`,
+      `Amount: ${payment.currency} ${payment.amount}`,
+      `Order ID: ${payment.orderId}`,
+      `Cashfree payment ID: ${payment.cfPaymentId || 'unknown'}`,
+      `Paid at: ${paidAt} IST`,
+      `Premium until: ${premiumUntilDay}`,
+    ];
+    await mailer.sendEmail({
+      to: PAYMENT_ALERT_TO(),
+      ...(user && { replyTo: user.email }),
+      subject: `DistractFree payment received: ${payment.currency} ${payment.amount} from ${user?.name || 'a user'}`,
+      text: `A Premium payment went through.\n\n${lines.join('\n')}\n`,
+    });
+  } catch (err) {
+    console.error(`[Premium] payment email for ${payment.orderId} failed:`, err.message);
+  }
 }
 
 module.exports = { normalisePhone, startOrder, confirmOrder, webhookUrl };
