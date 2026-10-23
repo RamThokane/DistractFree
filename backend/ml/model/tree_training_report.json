@@ -1,7 +1,7 @@
 {
   "status": "trained",
-  "model_version": "dt-20261023160053",
-  "trained_at": "2026-10-23T16:00:53.804298+00:00",
+  "model_version": "dt-20261023160850",
+  "trained_at": "2026-10-23T16:08:50.964021+00:00",
   "n_real": 178,
   "n_simulated": 0,
   "n_train": 142,

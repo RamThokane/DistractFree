@@ -1,8 +1,8 @@
 {
   "status": "trained",
   "model_kind": "logistic_regression",
-  "model_version": "lr-20261023160046",
-  "trained_at": "2026-10-23T16:00:46.981071+00:00",
+  "model_version": "lr-20261023160844",
+  "trained_at": "2026-10-23T16:08:44.755252+00:00",
   "n_real": 178,
   "n_simulated": 0,
   "n_train": 142,
