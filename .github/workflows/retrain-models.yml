@@ -1,0 +1,81 @@
+# Nightly retraining of the session-success models.
+#
+# Vercel has no Python, so the API can't retrain itself. Every night this job
+# checks MongoDB; once 25+ real sessions have finished since the last
+# training (or when run by hand with "force"), it retrains both models,
+# commits the new backend/ml/model/*.json files and redeploys the API.
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   MONGO_URI          the production database (same as backend/.env)
+#   VERCEL_TOKEN       a token from vercel.com/account/tokens
+#   VERCEL_ORG_ID      team id of the backend project (backend/.vercel/project.json)
+#   VERCEL_PROJECT_ID  project id of distractfree-backend (same file)
+
+name: Retrain models
+
+on:
+  schedule:
+    - cron: '30 20 * * *' # 02:00 IST
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Retrain even if fewer than 25 new sessions
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: retrain-models
+  cancel-in-progress: false
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/ml/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          npm ci --omit=dev
+          pip install -r ml/requirements.txt
+
+      - name: Retrain if enough new sessions
+        id: retrain
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: node ml/scheduledRetrain.js ${{ inputs.force && '--force' || '' }}
+
+      - name: Commit new model files
+        if: steps.retrain.outputs.retrained == 'true'
+        run: |
+          git config user.name "Ram Thokane"
+          git config user.email "thokaneram@gmail.com"
+          git add ml/model/*.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Retrain session-success models (scheduled)"
+          git pull --rebase
+          git push
+
+      - name: Deploy API
+        if: steps.retrain.outputs.retrained == 'true'
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx --yes vercel@54.18.0 deploy --prod --yes --token "${{ secrets.VERCEL_TOKEN }}"
