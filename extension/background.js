@@ -65,9 +65,12 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(async () => {
   await loadPromise;
-  // Re-sync blocked sites on browser startup
+  // Re-sync blocked sites on browser startup, and start a scheduled session
+  // that came due while the browser was closed (it may still be in its window)
   if (authToken) {
     await syncBlockedSites();
+    await reconcileSession();
+    await armScheduledStart();
   }
 });
 
@@ -641,6 +644,44 @@ async function reconcileSession() {
   }
 }
 
+// ── Scheduled starts ───────────────────────────────
+
+// One alarm at the exact start time of the next scheduled session, so it
+// starts on time with the website closed (the minute sync alarm alone can be
+// up to a minute late). When it fires, GET /session/active starts it.
+const SCHEDULED_START_ALARM = 'scheduledStart';
+/** How soon to ask again when a start time has passed but the session hasn't started yet. */
+const SCHEDULED_RETRY_MS = 15000;
+
+async function armScheduledStart() {
+  try {
+    const data = await apiRequest('/schedule/next');
+    const next = data.occurrence;
+    if (!next) {
+      await chrome.alarms.clear(SCHEDULED_START_ALARM);
+      return;
+    }
+    // Start time on this computer's clock, which may differ from the server's
+    const offset = data.serverTime ? Date.now() - new Date(data.serverTime).getTime() : 0;
+    const startsAt = new Date(next.startAt).getTime() + offset;
+    // A second late so the server sees it as due
+    const when = Math.max(Date.now() + SCHEDULED_RETRY_MS, startsAt + 1000);
+    const existing = await chrome.alarms.get(SCHEDULED_START_ALARM);
+    if (!existing || Math.abs(existing.scheduledTime - when) > 1000) {
+      chrome.alarms.create(SCHEDULED_START_ALARM, { when });
+    }
+  } catch (err) {
+    console.log('[DistractFree] Could not check the next scheduled session:', err.message);
+  }
+}
+
+// Clicking a session notification opens the focus page
+chrome.notifications?.onClicked.addListener((id) => {
+  if (!id.startsWith('scheduledStart-') && id !== 'sessionComplete') return;
+  chrome.notifications.clear(id);
+  chrome.tabs.create({ url: `${DASHBOARD_ORIGIN}/dashboard/focus` }).catch(() => {});
+});
+
 async function endFocusSession(cancelled = false) {
   if (!activeSession) return { success: true, alreadyEnded: true };
 
@@ -714,8 +755,17 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (authToken) {
       await syncBlockedSites();
       await reconcileSession();
+      // Picks up schedules added or changed on the website
+      await armScheduledStart();
       // setInterval stops while the worker sleeps; this alarm wakes it every minute
       if (activeSession) await pushTelemetry();
+    }
+    return;
+  }
+  if (alarm.name === SCHEDULED_START_ALARM) {
+    if (authToken) {
+      await reconcileSession();
+      await armScheduledStart();
     }
     return;
   }
@@ -764,6 +814,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       authToken = message.token;
       await chrome.storage.local.set({ authToken: message.token });
       await syncBlockedSites();
+      await armScheduledStart();
       console.log('[DistractFree] Logged in, synced sites');
       sendResponse({ success: true });
     },
@@ -796,7 +847,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     },
 
     RECONCILE_SESSION: async () => {
-      if (authToken) await reconcileSession();
+      if (authToken) {
+        await reconcileSession();
+        await armScheduledStart();
+      }
       sendResponse({ success: true });
     },
 
