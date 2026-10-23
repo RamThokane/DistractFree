@@ -80,6 +80,17 @@ jobs:
       - name: Deploy API
         if: steps.retrain.outputs.retrained == 'true'
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: npx --yes vercel@54.18.0 deploy --prod --yes --token "${{ secrets.VERCEL_TOKEN }}"
+          ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          # Pasted secrets often carry a trailing newline or space
+          export VERCEL_ORG_ID="$(printf '%s' "$ORG_ID" | tr -d '[:space:]')"
+          export VERCEL_PROJECT_ID="$(printf '%s' "$PROJECT_ID" | tr -d '[:space:]')"
+          TOKEN="$(printf '%s' "$TOKEN" | tr -d '[:space:]')"
+          npm install -g vercel@54.18.0
+          echo "Org id: ${VERCEL_ORG_ID:0:5}… (${#VERCEL_ORG_ID} chars), project id: ${VERCEL_PROJECT_ID:0:4}… (${#VERCEL_PROJECT_ID} chars), token: ${#TOKEN} chars"
+          vercel whoami --token "$TOKEN" || { echo "::error::VERCEL_TOKEN is invalid or expired"; exit 1; }
+          vercel project inspect "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" --token "$TOKEN" >/dev/null \
+            || { echo "::error::The token cannot see the backend project: create it with scope thokaneram-gmailcoms-projects, and check VERCEL_ORG_ID / VERCEL_PROJECT_ID"; exit 1; }
+          vercel deploy --prod --yes --token "$TOKEN"
