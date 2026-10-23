@@ -1,319 +1,319 @@
 {
   "status": "trained",
   "model_kind": "logistic_regression",
-  "model_version": "lr-20261004095429",
-  "trained_at": "2026-10-04T09:54:29.602025+00:00",
-  "n_real": 71,
+  "model_version": "lr-20261023143152",
+  "trained_at": "2026-10-23T14:31:52.845420+00:00",
+  "n_real": 178,
   "n_simulated": 0,
-  "n_train": 56,
+  "n_train": 142,
   "task": "Pre-session prediction of sessionSuccess (binary)",
   "target": "status == 'completed' AND duration >= 0.9 * plannedDuration AND distractionAttempts <= 1",
   "evaluated_on": "real sessions only",
   "split": "time-based: oldest 80% of real sessions train, newest 20% test",
   "final_fit": "refit on all real sessions with the chosen C",
-  "n_train_real": 56,
-  "n_test": 15,
+  "n_train_real": 142,
+  "n_test": 36,
   "train_range": {
     "from": "2026-04-18T19:41:33.199000+00:00",
-    "to": "2026-09-27T10:20:50.108000+00:00",
-    "n": 56
+    "to": "2026-10-14T17:28:20.695000+00:00",
+    "n": 142
   },
   "test_range": {
-    "from": "2026-09-27T10:35:02.076000+00:00",
-    "to": "2026-10-02T05:49:41.679000+00:00",
-    "n": 15
+    "from": "2026-10-18T20:03:08.481000+00:00",
+    "to": "2026-10-23T08:41:36.646000+00:00",
+    "n": 36
   },
   "success_rate": {
-    "train_real": 0.2857,
-    "test": 0.6667
+    "train_real": 0.5493,
+    "test": 0.6111
   },
   "class_names": [
     "not_successful",
     "successful"
   ],
   "class_balance": {
-    "not_successful": 45,
-    "successful": 26
+    "not_successful": 78,
+    "successful": 100
   },
   "metrics": {
-    "accuracy": 0.4,
-    "balanced_accuracy": 0.45,
-    "precision": 0.6,
-    "recall": 0.3,
-    "f1": 0.4,
-    "roc_auc": 0.62,
+    "accuracy": 0.5556,
+    "balanced_accuracy": 0.4935,
+    "precision": 0.6071,
+    "recall": 0.7727,
+    "f1": 0.68,
+    "roc_auc": 0.3799,
     "confusion_matrix": [
       [
         3,
-        2
+        11
       ],
       [
-        7,
-        3
+        5,
+        17
       ]
     ],
-    "log_loss": 0.6974,
-    "brier": 0.2521,
+    "log_loss": 0.6987,
+    "brier": 0.2527,
     "class_counts": {
-      "not_successful": 5,
-      "successful": 10
+      "not_successful": 14,
+      "successful": 22
     }
   },
   "baselines": {
     "majority_class": {
-      "accuracy": 0.3333,
+      "accuracy": 0.6111,
       "balanced_accuracy": 0.5,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
+      "precision": 0.6111,
+      "recall": 1.0,
+      "f1": 0.7586,
       "roc_auc": 0.5,
       "confusion_matrix": [
         [
-          5,
-          0
+          0,
+          14
         ],
         [
-          10,
-          0
+          0,
+          22
         ]
       ],
-      "log_loss": 0.9473,
-      "brier": 0.3673,
+      "log_loss": 0.6761,
+      "brier": 0.2415,
       "class_counts": {
-        "not_successful": 5,
-        "successful": 10
+        "not_successful": 14,
+        "successful": 22
       }
     },
     "last5_success_rate": {
-      "accuracy": 0.6,
-      "balanced_accuracy": 0.55,
-      "precision": 0.7,
-      "recall": 0.7,
-      "f1": 0.7,
-      "roc_auc": 0.46,
+      "accuracy": 0.5278,
+      "balanced_accuracy": 0.4708,
+      "precision": 0.5926,
+      "recall": 0.7273,
+      "f1": 0.6531,
+      "roc_auc": 0.3344,
       "confusion_matrix": [
         [
-          2,
-          3
+          3,
+          11
         ],
         [
-          3,
-          7
+          6,
+          16
         ]
       ],
-      "log_loss": 0.8003,
-      "brier": 0.2907,
+      "log_loss": 2.6803,
+      "brier": 0.3356,
       "class_counts": {
-        "not_successful": 5,
-        "successful": 10
+        "not_successful": 14,
+        "successful": 22
       }
     }
   },
   "beats_baseline": {
-    "majority_class": true,
-    "last5_success_rate": false
+    "majority_class": false,
+    "last5_success_rate": true
   },
   "walk_forward": {
-    "n_splits": 4,
-    "n_predictions": 56,
+    "n_splits": 5,
+    "n_predictions": 145,
     "model": {
-      "accuracy": 0.5179,
-      "balanced_accuracy": 0.4666,
-      "precision": 0.3333,
-      "recall": 0.2273,
-      "f1": 0.2703,
-      "roc_auc": 0.4866,
+      "accuracy": 0.5586,
+      "balanced_accuracy": 0.5203,
+      "precision": 0.6559,
+      "recall": 0.6559,
+      "f1": 0.6559,
+      "roc_auc": 0.5511,
       "confusion_matrix": [
         [
-          24,
-          10
+          20,
+          32
         ],
         [
-          17,
-          5
+          32,
+          61
         ]
       ],
-      "log_loss": 0.6846,
-      "brier": 0.2459,
+      "log_loss": 0.6782,
+      "brier": 0.2426,
       "class_counts": {
-        "not_successful": 34,
-        "successful": 22
+        "not_successful": 52,
+        "successful": 93
       }
     },
     "decision_tree": {
-      "accuracy": 0.5893,
-      "balanced_accuracy": 0.5013,
-      "precision": 0.4,
-      "recall": 0.0909,
-      "f1": 0.1481,
-      "roc_auc": 0.5187,
+      "accuracy": 0.5517,
+      "balanced_accuracy": 0.5106,
+      "precision": 0.6489,
+      "recall": 0.6559,
+      "f1": 0.6524,
+      "roc_auc": 0.5594,
       "confusion_matrix": [
         [
-          31,
-          3
+          19,
+          33
         ],
         [
-          20,
-          2
+          32,
+          61
         ]
       ],
-      "log_loss": 0.8569,
-      "brier": 0.2947,
+      "log_loss": 0.9228,
+      "brier": 0.309,
       "class_counts": {
-        "not_successful": 34,
-        "successful": 22
+        "not_successful": 52,
+        "successful": 93
       }
     },
     "majority_class": {
-      "accuracy": 0.6071,
-      "balanced_accuracy": 0.5,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
+      "accuracy": 0.4966,
+      "balanced_accuracy": 0.527,
+      "precision": 0.6724,
+      "recall": 0.4194,
+      "f1": 0.5166,
       "roc_auc": null,
       "confusion_matrix": [
         [
-          34,
-          0
+          33,
+          19
         ],
         [
-          22,
-          0
+          54,
+          39
         ]
       ],
-      "log_loss": 0.7022,
-      "brier": 0.2523,
+      "log_loss": 0.7722,
+      "brier": 0.2861,
       "class_counts": {
-        "not_successful": 34,
-        "successful": 22
+        "not_successful": 52,
+        "successful": 93
       }
     },
     "last5_success_rate": {
-      "accuracy": 0.625,
-      "balanced_accuracy": 0.611,
-      "precision": 0.5217,
-      "recall": 0.5455,
-      "f1": 0.5333,
-      "roc_auc": 0.619,
+      "accuracy": 0.6207,
+      "balanced_accuracy": 0.5602,
+      "precision": 0.6792,
+      "recall": 0.7742,
+      "f1": 0.7236,
+      "roc_auc": 0.6066,
       "confusion_matrix": [
         [
-          23,
-          11
+          18,
+          34
         ],
         [
-          10,
-          12
+          21,
+          72
         ]
       ],
-      "log_loss": 2.4331,
-      "brier": 0.2602,
+      "log_loss": 3.1478,
+      "brier": 0.2673,
       "class_counts": {
-        "not_successful": 34,
-        "successful": 22
+        "not_successful": 52,
+        "successful": 93
       }
     }
   },
   "grouped_cv": {
-    "splitter": "LeaveOneGroupOut",
-    "n_groups": 5,
-    "largest_group_share": 0.8732,
+    "splitter": "GroupKFold(5)",
+    "n_groups": 8,
+    "largest_group_share": 0.7809,
     "reliable": false,
     "n_splits": 5,
-    "n_predictions": 71,
+    "n_predictions": 178,
     "model": {
-      "accuracy": 0.493,
-      "balanced_accuracy": 0.5269,
-      "precision": 0.3864,
-      "recall": 0.6538,
-      "f1": 0.4857,
-      "roc_auc": 0.5885,
+      "accuracy": 0.6404,
+      "balanced_accuracy": 0.6194,
+      "precision": 0.6475,
+      "recall": 0.79,
+      "f1": 0.7117,
+      "roc_auc": 0.6693,
       "confusion_matrix": [
         [
-          18,
-          27
+          35,
+          43
         ],
         [
-          9,
-          17
+          21,
+          79
         ]
       ],
-      "log_loss": 0.6899,
-      "brier": 0.2484,
+      "log_loss": 0.6431,
+      "brier": 0.226,
       "class_counts": {
-        "not_successful": 45,
-        "successful": 26
+        "not_successful": 78,
+        "successful": 100
       }
     },
     "decision_tree": {
-      "accuracy": 0.6197,
-      "balanced_accuracy": 0.5051,
-      "precision": 0.4,
-      "recall": 0.0769,
-      "f1": 0.129,
-      "roc_auc": 0.5145,
+      "accuracy": 0.6348,
+      "balanced_accuracy": 0.6172,
+      "precision": 0.6496,
+      "recall": 0.76,
+      "f1": 0.7005,
+      "roc_auc": 0.6456,
       "confusion_matrix": [
         [
-          42,
-          3
+          37,
+          41
         ],
         [
           24,
-          2
+          76
         ]
       ],
-      "log_loss": 0.6796,
-      "brier": 0.2405,
+      "log_loss": 0.8382,
+      "brier": 0.2721,
       "class_counts": {
-        "not_successful": 45,
-        "successful": 26
+        "not_successful": 78,
+        "successful": 100
       }
     },
     "majority_class": {
-      "accuracy": 0.6338,
+      "accuracy": 0.5618,
       "balanced_accuracy": 0.5,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
+      "precision": 0.5618,
+      "recall": 1.0,
+      "f1": 0.7194,
       "roc_auc": null,
       "confusion_matrix": [
         [
-          45,
-          0
+          0,
+          78
         ],
         [
-          26,
-          0
+          0,
+          100
         ]
       ],
-      "log_loss": 0.6616,
-      "brier": 0.2343,
+      "log_loss": 0.6894,
+      "brier": 0.2481,
       "class_counts": {
-        "not_successful": 45,
-        "successful": 26
+        "not_successful": 78,
+        "successful": 100
       }
     },
     "last5_success_rate": {
-      "accuracy": 0.6338,
-      "balanced_accuracy": 0.5974,
-      "precision": 0.5,
-      "recall": 0.4615,
-      "f1": 0.48,
-      "roc_auc": 0.5675,
+      "accuracy": 0.6461,
+      "balanced_accuracy": 0.6356,
+      "precision": 0.6729,
+      "recall": 0.72,
+      "f1": 0.6957,
+      "roc_auc": 0.6669,
       "confusion_matrix": [
         [
-          33,
-          12
+          43,
+          35
         ],
         [
-          14,
-          12
+          28,
+          72
         ]
       ],
-      "log_loss": 2.9951,
-      "brier": 0.2681,
+      "log_loss": 3.0413,
+      "brier": 0.2581,
       "class_counts": {
-        "not_successful": 45,
-        "successful": 26
+        "not_successful": 78,
+        "successful": 100
       }
     }
   },
@@ -322,78 +322,78 @@
       "params": {
         "criterion": "gini",
         "max_depth": 3,
-        "min_samples_leaf": 5
+        "min_samples_leaf": 8
       },
       "holdout": {
-        "accuracy": 0.4667,
-        "balanced_accuracy": 0.35,
-        "precision": 0.5833,
-        "recall": 0.7,
-        "f1": 0.6364,
-        "roc_auc": 0.35,
+        "accuracy": 0.5556,
+        "balanced_accuracy": 0.4545,
+        "precision": 0.5882,
+        "recall": 0.9091,
+        "f1": 0.7143,
+        "roc_auc": 0.5114,
         "confusion_matrix": [
           [
             0,
-            5
+            14
           ],
           [
-            3,
-            7
+            2,
+            20
           ]
         ],
-        "log_loss": 1.0622,
-        "brier": 0.3911,
+        "log_loss": 0.8331,
+        "brier": 0.2955,
         "class_counts": {
-          "not_successful": 5,
-          "successful": 10
-        }
-      },
-      "walk_forward": {
-        "accuracy": 0.5893,
-        "balanced_accuracy": 0.5013,
-        "precision": 0.4,
-        "recall": 0.0909,
-        "f1": 0.1481,
-        "roc_auc": 0.5187,
-        "confusion_matrix": [
-          [
-            31,
-            3
-          ],
-          [
-            20,
-            2
-          ]
-        ],
-        "log_loss": 0.8569,
-        "brier": 0.2947,
-        "class_counts": {
-          "not_successful": 34,
+          "not_successful": 14,
           "successful": 22
         }
       },
-      "grouped_cv": {
-        "accuracy": 0.6197,
-        "balanced_accuracy": 0.5051,
-        "precision": 0.4,
-        "recall": 0.0769,
-        "f1": 0.129,
-        "roc_auc": 0.5145,
+      "walk_forward": {
+        "accuracy": 0.5517,
+        "balanced_accuracy": 0.5106,
+        "precision": 0.6489,
+        "recall": 0.6559,
+        "f1": 0.6524,
+        "roc_auc": 0.5594,
         "confusion_matrix": [
           [
-            42,
-            3
+            19,
+            33
+          ],
+          [
+            32,
+            61
+          ]
+        ],
+        "log_loss": 0.9228,
+        "brier": 0.309,
+        "class_counts": {
+          "not_successful": 52,
+          "successful": 93
+        }
+      },
+      "grouped_cv": {
+        "accuracy": 0.6348,
+        "balanced_accuracy": 0.6172,
+        "precision": 0.6496,
+        "recall": 0.76,
+        "f1": 0.7005,
+        "roc_auc": 0.6456,
+        "confusion_matrix": [
+          [
+            37,
+            41
           ],
           [
             24,
-            2
+            76
           ]
         ],
-        "log_loss": 0.6796,
-        "brier": 0.2405,
+        "log_loss": 0.8382,
+        "brier": 0.2721,
         "class_counts": {
-          "not_successful": 45,
-          "successful": 26
+          "not_successful": 78,
+          "successful": 100
         }
       }
     }
@@ -404,38 +404,38 @@
   },
   "cv": {
     "splitter": "TimeSeriesSplit",
-    "n_splits": 3,
+    "n_splits": 5,
     "scoring": "balanced_accuracy",
     "selected_by": "log_loss",
-    "best_score": 0.4562,
-    "best_log_loss": 0.6788,
+    "best_score": 0.6535,
+    "best_log_loss": 0.6594,
     "scores_by_C": {
       "0.01": {
-        "log_loss": 0.6788,
-        "balanced_accuracy": 0.4562,
-        "roc_auc": 0.4721
+        "log_loss": 0.6594,
+        "balanced_accuracy": 0.6535,
+        "roc_auc": 0.6556
       },
       "0.1": {
-        "log_loss": 0.6807,
-        "balanced_accuracy": 0.4562,
-        "roc_auc": 0.5172
+        "log_loss": 0.6953,
+        "balanced_accuracy": 0.5869,
+        "roc_auc": 0.6312
       },
       "1": {
-        "log_loss": 0.7854,
-        "balanced_accuracy": 0.435,
-        "roc_auc": 0.5385
+        "log_loss": 0.8855,
+        "balanced_accuracy": 0.5869,
+        "roc_auc": 0.6207
       },
       "10": {
-        "log_loss": 1.0217,
-        "balanced_accuracy": 0.435,
-        "roc_auc": 0.5199
+        "log_loss": 0.9759,
+        "balanced_accuracy": 0.5869,
+        "roc_auc": 0.6076
       }
     }
   },
   "feature_set": {
     "switch": "auto",
     "used": "reduced",
-    "minority_class_rows": 26,
+    "minority_class_rows": 78,
     "needed_for_full": 130,
     "min_events_per_feature": 10
   },
@@ -447,63 +447,63 @@
     "avgDistractionsLast5",
     "isWeekend"
   ],
-  "intercept": -0.0135,
+  "intercept": 0.0141,
   "coefficients": [
     {
       "feature": "successRateLast5",
-      "coefficient": 0.0298
+      "coefficient": 0.1374
     },
     {
       "feature": "plannedDuration",
-      "coefficient": -0.0046
+      "coefficient": 0.0243
     },
     {
       "feature": "currentStreak",
-      "coefficient": 0.0911
+      "coefficient": 0.1666
     },
     {
       "feature": "hourBandSuccessRate",
-      "coefficient": -0.0654
+      "coefficient": 0.0627
     },
     {
       "feature": "avgDistractionsLast5",
-      "coefficient": 0.0141
+      "coefficient": -0.0198
     },
     {
       "feature": "isWeekend",
-      "coefficient": 0.0336
+      "coefficient": -0.0494
     }
   ],
   "feature_importances": [
     {
       "feature": "currentStreak",
-      "importance": 0.3818,
-      "coefficient": 0.0911
-    },
-    {
-      "feature": "hourBandSuccessRate",
-      "importance": 0.2742,
-      "coefficient": -0.0654
-    },
-    {
-      "feature": "isWeekend",
-      "importance": 0.1406,
-      "coefficient": 0.0336
+      "importance": 0.3621,
+      "coefficient": 0.1666
     },
     {
       "feature": "successRateLast5",
-      "importance": 0.1249,
-      "coefficient": 0.0298
+      "importance": 0.2985,
+      "coefficient": 0.1374
     },
     {
-      "feature": "avgDistractionsLast5",
-      "importance": 0.059,
-      "coefficient": 0.0141
+      "feature": "hourBandSuccessRate",
+      "importance": 0.1362,
+      "coefficient": 0.0627
+    },
+    {
+      "feature": "isWeekend",
+      "importance": 0.1075,
+      "coefficient": -0.0494
     },
     {
       "feature": "plannedDuration",
-      "importance": 0.0194,
-      "coefficient": -0.0046
+      "importance": 0.0527,
+      "coefficient": 0.0243
+    },
+    {
+      "feature": "avgDistractionsLast5",
+      "importance": 0.043,
+      "coefficient": -0.0198
     }
   ],
   "min_real_sessions": 50

@@ -1,148 +1,148 @@
 {
   "status": "trained",
-  "model_version": "dt-20261002201726",
-  "trained_at": "2026-10-02T20:17:26.736603+00:00",
-  "n_real": 71,
+  "model_version": "dt-20261023143200",
+  "trained_at": "2026-10-23T14:32:00.186366+00:00",
+  "n_real": 178,
   "n_simulated": 0,
-  "n_train": 56,
+  "n_train": 142,
   "task": "Pre-session prediction of sessionSuccess (binary)",
   "target": "status == 'completed' AND duration >= 0.9 * plannedDuration AND distractionAttempts <= 1",
   "evaluated_on": "real sessions only",
   "split": "time-based: oldest 80% of real sessions train, newest 20% test",
-  "n_train_real": 56,
-  "n_test": 15,
+  "n_train_real": 142,
+  "n_test": 36,
   "train_range": {
     "from": "2026-04-18T19:41:33.199000+00:00",
-    "to": "2026-09-27T10:20:50.108000+00:00",
-    "n": 56
+    "to": "2026-10-14T17:28:20.695000+00:00",
+    "n": 142
   },
   "test_range": {
-    "from": "2026-09-27T10:35:02.076000+00:00",
-    "to": "2026-10-02T05:49:41.679000+00:00",
-    "n": 15
+    "from": "2026-10-18T20:03:08.481000+00:00",
+    "to": "2026-10-23T08:41:36.646000+00:00",
+    "n": 36
   },
   "success_rate": {
-    "train_real": 0.2857,
-    "test": 0.6667
+    "train_real": 0.5493,
+    "test": 0.6111
   },
   "class_names": [
     "not_successful",
     "successful"
   ],
   "metrics": {
-    "accuracy": 0.4667,
-    "balanced_accuracy": 0.35,
-    "precision": 0.5833,
-    "recall": 0.7,
-    "f1": 0.6364,
-    "roc_auc": 0.35,
+    "accuracy": 0.5556,
+    "balanced_accuracy": 0.4545,
+    "precision": 0.5882,
+    "recall": 0.9091,
+    "f1": 0.7143,
+    "roc_auc": 0.5114,
     "confusion_matrix": [
       [
         0,
-        5
+        14
       ],
       [
-        3,
-        7
+        2,
+        20
       ]
     ]
   },
   "baselines": {
     "majority_class": {
-      "accuracy": 0.3333,
+      "accuracy": 0.6111,
       "balanced_accuracy": 0.5,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
+      "precision": 0.6111,
+      "recall": 1.0,
+      "f1": 0.7586,
       "roc_auc": 0.5,
       "confusion_matrix": [
         [
-          5,
-          0
+          0,
+          14
         ],
         [
-          10,
-          0
+          0,
+          22
         ]
       ]
     },
     "last5_success_rate": {
-      "accuracy": 0.6,
-      "balanced_accuracy": 0.55,
-      "precision": 0.7,
-      "recall": 0.7,
-      "f1": 0.7,
-      "roc_auc": 0.46,
+      "accuracy": 0.5278,
+      "balanced_accuracy": 0.4708,
+      "precision": 0.5926,
+      "recall": 0.7273,
+      "f1": 0.6531,
+      "roc_auc": 0.3344,
       "confusion_matrix": [
         [
-          2,
-          3
+          3,
+          11
         ],
         [
-          3,
-          7
+          6,
+          16
         ]
       ]
     }
   },
   "beats_baseline": {
-    "majority_class": true,
-    "last5_success_rate": false
+    "majority_class": false,
+    "last5_success_rate": true
   },
   "walk_forward": {
-    "n_splits": 4,
-    "n_predictions": 56,
+    "n_splits": 5,
+    "n_predictions": 145,
     "model": {
-      "accuracy": 0.5893,
-      "balanced_accuracy": 0.5013,
-      "precision": 0.4,
-      "recall": 0.0909,
-      "f1": 0.1481,
-      "roc_auc": 0.5187,
+      "accuracy": 0.5517,
+      "balanced_accuracy": 0.5106,
+      "precision": 0.6489,
+      "recall": 0.6559,
+      "f1": 0.6524,
+      "roc_auc": 0.5594,
       "confusion_matrix": [
         [
-          31,
-          3
+          19,
+          33
         ],
         [
-          20,
-          2
+          32,
+          61
         ]
       ]
     },
     "majority_class": {
-      "accuracy": 0.6071,
-      "balanced_accuracy": 0.5,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
+      "accuracy": 0.4966,
+      "balanced_accuracy": 0.527,
+      "precision": 0.6724,
+      "recall": 0.4194,
+      "f1": 0.5166,
       "roc_auc": null,
       "confusion_matrix": [
         [
-          34,
-          0
+          33,
+          19
         ],
         [
-          22,
-          0
+          54,
+          39
         ]
       ]
     },
     "last5_success_rate": {
-      "accuracy": 0.625,
-      "balanced_accuracy": 0.611,
-      "precision": 0.5217,
-      "recall": 0.5455,
-      "f1": 0.5333,
-      "roc_auc": 0.619,
+      "accuracy": 0.6207,
+      "balanced_accuracy": 0.5602,
+      "precision": 0.6792,
+      "recall": 0.7742,
+      "f1": 0.7236,
+      "roc_auc": 0.6066,
       "confusion_matrix": [
         [
-          23,
-          11
+          18,
+          34
         ],
         [
-          10,
-          12
+          21,
+          72
         ]
       ]
     }
@@ -150,13 +150,13 @@
   "best_params": {
     "criterion": "gini",
     "max_depth": 3,
-    "min_samples_leaf": 5
+    "min_samples_leaf": 8
   },
   "cv": {
     "splitter": "TimeSeriesSplit",
-    "n_splits": 3,
+    "n_splits": 5,
     "scoring": "balanced_accuracy",
-    "best_score": 0.5293
+    "best_score": 0.5797
   },
   "feature_names": [
     "hourOfDay",
@@ -175,23 +175,27 @@
   ],
   "feature_importances": [
     {
-      "feature": "hourOfDay",
-      "importance": 0.5007
-    },
-    {
-      "feature": "successRateLast20",
-      "importance": 0.2304
+      "feature": "avgTabSwitchesLast5",
+      "importance": 0.5525
     },
     {
       "feature": "avgDistractionsLast5",
-      "importance": 0.2035
+      "importance": 0.2371
+    },
+    {
+      "feature": "successRateLast5",
+      "importance": 0.1155
     },
     {
       "feature": "minutesSinceLastSession",
-      "importance": 0.0654
+      "importance": 0.0485
     },
     {
       "feature": "dayOfWeek",
+      "importance": 0.0464
+    },
+    {
+      "feature": "hourOfDay",
       "importance": 0.0
     },
     {
@@ -203,11 +207,7 @@
       "importance": 0.0
     },
     {
-      "feature": "successRateLast5",
-      "importance": 0.0
-    },
-    {
-      "feature": "avgTabSwitchesLast5",
+      "feature": "successRateLast20",
       "importance": 0.0
     },
     {
