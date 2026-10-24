@@ -133,7 +133,7 @@ const LandingPage = () => {
       {/* ────────────── NAV ────────────── */}
       <nav className={`lp-nav ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-5 sm:px-6 h-[72px]">
-          <Link to="/" className="lp-wordmark shrink-0" aria-label="DistractFree home">
+          <Link to="/" className="lp-wordmark shrink-0 mr-auto md:mr-0" aria-label="DistractFree home">
             <img src="/favicon.svg" alt="DistractFree Logo" className="w-8 h-8 rounded-md" />
             <span className="max-[440px]:sr-only">Distract<em>Free</em></span>
           </Link>

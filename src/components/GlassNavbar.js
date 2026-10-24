@@ -72,7 +72,7 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
       </div>
 
       <button
-        className="md:hidden order-last -mr-2 p-2 rounded-md text-fg-2 hover:text-hi transition-colors"
+        className="md:hidden order-first -ml-2 p-2 rounded-md text-fg-2 hover:text-hi transition-colors"
         onClick={() => setMobileOpen(true)}
         aria-label="Open navigation menu"
       >
