@@ -131,6 +131,27 @@ const focusSessionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    /**
+     * Strict-mode grace passes: one free 2-minute visit per blocked site per
+     * session. `domain` is the blocklist entry (e.g. "youtube.com").
+     */
+    gracePasses: [
+      {
+        _id: false,
+        domain: { type: String, required: true },
+        startedAt: { type: Date, required: true },
+        expiresAt: { type: Date, required: true },
+      },
+    ],
+    /** Strict-mode sites unlocked for the rest of the session with a ₹49 payment. */
+    paidUnlocks: [
+      {
+        _id: false,
+        domain: { type: String, required: true },
+        orderId: { type: String, required: true },
+        paidAt: { type: Date, required: true },
+      },
+    ],
     notes: {
       type: String,
       maxlength: 500,

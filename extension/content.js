@@ -65,12 +65,14 @@
         document.documentElement.innerHTML = '';
         document.title = 'DistractFree — Site Blocked';
       } else if (response && response.unlockExpiry) {
-        showUnlockTimer(response.unlockExpiry);
+        showUnlockTimer(response.unlockExpiry, response.unlockKind);
       }
     }
   );
 
-  function showUnlockTimer(expiryTime) {
+  // kind: 'coins' | 'pass' (strict-mode free pass) | 'paid' (₹49, until the session ends)
+  function showUnlockTimer(expiryTime, kind) {
+    const label = kind === 'pass' ? 'Free pass' : kind === 'paid' ? 'Unlocked for this session' : 'Unlocked';
     if (document.getElementById('df-unlock-timer')) return;
 
     const container = document.createElement('div');
@@ -110,7 +112,7 @@
       } else {
         const m = Math.floor(remaining / 60);
         const s = remaining % 60;
-        container.innerText = `Unlocked · ${m}:${s.toString().padStart(2, '0')} left`;
+        container.innerText = `${label} · ${m}:${s.toString().padStart(2, '0')} left`;
       }
     };
 
@@ -214,6 +216,13 @@
     // Blocked sites or strict mode changed on the website — re-sync immediately
     window.addEventListener('DF_SETTINGS_CHANGED', () => {
       send({ type: 'SYNC_BLOCKED_SITES' });
+    });
+
+    // A ₹49 strict-mode unlock was paid — pick it up now
+    window.addEventListener('DF_UNLOCKS_CHANGED', () => {
+      send({ type: 'SYNC_FOCUS_UNLOCKS' }, () => {
+        window.dispatchEvent(new CustomEvent('DF_UNLOCKS_SYNCED'));
+      });
     });
 
     // Keep localStorage watcher as a fallback

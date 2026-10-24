@@ -1,7 +1,8 @@
 /**
- * Premium purchase: create a Cashfree order, then grant 30 days once Cashfree
- * says it is paid. Premium is only ever granted from Cashfree's own order
- * status (fetched server-side), never from what the browser reports.
+ * Cashfree purchases: create an order, then grant it once Cashfree says it is
+ * paid. Premium (30 days) or a strict-mode site unlock (see siteUnlockService)
+ * is only ever granted from Cashfree's own order status (fetched
+ * server-side), never from what the browser reports.
  */
 
 const crypto = require('crypto');
@@ -11,6 +12,7 @@ const mailer = require('../../utils/mailer');
 const cashfree = require('./cashfree');
 const { PREMIUM_PRICE_INR, extendPremium } = require('./planService');
 const { createNotification } = require('../../controllers/notificationController');
+const { grantUnlock } = require('../siteUnlock/siteUnlockService');
 
 // Who is emailed about every successful payment
 const PAYMENT_ALERT_TO = () => process.env.PAYMENT_ALERT_EMAIL || 'thokaneram@gmail.com';
@@ -36,19 +38,27 @@ function normalisePhone(raw) {
   return /^\+[1-9]\d{6,14}$/.test(s) ? s : null;
 }
 
-/** Start a ₹100 order. @returns {Promise<{ orderId, paymentSessionId, mode }>} */
-async function startOrder(user, phone) {
+/**
+ * Start an order: ₹100 Premium by default, or a site unlock with
+ * { purpose: 'site_unlock', amount, domain, sessionId }.
+ * @returns {Promise<{ orderId, paymentSessionId, mode }>}
+ */
+async function startOrder(user, phone, { purpose = 'premium', amount = PREMIUM_PRICE_INR, domain = null, sessionId = null } = {}) {
   const orderId = `df_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-  await Payment.create({ userId: user._id, orderId, amount: PREMIUM_PRICE_INR });
+  await Payment.create({ userId: user._id, orderId, amount, purpose, domain, sessionId });
+  const unlock = purpose === 'site_unlock';
   try {
     const order = await cashfree.createOrder({
       orderId,
-      amount: PREMIUM_PRICE_INR,
+      amount,
       customerId: String(user._id),
       email: user.email,
       phone,
-      returnUrl: `${clientUrl()}/dashboard/premium?order_id={order_id}`,
+      returnUrl: unlock
+        ? `${clientUrl()}/dashboard/unlock?order_id={order_id}`
+        : `${clientUrl()}/dashboard/premium?order_id={order_id}`,
       notifyUrl: webhookUrl(),
+      ...(unlock && { note: `DistractFree site unlock: ${domain} (donated to charity)` }),
     });
     return { orderId, paymentSessionId: order.payment_session_id, mode: cashfree.mode() };
   } catch (err) {
@@ -80,13 +90,19 @@ async function confirmOrder(orderId) {
   }
 
   const cfPayment = await cashfree.getSuccessfulPayment(orderId).catch(() => null);
-  // Only the call that flips the order to paid grants Premium
+  // Only the call that flips the order to paid grants it
   const won = await Payment.findOneAndUpdate(
     { orderId, status: { $ne: 'paid' } },
     { status: 'paid', paidAt: new Date(), cfPaymentId: cfPayment?.cf_payment_id ? String(cfPayment.cf_payment_id) : null },
     { new: true }
   );
   if (!won) return Payment.findOne({ orderId });
+
+  if (won.purpose === 'site_unlock') {
+    await grantUnlock(won);
+    await notifyOwnerOfPayment(won, null);
+    return won;
+  }
 
   const premiumUntil = await extendPremium(won.userId);
   won.premiumUntil = premiumUntil;
@@ -110,13 +126,15 @@ async function notifyOwnerOfPayment(payment, premiumUntilDay) {
       `Order ID: ${payment.orderId}`,
       `Cashfree payment ID: ${payment.cfPaymentId || 'unknown'}`,
       `Paid at: ${paidAt} IST`,
-      `Premium until: ${premiumUntilDay}`,
+      payment.purpose === 'site_unlock'
+        ? `For: strict-mode unlock of ${payment.domain} (to be donated to charity)`
+        : `Premium until: ${premiumUntilDay}`,
     ];
     await mailer.sendEmail({
       to: PAYMENT_ALERT_TO(),
       ...(user && { replyTo: user.email }),
       subject: `DistractFree payment received: ${payment.currency} ${payment.amount} from ${user?.name || 'a user'}`,
-      text: `A Premium payment went through.\n\n${lines.join('\n')}\n`,
+      text: `A ${payment.purpose === 'site_unlock' ? 'site unlock' : 'Premium'} payment went through.\n\n${lines.join('\n')}\n`,
     });
   } catch (err) {
     console.error(`[Premium] payment email for ${payment.orderId} failed:`, err.message);

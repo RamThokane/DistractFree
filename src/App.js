@@ -30,6 +30,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import LegalPage from './pages/LegalPage';
 import ContactPage from './pages/ContactPage';
 import PremiumPage from './pages/PremiumPage';
+import SiteUnlockPage from './pages/SiteUnlockPage';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || (() => {
   if (process.env.NODE_ENV !== 'production') {
@@ -82,6 +83,7 @@ function App() {
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="premium" element={<PremiumPage />} />
+                <Route path="unlock" element={<SiteUnlockPage />} />
               </Route>
 
               {/* Catch-all redirect */}

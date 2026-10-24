@@ -10,7 +10,7 @@ import '../styles/landing.css';
    ═══════════════════════════════════════════════════════════════ */
 
 export const CONTACT_EMAIL = 'thokaneram@gmail.com';
-const UPDATED = '21 October 2026';
+const UPDATED = '24 October 2026';
 
 const Mail = () => (
   <a href={`mailto:${CONTACT_EMAIL}?subject=DistractFree%20Query`} className="lp-legal-link">
@@ -109,6 +109,14 @@ const TERMS = {
       ],
     },
     {
+      heading: 'Strict-mode site unlocks',
+      items: [
+        'With strict mode on during a focus session, each blocked site gets one free 2-minute pass per session. After that you can unlock the site until the session ends for ₹49.',
+        'The full ₹49 is donated to charity. It is a donation, not a purchase of goods, and it is non-refundable.',
+        'Strict mode cannot be turned off, and blocked sites cannot be removed or paused, while a focus session is running.',
+      ],
+    },
+    {
       heading: 'AI features',
       items: ['The focus coach, insights and weekly reports are generated automatically and may be inaccurate. They are suggestions, not professional, medical or psychological advice.'],
     },
@@ -140,11 +148,14 @@ const TERMS = {
 
 const REFUND = {
   title: 'Refund & Cancellation Policy',
-  intro: 'This policy covers DistractFree Premium, the only paid part of DistractFree.',
+  intro: 'This policy covers DistractFree Premium and strict-mode site unlocks, the only paid parts of DistractFree.',
   sections: [
     {
       heading: 'What you pay for',
-      items: ['Premium costs ₹100 (one-time payment) and gives 50 focus coach chats a day for 30 days from the moment the payment succeeds. It starts immediately.'],
+      items: [
+        'Premium costs ₹100 (one-time payment) and gives 50 focus coach chats a day for 30 days from the moment the payment succeeds. It starts immediately.',
+        'A strict-mode site unlock costs ₹49 and opens one blocked site until the current focus session ends. The full amount is donated to charity.',
+      ],
     },
     {
       heading: 'Cancellation',
@@ -157,6 +168,7 @@ const REFUND = {
       heading: 'Refunds',
       items: [
         'Because Premium starts as soon as you pay, payments are non-refundable once Premium is active, including for unused days.',
+        'Site unlocks are donations to charity and are never refunded, including when the session ends early or the site is not used.',
         'You get a full refund if you were charged but Premium was not activated, or if you were charged more than once for the same purchase.',
         <>To ask for a refund, email <Mail /> within 7 days of the payment with the order id shown in Settings → Premium. Approved refunds are sent back to the original payment method within 5–7 working days.</>,
       ],

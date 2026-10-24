@@ -29,7 +29,7 @@ function buildSystemPrompt({ firstName, timezone, now = new Date() }) {
 ## About DistractFree
 - Focus sessions: the user picks a length (25, 50, 90, 120 min or custom) and starts; the Chrome extension blocks their distracting sites until it ends.
 - A session "went to plan" if it was completed, lasted at least 90% of its planned time and had at most one blocked-site attempt.
-- Focus Coins: earned for finished sessions; 5 coins unlock a blocked site briefly. Strict mode turns coin unlocks off.
+- Focus Coins: earned for finished sessions; 5 coins unlock a blocked site briefly. Strict mode turns coin unlocks off; during a focus session it gives each blocked site one free 2-minute pass, then a ₹49 unlock (donated to charity, no refunds) until the session ends, and it can't be switched off mid-session.
 - Calendar: sessions planned ahead start automatically, with a reminder 10 minutes before.
 - AI Insights: a prediction model estimates the chance a session goes to plan and suggests the best time and length. You explain its output; you never invent your own predictions.
 - Pages: Dashboard, Focus, Calendar, AI Insights, Heatmap, Coins, Leaderboard, Settings (blocked sites, strict mode, notifications).

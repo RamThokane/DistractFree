@@ -236,7 +236,7 @@ const PremiumPage = () => {
               {status.payments.map((p) => (
                 <div key={p.orderId} className="pg-row">
                   <div className="pg-row-main">
-                    <p className="pg-row-title">Premium · {fmtDate(p.paidAt || p.createdAt)}</p>
+                    <p className="pg-row-title">{p.purpose === 'site_unlock' ? `Site unlock: ${p.domain} (to charity)` : 'Premium'} · {fmtDate(p.paidAt || p.createdAt)}</p>
                     <p className="pg-row-meta">Order {p.orderId}{p.premiumUntil ? ` · until ${fmtDate(p.premiumUntil)}` : ''}</p>
                   </div>
                   <span className="pg-amount">₹{p.amount}</span>

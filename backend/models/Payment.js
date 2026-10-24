@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
 /**
- * One Premium purchase attempt through Cashfree. Kept when the account is
+ * One purchase attempt through Cashfree: Premium, or a strict-mode site unlock
+ * during a focus session (donated to charity). Kept when the account is
  * deleted (it holds no personal details) for accounting and disputes.
  */
 const paymentSchema = new mongoose.Schema(
@@ -30,6 +31,18 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       enum: ['pending', 'paid', 'failed'],
       default: 'pending',
+    },
+    purpose: {
+      type: String,
+      enum: ['premium', 'site_unlock'],
+      default: 'premium',
+    },
+    /** site_unlock: the blocklist entry being unlocked, and the session it is for. */
+    domain: { type: String, default: null },
+    sessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FocusSession',
+      default: null,
     },
     /** Cashfree's id for the successful payment. */
     cfPaymentId: { type: String, default: null },

@@ -230,7 +230,7 @@ const SettingsPage = () => {
       notifyExtension();
     } catch (err) {
       console.error('[Settings] Failed to remove site:', err);
-      toast.error('Couldn’t remove that site', 'Try again in a moment.');
+      toast.error('Couldn’t remove that site', err.response?.data?.message || 'Try again in a moment.');
     } finally {
       setAddingState('');
     }
@@ -247,7 +247,7 @@ const SettingsPage = () => {
       }
     } catch (err) {
       console.error('[Settings] Failed to toggle site:', err);
-      toast.error('Couldn’t update that site', 'Try again in a moment.');
+      toast.error('Couldn’t update that site', err.response?.data?.message || 'Try again in a moment.');
     } finally {
       setAddingState('');
     }
@@ -303,6 +303,8 @@ const SettingsPage = () => {
       }
     } catch (err) {
       console.error('Failed to auto-save strict mode:', err);
+      setStrictMode(!newVal);
+      toast.error('Couldn’t change strict mode', err.response?.data?.message || 'Try again in a moment.');
     }
   };
 
@@ -427,7 +429,7 @@ const SettingsPage = () => {
               <LuShieldCheck className="w-5 h-5 mt-0.5 text-muted flex-shrink-0" aria-hidden="true" />
               <div>
                 <p className="text-sm font-semibold text-text">Strict mode</p>
-                <p className="text-sm text-muted">Blocked sites can't be unlocked with coins — at any time.</p>
+                <p className="text-sm text-muted">Blocked sites can't be unlocked with coins — at any time. During a focus session each site gets one free 2-minute pass, then a ₹49 unlock that goes to charity. It can't be turned off mid-session.</p>
               </div>
             </div>
             <Toggle checked={strictMode} onChange={toggleStrictMode} aria-label="Strict mode" />

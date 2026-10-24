@@ -15,6 +15,8 @@ const { planFor, FREE_DAILY_CHATS, PREMIUM_DAILY_CHATS, PREMIUM_PRICE_INR, PREMI
 
 const paymentView = (p) => ({
   orderId: p.orderId,
+  purpose: p.purpose || 'premium',
+  domain: p.domain || null,
   amount: p.amount,
   currency: p.currency,
   status: p.status,

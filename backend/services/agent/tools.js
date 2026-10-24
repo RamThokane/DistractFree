@@ -252,7 +252,7 @@ async function getBlocklist(ctx) {
 
   return {
     strictMode: Boolean(user?.settings?.strictMode),
-    strictModeMeans: 'Blocked sites cannot be unlocked with coins, in or out of a session.',
+    strictModeMeans: 'Blocked sites cannot be unlocked with coins, in or out of a session. During a focus session each blocked site gets one free 2-minute pass, then a ₹49 unlock until the session ends (donated to charity). Strict mode and the block list are locked while a session runs.',
     coinUnlocksLast30Days: unlocks.length,
     blockedSites: listed,
     visitedDuringSessionsButNotBlocked: notBlocked,

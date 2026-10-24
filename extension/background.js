@@ -33,6 +33,12 @@ let activeSession = null;
 let authToken = null;
 let temporarilyUnlocked = new Map(); // URLs unlocked with coins -> Expiry timestamp
 let strictMode = false; // mirrors user.settings.strictMode — no coin unlocks while on
+// Strict mode during a focus session: one free 2-minute pass per blocked site,
+// then a ₹49 unlock until the session ends. The server decides; this is its copy
+// with times on this computer's clock. passes: domain → expiry (ms), paid: [domain]
+const EMPTY_FOCUS_UNLOCKS = { sessionId: null, passes: {}, paid: [], price: 49 };
+let focusUnlocks = { ...EMPTY_FOCUS_UNLOCKS };
+const PASS_ALARM_PREFIX = 'gracePass|';
 
 // Live-state telemetry for the running session. Kept in chrome.storage too:
 // the MV3 service worker is stopped when idle, which would lose in-memory
@@ -83,6 +89,7 @@ async function loadFromStorage() {
     'dashboardOrigin',
     'strictMode',
     'sessionTelemetry',
+    'focusUnlocks',
   ]);
   // Coin unlocks live in session storage: the worker sleeps well within 2 minutes
   const { unlocks } = await chrome.storage.session.get('unlocks').catch(() => ({}));
@@ -92,6 +99,7 @@ async function loadFromStorage() {
   blockedSites = data.blockedSites || [];
   activeSession = data.activeSession || null;
   strictMode = !!data.strictMode;
+  focusUnlocks = { ...EMPTY_FOCUS_UNLOCKS, ...(data.focusUnlocks || {}) };
 
   // Allow overriding API base from storage (set by popup)
   if (data.apiBase) API_BASE = data.apiBase;
@@ -122,6 +130,94 @@ function saveUnlocks() {
 function clearUnlocks() {
   temporarilyUnlocked.clear();
   saveUnlocks();
+}
+
+// ── Strict-mode focus unlocks (free pass, then ₹49) ─
+
+/** Passes and paid unlocks only count in strict mode, for the session they were made in. */
+function focusStrictNow() {
+  return !!(activeSession && strictMode && focusUnlocks.sessionId === activeSession.sessionId);
+}
+
+function sessionEndsAt() {
+  return activeSession ? activeSession.startTime + activeSession.plannedDuration * 60000 : 0;
+}
+
+/** { kind: 'pass' | 'paid', until } while `domain` (a blocklist entry) is open, else null. */
+function focusUnlockFor(domain) {
+  if (!focusStrictNow()) return null;
+  if (focusUnlocks.paid.includes(domain)) return { kind: 'paid', until: sessionEndsAt() };
+  const until = focusUnlocks.passes[domain];
+  return until && until > Date.now() ? { kind: 'pass', until } : null;
+}
+
+async function saveFocusUnlocks() {
+  await chrome.storage.local.set({ focusUnlocks });
+}
+
+/** An alarm at each running pass's end, which re-blocks the site's open tabs. */
+async function armPassAlarms() {
+  const alarms = await chrome.alarms.getAll();
+  for (const a of alarms) {
+    if (a.name.startsWith(PASS_ALARM_PREFIX)) await chrome.alarms.clear(a.name);
+  }
+  if (!focusStrictNow()) return;
+  for (const [domain, until] of Object.entries(focusUnlocks.passes)) {
+    if (until > Date.now()) chrome.alarms.create(PASS_ALARM_PREFIX + domain, { when: until });
+  }
+}
+
+async function clearFocusUnlocks() {
+  focusUnlocks = { ...EMPTY_FOCUS_UNLOCKS, price: focusUnlocks.price };
+  await saveFocusUnlocks();
+  await armPassAlarms();
+}
+
+/** Fetch this session's passes and paid unlocks from the server. */
+async function syncFocusUnlocks() {
+  if (!activeSession || !strictMode || !authToken) {
+    if (focusUnlocks.sessionId) await clearFocusUnlocks();
+    return;
+  }
+  try {
+    const data = await apiRequest('/site-unlock/status');
+    // Server times → this computer's clock
+    const offset = data.serverTime ? Date.now() - new Date(data.serverTime).getTime() : 0;
+    const passes = {};
+    for (const p of data.passes || []) passes[p.domain] = new Date(p.expiresAt).getTime() + offset;
+    focusUnlocks = {
+      sessionId: data.focusStrict ? data.sessionId : null,
+      passes,
+      paid: data.paidDomains || [],
+      price: data.price || EMPTY_FOCUS_UNLOCKS.price,
+    };
+    await saveFocusUnlocks();
+    await armPassAlarms();
+    await reblockOpenTabs();
+  } catch (err) {
+    console.log('[DistractFree] Could not refresh focus unlocks:', err.message);
+  }
+}
+
+/** Use the free 2-minute pass for a blocked site. */
+async function startGracePass(domain, url) {
+  if (!activeSession || !strictMode) {
+    return { success: false, message: 'The free pass is only for strict mode during a focus session.' };
+  }
+  try {
+    const data = await apiRequest('/site-unlock/pass', { method: 'POST', body: JSON.stringify({ domain }) });
+    const offset = data.serverTime ? Date.now() - new Date(data.serverTime).getTime() : 0;
+    focusUnlocks.sessionId = activeSession.sessionId;
+    focusUnlocks.passes[data.domain] = new Date(data.expiresAt).getTime() + offset;
+    await saveFocusUnlocks();
+    await armPassAlarms();
+    if (url) logBrowsingEvent(url, false, true);
+    return { success: true, expiresAt: focusUnlocks.passes[data.domain] };
+  } catch (err) {
+    // Most likely used already (another tab or device): take the server's word for it
+    await syncFocusUnlocks();
+    return { success: false, message: err.message };
+  }
 }
 
 // ── Live-state telemetry ───────────────────────────
@@ -320,10 +416,10 @@ function isBlocked(url) {
     }
   }
 
-  return blockedSites.some((site) => {
-    const siteUrl = site.url;
-    return hostname === siteUrl || hostname.endsWith('.' + siteUrl);
-  });
+  const site = getBlockedSiteInfo(url);
+  if (!site) return false;
+  // Strict mode in a session: the free pass or a paid unlock opens it
+  return !focusUnlockFor(site.url);
 }
 
 function getBlockedSiteInfo(url) {
@@ -331,6 +427,35 @@ function getBlockedSiteInfo(url) {
   return blockedSites.find(
     (site) => hostname === site.url || hostname.endsWith('.' + site.url)
   );
+}
+
+/** Send a tab to the block page for `url`. */
+function redirectToBlockPage(tabId, url) {
+  const siteInfo = getBlockedSiteInfo(url);
+  const params = new URLSearchParams({
+    url: url,
+    site: siteInfo?.displayName || extractHostname(url),
+    siteId: siteInfo?.id || '',
+    domain: siteInfo?.url || extractHostname(url),
+    remaining: activeSession ? getRemainingTime() : 'always',
+    strict: strictMode ? '1' : '0',
+  });
+  chrome.tabs.update(tabId, {
+    url: `${chrome.runtime.getURL('block.html')}?${params.toString()}`,
+  }).catch(() => {}); // tab closed meanwhile
+}
+
+/** Block every open tab whose site is blocked now (a pass ran out, a session ended). */
+async function reblockOpenTabs() {
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      const url = tab.url || tab.pendingUrl || '';
+      if (/^https?:/i.test(url) && !isInternalUrl(url) && isBlocked(url)) redirectToBlockPage(tab.id, url);
+    }
+  } catch (err) {
+    console.log('[DistractFree] Could not re-block tabs:', err.message);
+  }
 }
 
 // ── Navigation listener — BLOCKS ALWAYS ───────────
@@ -351,19 +476,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
     console.log('[DistractFree] BLOCKING:', url, '→ matched', siteInfo?.url);
 
-    // Redirect to block page
-    const blockPageUrl = chrome.runtime.getURL('block.html');
-    const params = new URLSearchParams({
-      url: url,
-      site: siteInfo?.displayName || extractHostname(url),
-      siteId: siteInfo?.id || '',
-      remaining: activeSession ? getRemainingTime() : 'always',
-      strict: strictMode ? '1' : '0',
-    });
-
-    chrome.tabs.update(details.tabId, {
-      url: `${blockPageUrl}?${params.toString()}`,
-    }).catch(() => {}); // tab closed meanwhile
+    redirectToBlockPage(details.tabId, url);
 
     // Log every blocked attempt (linked to the session when one is running)
     logBrowsingEvent(url, true, false);
@@ -381,21 +494,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (isInternalUrl(changeInfo.url)) return;
 
     if (isBlocked(changeInfo.url)) {
-      const siteInfo = getBlockedSiteInfo(changeInfo.url);
       console.log('[DistractFree] BLOCKING (tab update):', changeInfo.url);
-
-      const blockPageUrl = chrome.runtime.getURL('block.html');
-      const params = new URLSearchParams({
-        url: changeInfo.url,
-        site: siteInfo?.displayName || extractHostname(changeInfo.url),
-        siteId: siteInfo?.id || '',
-        remaining: activeSession ? getRemainingTime() : 'always',
-        strict: strictMode ? '1' : '0',
-      });
-
-      chrome.tabs.update(tabId, {
-        url: `${blockPageUrl}?${params.toString()}`,
-      }).catch(() => {}); // tab closed meanwhile
+      redirectToBlockPage(tabId, changeInfo.url);
       // In-page navigations (single-page apps) only show up here
       countBlockedAttempt(tabId, changeInfo.url);
     }
@@ -534,6 +634,7 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
 
     await chrome.storage.local.set({ activeSession });
     clearUnlocks();
+    await syncFocusUnlocks();
 
     // Live-state tracking reset & start
     await resetTelemetry(activeSession.sessionId);
@@ -561,6 +662,7 @@ async function startFocusSession(plannedDuration, selectedSiteIds) {
           };
           await chrome.storage.local.set({ activeSession });
           clearUnlocks();
+          await syncFocusUnlocks();
           startSessionTimer();
           // The website started this session: count and report its activity here too
           await resetTelemetry(activeSession.sessionId);
@@ -587,10 +689,13 @@ async function clearLocalSession() {
   }
   activeSession = null;
   clearUnlocks();
+  await clearFocusUnlocks();
   await chrome.storage.local.remove(['activeSession', 'sessionTelemetry']);
   sessionTelemetry = { ...EMPTY_TELEMETRY };
   stopSessionTimer();
   stopLiveSync();
+  // Passes and paid unlocks end with the session
+  await reblockOpenTabs();
 }
 
 /**
@@ -755,6 +860,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (authToken) {
       await syncBlockedSites();
       await reconcileSession();
+      await syncFocusUnlocks();
       // Picks up schedules added or changed on the website
       await armScheduledStart();
       // setInterval stops while the worker sleeps; this alarm wakes it every minute
@@ -767,6 +873,11 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       await reconcileSession();
       await armScheduledStart();
     }
+    return;
+  }
+  if (alarm.name.startsWith(PASS_ALARM_PREFIX)) {
+    // The free pass is over: back to the block page
+    await reblockOpenTabs();
     return;
   }
   if (alarm.name === 'sessionEnd') {
@@ -825,6 +936,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       blockedSites = [];
       strictMode = false;
       clearUnlocks();
+      focusUnlocks = { ...EMPTY_FOCUS_UNLOCKS };
+      await armPassAlarms();
       await chrome.storage.local.clear();
       console.log('[DistractFree] Logged out');
       sendResponse({ success: true });
@@ -849,6 +962,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     RECONCILE_SESSION: async () => {
       if (authToken) {
         await reconcileSession();
+        await syncFocusUnlocks();
         await armScheduledStart();
       }
       sendResponse({ success: true });
@@ -885,14 +999,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     SYNC_BLOCKED_SITES: async () => {
       const count = await syncBlockedSites();
+      await syncFocusUnlocks();
       sendResponse({ success: true, count });
     },
 
     CHECK_URL: async () => {
       const blocked = isBlocked(message.url);
       const hostname = extractHostname(message.url);
+      const site = getBlockedSiteInfo(message.url);
+      const focus = site ? focusUnlockFor(site.url) : null;
+      if (focus) {
+        sendResponse({ blocked, unlockExpiry: focus.until, unlockKind: focus.kind });
+        return;
+      }
       const unlockExpiry = temporarilyUnlocked.has(hostname) ? temporarilyUnlocked.get(hostname) : null;
-      sendResponse({ blocked, unlockExpiry });
+      sendResponse({ blocked, unlockExpiry, unlockKind: unlockExpiry ? 'coins' : null });
+    },
+
+    // The block page: what strict mode offers for this site right now
+    GET_FOCUS_UNLOCK: async () => {
+      await syncFocusUnlocks();
+      const domain = message.domain;
+      const focusStrict = focusStrictNow();
+      const until = focusUnlocks.passes[domain];
+      sendResponse({
+        focusStrict,
+        passUsed: focusStrict && !!until,
+        passActive: focusStrict && !!until && until > Date.now(),
+        paid: focusStrict && focusUnlocks.paid.includes(domain),
+        price: focusUnlocks.price,
+        unlockPageUrl: `${DASHBOARD_ORIGIN}/dashboard/unlock`,
+      });
+    },
+
+    START_GRACE_PASS: async () => {
+      sendResponse(await startGracePass(message.domain, message.url));
+    },
+
+    // The website finished a ₹49 unlock payment
+    SYNC_FOCUS_UNLOCKS: async () => {
+      await syncFocusUnlocks();
+      sendResponse({ success: true });
     },
 
     PAGE_TIME: async () => {

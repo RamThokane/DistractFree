@@ -5,6 +5,10 @@ const FocusSession = require('../models/FocusSession');
 const { UNLOCK_COST } = require('../utils/coinCalculator');
 const { createNotification } = require('./notificationController');
 const { normaliseWebsiteUrl, guessCategory } = require('../utils/websiteUrl');
+const { strictSessionFor } = require('../services/siteUnlock/siteUnlockService');
+
+// Taking a site off the list mid-session would get around the strict-mode unlock
+const LOCKED_MESSAGE = 'Strict mode is on during your focus session. Blocked sites can be removed or paused after it ends.';
 
 // ────────────────────────────────────────────────────
 // POST /api/websites/add
@@ -67,6 +71,10 @@ exports.removeWebsite = async (req, res) => {
       });
     }
 
+    if (await strictSessionFor(req.user)) {
+      return res.status(409).json({ success: false, code: 'STRICT_LOCKED', message: LOCKED_MESSAGE });
+    }
+
     const website = await BlockedWebsite.findOneAndDelete({
       _id: websiteId,
       userId,
@@ -118,6 +126,11 @@ exports.toggleWebsite = async (req, res) => {
 
     if (!website) {
       return res.status(404).json({ success: false, message: 'Website not found' });
+    }
+
+    // Turning a site back on is always fine; pausing one is not, mid strict session
+    if (website.isActive && await strictSessionFor(req.user)) {
+      return res.status(409).json({ success: false, code: 'STRICT_LOCKED', message: LOCKED_MESSAGE });
     }
 
     website.isActive = !website.isActive;

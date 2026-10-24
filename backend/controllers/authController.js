@@ -13,6 +13,7 @@ const { validationResult } = require('express-validator');
 const { createNotification } = require('./notificationController');
 const { syncUserStreak, resolveTimezone } = require('../services/streakService');
 const { planFor, remindIfEndingSoon } = require('../services/premium/planService');
+const { strictSessionFor } = require('../services/siteUnlock/siteUnlockService');
 
 /** The plan as the website reads it: { name, dailyChats (null = unlimited), premiumUntil } */
 const planView = (user) => {
@@ -268,6 +269,15 @@ exports.updateProfile = async (req, res) => {
 
     if (name) user.name = name;
     
+    // Strict mode can't be switched off mid-session, or the paid unlock would be pointless
+    if (strictMode === false && user.settings.strictMode && await strictSessionFor(user)) {
+      return res.status(409).json({
+        success: false,
+        code: 'STRICT_LOCKED',
+        message: 'Strict mode stays on until your focus session ends.',
+      });
+    }
+
     if (theme) user.settings.theme = theme;
     if (strictMode !== undefined) user.settings.strictMode = strictMode;
     // Set only the switches that were sent, so saving one never resets another

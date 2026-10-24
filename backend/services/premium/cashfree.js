@@ -41,13 +41,13 @@ async function request(method, path, body) {
 }
 
 /** @returns {Promise<{ payment_session_id: string, order_id: string, order_status: string }>} */
-const createOrder = ({ orderId, amount, customerId, email, phone, returnUrl, notifyUrl }) => request('POST', '/orders', {
+const createOrder = ({ orderId, amount, customerId, email, phone, returnUrl, notifyUrl, note = 'DistractFree Premium (30 days)' }) => request('POST', '/orders', {
   order_id: orderId,
   order_amount: amount,
   order_currency: 'INR',
   customer_details: { customer_id: customerId, customer_email: email, customer_phone: phone },
   order_meta: { return_url: returnUrl, ...(notifyUrl ? { notify_url: notifyUrl } : {}) },
-  order_note: 'DistractFree Premium (30 days)',
+  order_note: note,
 });
 
 /** @returns {Promise<{ order_id: string, order_status: 'ACTIVE'|'PAID'|'EXPIRED'|'TERMINATED'|'TERMINATION_REQUESTED', order_amount: number, order_currency: string }>} */

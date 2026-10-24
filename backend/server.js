@@ -24,6 +24,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes');
 const agentRoutes = require('./routes/agentRoutes');
 const premiumRoutes = require('./routes/premiumRoutes');
+const siteUnlockRoutes = require('./routes/siteUnlockRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 
 const app = express();
@@ -143,6 +144,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/agent', agentRoutes);
 app.use('/api/premium', premiumRoutes);
+app.use('/api/site-unlock', siteUnlockRoutes);
 app.use('/api/contact', contactRoutes);
 
 // Health check (public)

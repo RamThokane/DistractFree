@@ -3,6 +3,9 @@
  * =====================================
  * Handles: Timer polling, Strict Mode enforcement,
  *          Unlock with coins, Rotating motivational quotes.
+ *
+ * Strict mode during a focus session: one free 2-minute pass per site, then
+ * a ₹49 unlock (donated to charity) until the session ends, paid on the website.
  */
 
 try {
@@ -11,6 +14,7 @@ try {
   const siteName = params.get('site') || 'Unknown Website';
   const siteId = params.get('siteId') || '';
   const siteUrl = params.get('url') || '';
+  const domain = params.get('domain') || siteName;
 
   document.getElementById('blocked-site').textContent = siteName;
 
@@ -24,6 +28,13 @@ try {
   const confirmEl = document.getElementById('unlock-confirm');
   const confirmYes = document.getElementById('unlock-confirm-yes');
   const confirmNo = document.getElementById('unlock-cancel');
+  const confirmTitle = document.getElementById('confirm-title');
+  const confirmText = document.getElementById('confirm-text');
+  const strictText = document.getElementById('strict-mode-text');
+  const passBtn = document.getElementById('pass-btn');
+  const payBtn = document.getElementById('pay-btn');
+  const STRICT_TEXT = "Strict mode is on. Blocked sites can't be unlocked with coins.";
+  const COIN_CONFIRM = { title: confirmTitle.innerHTML, text: confirmText.textContent, yes: confirmYes.textContent };
 
   // Message the service worker; resolves undefined if it can't answer
   // (reading lastError keeps Chrome from reporting it as an error)
@@ -41,7 +52,10 @@ try {
   // ── State ───────────────────────────────────────
   let isStrictMode = params.get('strict') === '1';
   let hasActiveSession = false;
-  let confirming = false; // the "spend coins?" step is open
+  let confirming = false; // the confirm step is open
+  let confirmAction = 'coins'; // what it confirms: 'coins' | 'pass' | 'pay'
+  let focus = null; // strict mode in a session: { focusStrict, passUsed, passActive, paid, price, unlockPageUrl }
+  let busy = false; // a pass or payment is starting
 
   // ── Motivational Quotes ─────────────────────────
   const quotes = [
@@ -98,6 +112,25 @@ try {
 
   // ── UI State Manager ────────────────────────────
   const updateUI = () => {
+    // Strict mode in a focus session: free pass first, then ₹49
+    if (focus && focus.focusStrict && isStrictMode) {
+      unlockBtn.style.display = 'none';
+      if (strictModeMsg) strictModeMsg.style.display = 'flex';
+      if (busy || confirming) return;
+      passBtn.style.display = focus.passUsed ? 'none' : '';
+      payBtn.style.display = focus.passUsed && !focus.paid ? '' : 'none';
+      payBtn.textContent = `Unlock for ₹${focus.price} · until session ends`;
+      if (strictText) {
+        strictText.textContent = focus.passUsed
+          ? `Strict mode is on until your session ends. You've used your free pass for ${domain}.`
+          : `Strict mode is on. You have one free 2-minute pass for ${domain} this session.`;
+      }
+      return;
+    }
+    passBtn.style.display = 'none';
+    payBtn.style.display = 'none';
+    if (strictText) strictText.textContent = STRICT_TEXT;
+
     // Strict Mode disables coin unlocks at all times, not only during sessions
     if (isStrictMode) {
       // Hide unlock button, show strict mode banner
@@ -166,8 +199,37 @@ try {
   updateStatus();
   setInterval(updateStatus, 1000);
 
+  // ── Strict-mode pass / paid unlock state (asks the server) ──
+  const refreshFocus = async () => {
+    const response = await ask({ type: 'GET_FOCUS_UNLOCK', domain });
+    if (!response) return;
+    focus = response;
+    // Opened meanwhile (pass started in another tab, or the ₹49 payment went through)
+    if (focus.focusStrict && (focus.paid || focus.passActive) && siteUrl && !busy) {
+      window.location.href = siteUrl;
+      return;
+    }
+    updateUI();
+  };
+  refreshFocus();
+  setInterval(refreshFocus, 15000);
+
   // ── Unlock: confirm first, then spend ───────────
-  function openConfirm() {
+  function openConfirm(action = 'coins') {
+    confirmAction = action;
+    if (action === 'pass') {
+      confirmTitle.textContent = `Use your free pass for ${domain}?`;
+      confirmText.textContent = "This is your only free pass for this site this session. You get 2 minutes, then it's paused again.";
+      confirmYes.textContent = 'Open for 2 min';
+    } else if (action === 'pay') {
+      confirmTitle.textContent = `Unlock ${domain} for ₹${focus?.price || 49}?`;
+      confirmText.textContent = 'Your payment is donated to charity. The site stays open until this focus session ends. No refunds.';
+      confirmYes.textContent = 'Continue to payment';
+    } else {
+      confirmTitle.innerHTML = COIN_CONFIRM.title;
+      confirmText.textContent = COIN_CONFIRM.text;
+      confirmYes.textContent = COIN_CONFIRM.yes;
+    }
     confirming = true;
     if (actionsEl) actionsEl.style.display = 'none';
     if (confirmEl) confirmEl.hidden = false;
@@ -178,12 +240,48 @@ try {
     if (confirmEl) confirmEl.hidden = true;
     if (actionsEl) actionsEl.style.display = '';
   }
-  unlockBtn.addEventListener('click', openConfirm);
+  unlockBtn.addEventListener('click', () => openConfirm('coins'));
+  passBtn.addEventListener('click', () => openConfirm('pass'));
+  payBtn.addEventListener('click', () => openConfirm('pay'));
   if (confirmNo) confirmNo.addEventListener('click', () => { closeConfirm(); unlockBtn.focus(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && confirming) closeConfirm(); });
 
+  // The one free pass: the service worker re-blocks the site when it runs out
+  async function useFreePass() {
+    busy = true;
+    passBtn.disabled = true;
+    passBtn.textContent = 'Opening…';
+    const response = await ask({ type: 'START_GRACE_PASS', domain, url: siteUrl });
+    if (response && response.success) {
+      passBtn.textContent = 'Opened · 2 min';
+      passBtn.classList.add('btn-success');
+      setTimeout(() => { window.location.href = siteUrl; }, 600);
+      return;
+    }
+    passBtn.textContent = (response && response.message) || 'Couldn’t start the pass';
+    setTimeout(() => {
+      busy = false;
+      passBtn.disabled = false;
+      passBtn.textContent = 'Use free pass · 2 min';
+      refreshFocus();
+    }, 3000);
+  }
+
+  // ₹49 is paid on the website (Cashfree can't run inside the extension)
+  function goToPayment() {
+    busy = true;
+    payBtn.disabled = true;
+    payBtn.textContent = 'Opening payment…';
+    const target = new URL(focus?.unlockPageUrl || 'https://distractfree.site/dashboard/unlock');
+    target.searchParams.set('domain', domain);
+    if (siteUrl) target.searchParams.set('url', siteUrl);
+    window.location.href = target.toString();
+  }
+
   if (confirmYes) confirmYes.addEventListener('click', async () => {
     closeConfirm();
+    if (confirmAction === 'pass') return useFreePass();
+    if (confirmAction === 'pay') return goToPayment();
     unlockBtn.disabled = true;
     unlockBtn.textContent = 'Unlocking…';
 
