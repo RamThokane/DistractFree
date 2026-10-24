@@ -1,41 +1,40 @@
 import React, { useState } from 'react';
-import { LuMonitor, LuX } from 'react-icons/lu';
+import { LuMonitor } from 'react-icons/lu';
 import { isMobileDevice } from '../utils/device';
 
-const DISMISS_KEY = 'df_mobile_notice_dismissed';
-
-const wasDismissed = () => { try { return sessionStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; } };
-
 /**
- * Shown on phones and tablets only: DistractFree needs its Chrome extension,
- * so focus sessions and blocking only work on a laptop or desktop.
+ * Shown on phones and tablets only, on every page load: DistractFree needs
+ * its Chrome extension, so focus sessions and blocking only work on a laptop
+ * or desktop. A solid card over a dimmed page, so it reads clearly on any background.
  */
 const MobileNotice = () => {
-  const [show, setShow] = useState(() => isMobileDevice() && !wasDismissed());
+  const [show, setShow] = useState(isMobileDevice);
   if (!show) return null;
 
-  const dismiss = () => {
-    try { sessionStorage.setItem(DISMISS_KEY, '1'); } catch { /* private mode */ }
-    setShow(false);
-  };
-
   return (
-    <div
-      role="note"
-      aria-label="Best on a computer"
-      className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-md rounded-xl border border-line bg-surface text-text shadow-lg p-4 flex gap-3"
-    >
-      <LuMonitor className="mt-0.5 flex-shrink-0 text-accent" size={20} aria-hidden="true" />
-      <div className="text-sm leading-relaxed">
-        <p className="font-semibold">Use DistractFree on a laptop or PC</p>
-        <p className="text-muted mt-1">
-          DistractFree works through a Chrome extension, which phones can't install. You can sign in and see your
-          stats here, but focus sessions and site blocking need Chrome on a laptop or desktop computer.
-        </p>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0, 0, 0, 0.6)' }}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="mobile-notice-title"
+        aria-describedby="mobile-notice-text"
+        className="w-full max-w-sm rounded-xl p-6 shadow-2xl"
+        style={{
+          background: 'rgb(var(--c-surface, 255 255 255))',
+          color: 'rgb(var(--c-ink, 28 27 25))',
+          border: '1px solid rgb(var(--c-line, 0 0 0) / 0.18)',
+        }}
+      >
+        <LuMonitor className="text-accent" size={28} aria-hidden="true" />
+        <h2 id="mobile-notice-title" className="text-lg font-semibold mt-3">Use DistractFree on a laptop or PC</h2>
+        <div id="mobile-notice-text" className="text-sm leading-relaxed mt-2 space-y-2">
+          <p>DistractFree works through a Chrome extension, and phones can't install extensions.</p>
+          <p>You can sign in and check your stats on your phone, but you can't start focus sessions or block sites here. For the full experience, open distractfree.site in Chrome on a laptop or desktop computer.</p>
+        </div>
+        <button type="button" onClick={() => setShow(false)} className="df-btn df-btn--primary w-full mt-5">
+          I understand
+        </button>
       </div>
-      <button type="button" onClick={dismiss} className="self-start p-1 -m-1 text-muted hover:text-text" aria-label="Dismiss">
-        <LuX size={18} aria-hidden="true" />
-      </button>
     </div>
   );
 };
