@@ -1,11 +1,11 @@
 {
-  "model_version": "dt-20261023160850",
-  "trained_at": "2026-10-23T16:08:50.964021+00:00",
-  "n_real": 178,
+  "model_version": "dt-20261024051117",
+  "trained_at": "2026-10-24T05:11:17.248162+00:00",
+  "n_real": 179,
   "n_simulated": 0,
-  "n_train": 142,
+  "n_train": 143,
   "n_features": 13,
-  "n_nodes": 13,
+  "n_nodes": 11,
   "max_depth": 3,
   "feature_names": [
     "hourOfDay",
@@ -37,8 +37,6 @@
     8,
     -1,
     -1,
-    11,
-    -1,
     -1
   ],
   "children_right": [
@@ -52,8 +50,6 @@
     9,
     -1,
     -1,
-    12,
-    -1,
     -1
   ],
   "feature": [
@@ -64,31 +60,27 @@
     -2,
     -2,
     6,
-    1,
+    10,
     -2,
-    -2,
-    9,
     -2,
     -2
   ],
   "threshold": [
     1.899999976158142,
-    0.7000000178813934,
+    0.550000011920929,
     0.9000000059604645,
     -2.0,
     -2.0,
     -2.0,
     1.300000011920929,
-    0.5,
+    5.5,
     -2.0,
-    -2.0,
-    17.5,
     -2.0,
     -2.0
   ],
   "value": [
     [
-      64,
+      65,
       78
     ],
     [
@@ -96,11 +88,11 @@
       17
     ],
     [
-      39,
+      38,
       10
     ],
     [
-      29,
+      28,
       4
     ],
     [
@@ -108,36 +100,28 @@
       6
     ],
     [
-      4,
+      5,
       7
     ],
     [
-      21,
+      22,
       61
     ],
     [
-      11,
+      12,
       54
     ],
     [
-      5,
-      10
+      11,
+      36
     ],
     [
-      6,
-      44
+      1,
+      18
     ],
     [
       10,
       7
-    ],
-    [
-      7,
-      2
-    ],
-    [
-      3,
-      5
     ]
   ],
   "node_class": [
@@ -151,30 +135,9 @@
     1,
     1,
     1,
-    0,
-    0,
-    1
+    0
   ],
   "parity_samples": [
-    {
-      "features": [
-        1.0,
-        1.0,
-        0.0,
-        25.0,
-        0.8,
-        0.75,
-        0.4,
-        97.6,
-        0.0,
-        1440.0,
-        0.0,
-        0.5,
-        1.0
-      ],
-      "probability": 0.8653846153846154,
-      "predictedClass": 1
-    },
     {
       "features": [
         11.0,
@@ -191,7 +154,7 @@
         0.6667,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -210,7 +173,7 @@
         0.5417,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -229,8 +192,8 @@
         0.52,
         1.0
       ],
-      "probability": 0.6,
-      "predictedClass": 1
+      "probability": 0.42105263157894735,
+      "predictedClass": 0
     },
     {
       "features": [
@@ -248,8 +211,8 @@
         0.4667,
         1.0
       ],
-      "probability": 0.6,
-      "predictedClass": 1
+      "probability": 0.42105263157894735,
+      "predictedClass": 0
     },
     {
       "features": [
@@ -267,8 +230,8 @@
         0.4706,
         1.0
       ],
-      "probability": 0.6,
-      "predictedClass": 1
+      "probability": 0.42105263157894735,
+      "predictedClass": 0
     },
     {
       "features": [
@@ -286,8 +249,8 @@
         0.6842,
         1.0
       ],
-      "probability": 0.6,
-      "predictedClass": 1
+      "probability": 0.42105263157894735,
+      "predictedClass": 0
     },
     {
       "features": [
@@ -305,8 +268,8 @@
         0.5,
         1.0
       ],
-      "probability": 0.6,
-      "predictedClass": 1
+      "probability": 0.42105263157894735,
+      "predictedClass": 0
     },
     {
       "features": [
@@ -324,7 +287,7 @@
         0.5185,
         1.0
       ],
-      "probability": 0.2727272727272727,
+      "probability": 0.42105263157894735,
       "predictedClass": 0
     },
     {
@@ -343,7 +306,26 @@
         0.5789,
         1.0
       ],
-      "probability": 0.6,
+      "probability": 0.42105263157894735,
+      "predictedClass": 0
+    },
+    {
+      "features": [
+        23.0,
+        2.0,
+        0.0,
+        90.0,
+        0.8,
+        0.65,
+        0.6,
+        16.8,
+        2.0,
+        278.0,
+        5.0,
+        0.4516,
+        1.0
+      ],
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -362,26 +344,7 @@
         0.4516,
         1.0
       ],
-      "probability": 0.8653846153846154,
-      "predictedClass": 1
-    },
-    {
-      "features": [
-        23.0,
-        2.0,
-        0.0,
-        90.0,
-        0.8,
-        0.65,
-        0.6,
-        16.8,
-        2.0,
-        278.0,
-        5.0,
-        0.4516,
-        1.0
-      ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -400,7 +363,7 @@
         0.65,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -419,7 +382,7 @@
         0.6667,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -438,7 +401,7 @@
         0.5357,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -457,7 +420,7 @@
         0.5517,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -476,7 +439,7 @@
         0.4242,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -495,8 +458,8 @@
         0.6667,
         1.0
       ],
-      "probability": 0.3888888888888889,
-      "predictedClass": 0
+      "probability": 0.5714285714285714,
+      "predictedClass": 1
     },
     {
       "features": [
@@ -514,7 +477,7 @@
         0.5,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -533,7 +496,7 @@
         1.0,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -552,7 +515,7 @@
         0.5263,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -571,7 +534,7 @@
         0.6818,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -590,7 +553,7 @@
         0.6957,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -609,7 +572,7 @@
         0.6667,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -628,7 +591,7 @@
         0.6,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -647,7 +610,7 @@
         0.619,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.9047619047619048,
       "predictedClass": 1
     },
     {
@@ -666,7 +629,7 @@
         0.6364,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.9047619047619048,
       "predictedClass": 1
     },
     {
@@ -685,7 +648,7 @@
         0.6087,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.9047619047619048,
       "predictedClass": 1
     },
     {
@@ -704,7 +667,7 @@
         0.4412,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.9047619047619048,
       "predictedClass": 1
     },
     {
@@ -723,7 +686,7 @@
         0.4286,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.9047619047619048,
       "predictedClass": 1
     },
     {
@@ -742,7 +705,7 @@
         0.7143,
         1.0
       ],
-      "probability": 0.6153846153846154,
+      "probability": 0.5714285714285714,
       "predictedClass": 1
     },
     {
@@ -761,7 +724,7 @@
         0.0,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -780,7 +743,7 @@
         0.68,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -799,7 +762,7 @@
         0.6923,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -818,7 +781,7 @@
         0.7037,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     },
     {
@@ -837,7 +800,26 @@
         0.5667,
         1.0
       ],
-      "probability": 0.8653846153846154,
+      "probability": 0.7551020408163265,
+      "predictedClass": 1
+    },
+    {
+      "features": [
+        9.0,
+        6.0,
+        1.0,
+        25.0,
+        0.8,
+        0.7,
+        0.4,
+        14.0,
+        5.0,
+        963.0,
+        0.0,
+        0.7143,
+        1.0
+      ],
+      "probability": 0.7551020408163265,
       "predictedClass": 1
     }
   ]
