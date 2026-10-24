@@ -9,6 +9,8 @@ import api from '../services/api';
 import { formatTime, getRandomQuote, motivationalQuotes } from '../utils/helpers';
 import { SESSION_PRESETS } from '../utils/coinRules';
 import { pageTitle } from '../components/RouteTitle';
+import { hasExtension, isMobileDevice } from '../utils/device';
+import { Link } from 'react-router-dom';
 import { LuPlay, LuSquare, LuLock, LuCalendarDays, LuRotateCcw, LuX, LuCoins } from 'react-icons/lu';
 
 // Live state (a simple rule over this session's counts, computed on the server)
@@ -41,7 +43,6 @@ const countsOf = (session) => ({
   blockAttempts: session?.distractionAttempts || 0,
 });
 // The extension marks the page when it is installed; it is what counts tab switches
-const hasExtension = () => document.documentElement.getAttribute('data-distractfree-extension') === '1';
 
 const initialFromQuery = () => {
   const m = parseInt(new URLSearchParams(window.location.search).get('minutes'), 10);
@@ -69,6 +70,9 @@ const FocusSession = () => {
   const [liveError, setLiveError] = useState(false);
   const [liveCounts, setLiveCounts] = useState(EMPTY_COUNTS);
   const [extensionDetected, setExtensionDetected] = useState(hasExtension);
+  const [isMobile] = useState(isMobileDevice);
+  // Start was pressed without the extension in this browser
+  const [needsExtension, setNeedsExtension] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
   // Length of the running session when it isn't one of the presets (e.g. a scheduled 40-min session)
   const [activeTotalSecs, setActiveTotalSecs] = useState(null);
@@ -150,6 +154,13 @@ const FocusSession = () => {
 
   // ── Start Session (API-backed) ──
   const startTimer = useCallback(async function startTimer(retried = false) {
+    // Sessions are enforced by the extension; without it (phones, or "Desktop site" on a phone) they can't run
+    if (!hasExtension()) {
+      setExtensionDetected(false);
+      setNeedsExtension(true);
+      return;
+    }
+    setNeedsExtension(false);
     try {
       const plannedDuration = Math.round(presetTotal / 60);
       // Timezone lets the server compute hour-of-day features in the user's local time
@@ -474,7 +485,7 @@ const FocusSession = () => {
 
               {/* Controls */}
               <div className="flex items-center gap-3 mt-10">
-                {!isRunning && !isComplete && (
+                {!isRunning && !isComplete && !isMobile && (
                   <Button size="lg" onClick={() => startTimer()} icon={<LuPlay size={18} aria-hidden="true" />}>
                     Start focus
                   </Button>
@@ -496,6 +507,19 @@ const FocusSession = () => {
                   </Button>
                 )}
               </div>
+
+              {!isRunning && !isComplete && isMobile && (
+                <p className="text-sm text-amber-ink mt-5 max-w-sm" role="note">
+                  Focus sessions can't be started on a phone. They need the DistractFree extension in Chrome on a laptop
+                  or PC. <Link to="/install" className="df-link">How to install it</Link>
+                </p>
+              )}
+              {!isRunning && !isComplete && !isMobile && needsExtension && (
+                <p className="text-sm text-danger mt-5 max-w-sm" role="alert">
+                  The DistractFree extension isn't installed in this browser, so a focus session can't run.{' '}
+                  <Link to="/install" className="df-link">Install the extension</Link>, then reload this page.
+                </p>
+              )}
 
               {/* Coins to earn */}
               <p className="mt-5 inline-flex items-center gap-2 text-sm text-muted">

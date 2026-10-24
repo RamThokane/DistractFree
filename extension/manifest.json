@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
   "name": "DistractFree",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "AI-powered focus assistant — block distracting websites, track browsing, and earn Focus Coins.",
+  "homepage_url": "https://distractfree.site",
   "minimum_chrome_version": "102",
   "permissions": [
     "tabs",
     "storage",
-    "activeTab",
     "webNavigation",
     "alarms",
     "notifications",
@@ -59,12 +59,5 @@
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-  "externally_connectable": {
-    "matches": [
-      "https://distractfree.site/*",
-      "https://www.distractfree.site/*",
-      "http://localhost:3000/*"
-    ]
   }
 }

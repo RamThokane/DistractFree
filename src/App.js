@@ -31,6 +31,8 @@ import LegalPage from './pages/LegalPage';
 import ContactPage from './pages/ContactPage';
 import PremiumPage from './pages/PremiumPage';
 import SiteUnlockPage from './pages/SiteUnlockPage';
+import InstallPage from './pages/InstallPage';
+import MobileNotice from './components/MobileNotice';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || (() => {
   if (process.env.NODE_ENV !== 'production') {
@@ -49,6 +51,7 @@ function App() {
         <MotionConfig reducedMotion="user">
         <Router>
           <RouteTitle />
+          <MobileNotice />
           <AnimatePresence mode="wait">
             <Routes>
               {/* Public routes */}
@@ -56,6 +59,7 @@ function App() {
               <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
               <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
               <Route path="/styleguide" element={<StyleguidePage />} />
+              <Route path="/install" element={<InstallPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/privacy" element={<LegalPage kind="privacy" />} />

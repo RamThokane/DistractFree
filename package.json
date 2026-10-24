@@ -28,6 +28,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "zip:extension": "node scripts/zip-extension.js",
     "sync:tokens": "node -e \"require('fs').copyFileSync('src/styles/tokens.css','extension/tokens.css')\"",
     "test": "react-scripts test",
     "test:backend": "npm --prefix backend test",

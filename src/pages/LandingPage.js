@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useTheme, useChartTheme } from '../context/ThemeContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { downloadExtension, isMobileDevice } from '../utils/device';
 import {
   BarChart, Bar, Cell, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, ResponsiveContainer, CartesianGrid,
@@ -73,6 +74,14 @@ const MiniStat = ({ label, value, sub, className = '' }) => (
 /* ══════════════════════════════════════════════════════════════ */
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+  // Download the zip (not on phones) and show how to install it
+  const addToChrome = (e) => {
+    e.preventDefault();
+    const mobile = isMobileDevice();
+    if (!mobile) downloadExtension();
+    navigate('/install', { state: { downloaded: !mobile } });
+  };
   const chart = useChartTheme();
   const palette = useLandingPalette();
   const [scrolled, setScrolled] = React.useState(false);
@@ -142,8 +151,8 @@ const LandingPage = () => {
             <ThemeToggle className="lp-nav-icon" />
             <span className="lp-nav-divider hidden sm:block" aria-hidden="true" />
             <a
-              href="#"
-              onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); }}
+              href="/install"
+              onClick={addToChrome}
               className="lp-nav-outline hidden sm:inline-flex"
               title="Add to Chrome"
             >
