@@ -799,6 +799,11 @@ async function endFocusSession(cancelled = false) {
       }),
     });
 
+    // The server turns strict mode off when a session ends
+    if (data.strictModeTurnedOff) {
+      strictMode = false;
+      await chrome.storage.local.set({ strictMode });
+    }
     await clearLocalSession();
     return { success: true, session: data.session };
   } catch (err) {
@@ -806,6 +811,11 @@ async function endFocusSession(cancelled = false) {
     if (/no active session/i.test(err.message)) {
       await clearLocalSession();
       return { success: true, alreadyEnded: true };
+    }
+    // Strict mode: the server only ends it at its planned time. If this clock
+    // ran a little ahead, try the automatic end again shortly.
+    if (!cancelled && /strict mode is on/i.test(err.message)) {
+      chrome.alarms.create('sessionEnd', { when: Date.now() + 20000 });
     }
     console.log('[DistractFree] Failed to end session:', err.message);
     return { success: false, message: err.message };
@@ -881,7 +891,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     return;
   }
   if (alarm.name === 'sessionEnd') {
-    await endFocusSession(false);
+    const ended = await endFocusSession(false);
+    if (!ended.success) return; // retried shortly (see endFocusSession)
     // Notify the user
     chrome.notifications?.create('sessionComplete', {
       type: 'basic',

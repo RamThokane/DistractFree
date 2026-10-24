@@ -445,6 +445,14 @@ async function showDashboard(status, name) {
 
   if (blockedCount) blockedCount.textContent = (status && status.blockedSitesCount) || 0;
 
+  // Strict mode: no ending the session early, from here or anywhere else
+  const locked = !!(status && status.activeSession && status.strictMode);
+  const controlsRow = endSessionBtn && endSessionBtn.parentElement;
+  if (controlsRow) controlsRow.classList.toggle('hidden', locked);
+  const lockNote = $('strict-lock-note');
+  if (lockNote) lockNote.classList.toggle('hidden', !locked);
+  if (locked && confirmCancelSection) confirmCancelSection.classList.add('hidden');
+
   if (status && status.activeSession) {
     showActiveSession(status.activeSession);
   } else {

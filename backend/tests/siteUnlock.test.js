@@ -227,3 +227,34 @@ test('strict mode and the block list are locked during a strict-mode session', a
   assert.equal(offLater.status, 200);
   assert.equal((await User.findById(user._id)).settings.strictMode, false);
 });
+
+const sessionController = require('../controllers/sessionController');
+
+test('a strict-mode session can’t be ended early, and ending it turns strict mode off', async () => {
+  process.env.ML_AUTO_RETRAIN = 'false';
+  const { user, focus } = await setup();
+
+  for (const cancelled of [true, false]) {
+    const early = await call(sessionController.endSession, { user, body: { sessionId: String(focus._id), cancelled } });
+    assert.equal(early.status, 403);
+    assert.equal(early.body.code, 'STRICT_SESSION_LOCKED');
+  }
+  assert.equal((await FocusSession.findById(focus._id)).status, 'active');
+
+  // Timer ran out → it ends, and strict mode is off for next time
+  await FocusSession.updateOne({ _id: focus._id }, { startTime: new Date(Date.now() - 50 * 60000) });
+  const done = await call(sessionController.endSession, { user, body: { sessionId: String(focus._id), cancelled: false } });
+  assert.equal(done.status, 200);
+  assert.equal(done.body.strictModeTurnedOff, true);
+  assert.equal((await FocusSession.findById(focus._id)).status, 'completed');
+  assert.equal((await User.findById(user._id)).settings.strictMode, false);
+});
+
+test('without strict mode a session can still be ended early', async () => {
+  process.env.ML_AUTO_RETRAIN = 'false';
+  const { user, focus } = await setup({ strict: false });
+  const res = await call(sessionController.endSession, { user, body: { sessionId: String(focus._id), cancelled: true } });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.strictModeTurnedOff, false);
+  assert.equal((await FocusSession.findById(focus._id)).status, 'cancelled');
+});

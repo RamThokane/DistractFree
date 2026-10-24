@@ -113,7 +113,7 @@ const TERMS = {
       items: [
         'With strict mode on during a focus session, each blocked site gets one free 2-minute pass per session. After that you can unlock the site until the session ends for ₹49.',
         'The full ₹49 is donated to charity. It is a donation, not a purchase of goods, and it is non-refundable.',
-        'Strict mode cannot be turned off, and blocked sites cannot be removed or paused, while a focus session is running.',
+        'While a focus session is running with strict mode on, the session cannot be ended early, strict mode cannot be turned off, and blocked sites cannot be removed or paused. Strict mode turns off by itself when the session ends.',
       ],
     },
     {
@@ -168,7 +168,7 @@ const REFUND = {
       heading: 'Refunds',
       items: [
         'Because Premium starts as soon as you pay, payments are non-refundable once Premium is active, including for unused days.',
-        'Site unlocks are donations to charity and are never refunded, including when the session ends early or the site is not used.',
+        'Site unlocks are donations to charity and are never refunded, including when the site is not used.',
         'You get a full refund if you were charged but Premium was not activated, or if you were charged more than once for the same purchase.',
         <>To ask for a refund, email <Mail /> within 7 days of the payment with the order id shown in Settings → Premium. Approved refunds are sent back to the original payment method within 5–7 working days.</>,
       ],

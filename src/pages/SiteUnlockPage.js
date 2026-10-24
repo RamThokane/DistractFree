@@ -190,7 +190,7 @@ const SiteUnlockPage = () => {
             <ul className="mt-5 space-y-2.5 text-sm text-text-2">
               <li className="flex gap-2.5"><LuCheck className="mt-0.5 flex-shrink-0 text-accent" aria-hidden="true" />{domain} opens until this focus session ends</li>
               <li className="flex gap-2.5"><LuHeart className="mt-0.5 flex-shrink-0 text-accent" aria-hidden="true" />The full ₹{price} is donated to charity</li>
-              <li className="flex gap-2.5"><LuCircleAlert className="mt-0.5 flex-shrink-0 text-amber-ink" aria-hidden="true" />No refunds, even if you end the session early</li>
+              <li className="flex gap-2.5"><LuCircleAlert className="mt-0.5 flex-shrink-0 text-amber-ink" aria-hidden="true" />No refunds</li>
             </ul>
             <Button variant="secondary" className="mt-6" onClick={() => navigate('/dashboard/focus')}>Stay focused</Button>
           </Card>

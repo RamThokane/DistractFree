@@ -429,7 +429,7 @@ const SettingsPage = () => {
               <LuShieldCheck className="w-5 h-5 mt-0.5 text-muted flex-shrink-0" aria-hidden="true" />
               <div>
                 <p className="text-sm font-semibold text-text">Strict mode</p>
-                <p className="text-sm text-muted">Blocked sites can't be unlocked with coins — at any time. During a focus session each site gets one free 2-minute pass, then a ₹49 unlock that goes to charity. It can't be turned off mid-session.</p>
+                <p className="text-sm text-muted">Blocked sites can't be unlocked with coins — at any time. During a focus session each site gets one free 2-minute pass, then a ₹49 unlock that goes to charity, and the session can't be ended early. It turns off by itself when the session ends.</p>
               </div>
             </div>
             <Toggle checked={strictMode} onChange={toggleStrictMode} aria-label="Strict mode" />

@@ -19,6 +19,10 @@ const { computeStreak, streakAfterCompletion, resolveTimezone } = require('../se
 const { localDayNumber, dayFromNumber, zonedTimeToUtc } = require('../utils/timezone');
 const { goalMinutesFor } = require('../utils/dailyGoal');
 
+// Strict mode: the session can't be ended before its planned time. A little
+// slack for the extension or website ending it on its own clock.
+const STRICT_END_SLACK_MS = 15 * 1000;
+
 // ────────────────────────────────────────────────────
 // POST /api/session/start
 // ────────────────────────────────────────────────────
@@ -72,6 +76,15 @@ exports.endSession = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'No active session found with this ID',
+      });
+    }
+
+    const plannedEnd = new Date(session.startTime).getTime() + session.plannedDuration * 60000;
+    if (req.user.settings?.strictMode && Date.now() < plannedEnd - STRICT_END_SLACK_MS) {
+      return res.status(403).json({
+        success: false,
+        code: 'STRICT_SESSION_LOCKED',
+        message: 'Strict mode is on, so this session can’t be ended early. It ends on its own when the timer runs out.',
       });
     }
 
@@ -180,6 +193,12 @@ exports.endSession = async (req, res) => {
     session.actualSuccess = isSessionSuccess(session) === 1;
     await session.save();
 
+    // Strict mode lasts one session: the user turns it on again when they want it
+    const strictTurnedOff = (await User.updateOne(
+      { _id: userId, 'settings.strictMode': true },
+      { $set: { 'settings.strictMode': false } }
+    )).modifiedCount > 0;
+
     // Learning loop: every ended session (completed or cancelled) retrains the
     // model on all real sessions, then this instance switches to it. Runs
     // before the response because serverless functions may stop right after
@@ -192,6 +211,7 @@ exports.endSession = async (req, res) => {
     res.json({
       success: true,
       session,
+      strictModeTurnedOff: strictTurnedOff,
     });
   } catch (error) {
     console.error('[Session] End error:', error.message);

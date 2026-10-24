@@ -52,7 +52,7 @@ const initialFromQuery = () => {
 
 const FocusSession = () => {
   const { refreshCoins } = useCoins();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const toast = useToast();
   // A suggested length can arrive as ?minutes=40 (from "Best next session")
   const [suggested] = useState(initialFromQuery);
@@ -191,21 +191,34 @@ const FocusSession = () => {
     }
   }, [presetTotal, adoptSession]);
 
+  // The server turns strict mode off when a session ends
+  const afterEnd = useCallback((data) => {
+    if (data?.strictModeTurnedOff && user) {
+      updateUser({ ...user, settings: { ...user.settings, strictMode: false } });
+      toast.info('Strict mode is off', 'Turn it on again in Settings before your next session.');
+    }
+  }, [user, updateUser, toast]);
+
   // ── Stop / Cancel Session (API-backed) ──
   const stopTimer = useCallback(async () => {
-    setIsRunning(false);
     if (activeSessionId) {
       try {
-        await api.post('/session/end', { sessionId: activeSessionId, cancelled: true });
+        const res = await api.post('/session/end', { sessionId: activeSessionId, cancelled: true });
+        afterEnd(res.data);
       } catch (err) {
         console.error('[FocusSession] End error:', err);
+        if (err.response?.data?.code === 'STRICT_SESSION_LOCKED') {
+          toast.error('Can’t end this session early', err.response.data.message);
+          return;
+        }
       }
     }
+    setIsRunning(false);
     resetToIdle();
     // Notify extension
     window.dispatchEvent(new CustomEvent('DF_SESSION_END'));
     localStorage.setItem('df_session_action', JSON.stringify({ action: 'end', ts: Date.now() }));
-  }, [activeSessionId, resetToIdle]);
+  }, [activeSessionId, resetToIdle, afterEnd, toast]);
 
   // ── Complete Session (timer hits 0) ──
   const completeSession = useCallback(async () => {
@@ -216,6 +229,7 @@ const FocusSession = () => {
       try {
         const res = await api.post('/session/end', { sessionId: activeSessionId, cancelled: false });
         if (res.data.success) {
+          afterEnd(res.data);
           const coins = res.data.session?.coinsEarned || 0;
           if (coins > 0) {
             refreshCoins();
@@ -229,7 +243,7 @@ const FocusSession = () => {
     // Notify extension
     window.dispatchEvent(new CustomEvent('DF_SESSION_END'));
     localStorage.setItem('df_session_action', JSON.stringify({ action: 'end', ts: Date.now() }));
-  }, [activeSessionId, refreshCoins, toast]);
+  }, [activeSessionId, refreshCoins, toast, afterEnd]);
 
   const selectPreset = (idx) => {
     if (isRunning) return;
@@ -465,10 +479,16 @@ const FocusSession = () => {
                     Start focus
                   </Button>
                 )}
-                {isRunning && (
+                {isRunning && !isStrictMode && (
                   <Button variant="danger-outline" onClick={stopTimer} icon={<LuSquare size={14} aria-hidden="true" />}>
                     End session early
                   </Button>
+                )}
+                {isRunning && isStrictMode && (
+                  <p className="text-sm text-muted flex items-center gap-2">
+                    <LuLock size={14} aria-hidden="true" />
+                    Strict mode is on: this session ends when the timer runs out.
+                  </p>
                 )}
                 {isComplete && (
                   <Button variant="secondary" size="lg" onClick={resetToIdle} icon={<LuRotateCcw size={16} aria-hidden="true" />}>
