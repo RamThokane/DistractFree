@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DistractFree",
   "version": "1.4.2",
-  "description": "AI-powered focus assistant — block distracting websites, track browsing, and earn Focus Coins.",
+  "description": "Block distracting sites during focus sessions, earn Focus Coins for staying on task, and get AI insights into your focus habits.",
   "homepage_url": "https://distractfree.site",
   "minimum_chrome_version": "102",
   "permissions": [
