@@ -1,59 +1,59 @@
 {
   "status": "trained",
-  "model_version": "dt-20261025110612",
-  "trained_at": "2026-10-25T11:06:12.120502+00:00",
-  "n_real": 194,
+  "model_version": "dt-20261027024140",
+  "trained_at": "2026-10-27T02:41:40.414449+00:00",
+  "n_real": 213,
   "n_simulated": 0,
-  "n_train": 155,
+  "n_train": 170,
   "task": "Pre-session prediction of sessionSuccess (binary)",
   "target": "status == 'completed' AND duration >= 0.9 * plannedDuration AND distractionAttempts <= 1",
   "evaluated_on": "real sessions only",
   "split": "time-based: oldest 80% of real sessions train, newest 20% test",
-  "n_train_real": 155,
-  "n_test": 39,
+  "n_train_real": 170,
+  "n_test": 43,
   "train_range": {
     "from": "2026-04-18T19:41:33.199000+00:00",
-    "to": "2026-10-21T04:14:20.901000+00:00",
-    "n": 155
+    "to": "2026-10-22T15:04:46.062000+00:00",
+    "n": 170
   },
   "test_range": {
-    "from": "2026-10-21T05:04:38.561000+00:00",
-    "to": "2026-10-25T10:32:37.742000+00:00",
-    "n": 39
+    "from": "2026-10-22T17:48:49.949000+00:00",
+    "to": "2026-10-27T02:13:19.527000+00:00",
+    "n": 43
   },
   "success_rate": {
-    "train_real": 0.5419,
-    "test": 0.7179
+    "train_real": 0.5588,
+    "test": 0.7442
   },
   "class_names": [
     "not_successful",
     "successful"
   ],
   "metrics": {
-    "accuracy": 0.7179,
-    "balanced_accuracy": 0.5,
-    "precision": 0.7179,
-    "recall": 1.0,
-    "f1": 0.8358,
-    "roc_auc": 0.401,
+    "accuracy": 0.5581,
+    "balanced_accuracy": 0.4645,
+    "precision": 0.7241,
+    "recall": 0.6562,
+    "f1": 0.6885,
+    "roc_auc": 0.5455,
     "confusion_matrix": [
       [
-        0,
-        11
+        3,
+        8
       ],
       [
-        0,
-        28
+        11,
+        21
       ]
     ]
   },
   "baselines": {
     "majority_class": {
-      "accuracy": 0.7179,
+      "accuracy": 0.7442,
       "balanced_accuracy": 0.5,
-      "precision": 0.7179,
+      "precision": 0.7442,
       "recall": 1.0,
-      "f1": 0.8358,
+      "f1": 0.8533,
       "roc_auc": 0.5,
       "confusion_matrix": [
         [
@@ -62,101 +62,101 @@
         ],
         [
           0,
-          28
+          32
         ]
       ]
     },
     "last5_success_rate": {
-      "accuracy": 0.6154,
-      "balanced_accuracy": 0.4286,
-      "precision": 0.6857,
-      "recall": 0.8571,
-      "f1": 0.7619,
-      "roc_auc": 0.2857,
+      "accuracy": 0.6047,
+      "balanced_accuracy": 0.4062,
+      "precision": 0.7027,
+      "recall": 0.8125,
+      "f1": 0.7536,
+      "roc_auc": 0.392,
       "confusion_matrix": [
         [
           0,
           11
         ],
         [
-          4,
-          24
+          6,
+          26
         ]
       ]
     }
   },
   "beats_baseline": {
     "majority_class": false,
-    "last5_success_rate": true
+    "last5_success_rate": false
   },
   "walk_forward": {
     "n_splits": 5,
-    "n_predictions": 160,
+    "n_predictions": 175,
     "model": {
-      "accuracy": 0.625,
-      "balanced_accuracy": 0.5498,
-      "precision": 0.686,
-      "recall": 0.7905,
-      "f1": 0.7345,
-      "roc_auc": 0.5991,
+      "accuracy": 0.6857,
+      "balanced_accuracy": 0.5751,
+      "precision": 0.7192,
+      "recall": 0.8824,
+      "f1": 0.7925,
+      "roc_auc": 0.6433,
       "confusion_matrix": [
         [
-          17,
-          38
+          15,
+          41
         ],
         [
-          22,
-          83
+          14,
+          105
         ]
       ]
     },
     "majority_class": {
-      "accuracy": 0.4938,
-      "balanced_accuracy": 0.5277,
-      "precision": 0.6875,
-      "recall": 0.419,
-      "f1": 0.5207,
+      "accuracy": 0.48,
+      "balanced_accuracy": 0.5184,
+      "precision": 0.7,
+      "recall": 0.4118,
+      "f1": 0.5185,
       "roc_auc": null,
       "confusion_matrix": [
         [
           35,
-          20
+          21
         ],
         [
-          61,
-          44
+          70,
+          49
         ]
       ]
     },
     "last5_success_rate": {
-      "accuracy": 0.625,
-      "balanced_accuracy": 0.5498,
-      "precision": 0.686,
-      "recall": 0.7905,
-      "f1": 0.7345,
-      "roc_auc": 0.5861,
+      "accuracy": 0.6343,
+      "balanced_accuracy": 0.5373,
+      "precision": 0.7007,
+      "recall": 0.8067,
+      "f1": 0.75,
+      "roc_auc": 0.5708,
       "confusion_matrix": [
         [
-          17,
-          38
+          15,
+          41
         ],
         [
-          22,
-          83
+          23,
+          96
         ]
       ]
     }
   },
   "best_params": {
-    "criterion": "gini",
-    "max_depth": 3,
-    "min_samples_leaf": 12
+    "criterion": "entropy",
+    "max_depth": 6,
+    "min_samples_leaf": 8
   },
   "cv": {
     "splitter": "TimeSeriesSplit",
     "n_splits": 5,
     "scoring": "balanced_accuracy",
-    "best_score": 0.6105
+    "best_score": 0.6172
   },
   "feature_names": [
     "hourOfDay",
@@ -176,27 +176,31 @@
   "feature_importances": [
     {
       "feature": "avgTabSwitchesLast5",
-      "importance": 0.512
-    },
-    {
-      "feature": "avgDistractionsLast5",
-      "importance": 0.1811
+      "importance": 0.3073
     },
     {
       "feature": "minutesSinceLastSession",
-      "importance": 0.1076
+      "importance": 0.2567
     },
     {
       "feature": "dayOfWeek",
-      "importance": 0.1009
+      "importance": 0.1298
+    },
+    {
+      "feature": "avgDistractionsLast5",
+      "importance": 0.1142
+    },
+    {
+      "feature": "hourBandSuccessRate",
+      "importance": 0.1102
+    },
+    {
+      "feature": "currentStreak",
+      "importance": 0.0621
     },
     {
       "feature": "sessionsAlreadyToday",
-      "importance": 0.0671
-    },
-    {
-      "feature": "successRateLast20",
-      "importance": 0.0313
+      "importance": 0.0196
     },
     {
       "feature": "hourOfDay",
@@ -215,11 +219,7 @@
       "importance": 0.0
     },
     {
-      "feature": "currentStreak",
-      "importance": 0.0
-    },
-    {
-      "feature": "hourBandSuccessRate",
+      "feature": "successRateLast20",
       "importance": 0.0
     },
     {
@@ -227,7 +227,7 @@
       "importance": 0.0
     }
   ],
-  "n_nodes": 13,
-  "max_depth": 3,
+  "n_nodes": 29,
+  "max_depth": 6,
   "min_real_sessions": 50
 }
