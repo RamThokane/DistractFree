@@ -9,11 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@next/swc-win32-x64-msvc": "^16.2.6",
     "framer-motion": "^12.39.0",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"
+  },
+  "optionalDependencies": {
+    "@next/swc-win32-x64-msvc": "^16.2.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
