@@ -78,10 +78,15 @@ export default function HeroSection() {
           {/* CTA Buttons */}
           <motion.div variants={itemVariants} className="flex flex-wrap gap-4 items-center mb-10">
             <a
-              href="/register"
-              className="relative h-14 px-8 rounded-xl font-bold text-white bg-gradient-to-r from-[#6c5ce7] to-[#9d92ff] flex items-center justify-center gap-2 shadow-[0_0_0_0_rgba(108,92,231,0.5)] animate-ripple spring-hover hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(108,92,231,0.45)] active:scale-[0.97]"
+              href="https://chromewebstore.google.com/detail/DistractFree/ajpmebphgmoblmkfplilfdnfkecbhhko"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative h-14 px-8 rounded-xl font-bold text-white bg-gradient-to-r from-[#6c5ce7] to-[#9d92ff] flex items-center justify-center gap-2.5 shadow-[0_0_0_0_rgba(108,92,231,0.5)] animate-ripple spring-hover hover:-translate-y-0.5 hover:shadow-[0_20px_60px_rgba(108,92,231,0.45)] active:scale-[0.97]"
             >
-              Start Free
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.82 0 3.41.96 4.33 2.39l-2.5 4.33A3.001 3.001 0 0 0 9 12H4.07A7.966 7.966 0 0 1 12 5zm-7.93 8H9a3 3 0 0 0 2.83 1.61l-2.5 4.33A7.966 7.966 0 0 1 4.07 13zM12 19a7.93 7.93 0 0 1-2.33-.35l2.5-4.33c.28.04.55.08.83.08a3 3 0 0 0 2.83-2h4.93A7.966 7.966 0 0 1 12 19z" />
+              </svg>
+              Add to Chrome
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>

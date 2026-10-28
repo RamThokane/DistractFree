@@ -104,10 +104,15 @@ export default function Navbar() {
             Log In
           </a>
           <a
-            href="/register"
-            className="relative px-5 py-2.5 rounded-[10px] text-xs font-bold text-white bg-gradient-to-br from-[#6c5ce7] to-[#9d92ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_20px_rgba(108,92,231,0.2)] spring-hover hover:scale-[1.02] hover:brightness-110 active:scale-[0.97]"
+            href="https://chromewebstore.google.com/detail/DistractFree/ajpmebphgmoblmkfplilfdnfkecbhhko"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative px-5 py-2.5 rounded-[10px] text-xs font-bold text-white bg-gradient-to-br from-[#6c5ce7] to-[#9d92ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_20px_rgba(108,92,231,0.2)] spring-hover hover:scale-[1.02] hover:brightness-110 active:scale-[0.97] flex items-center gap-1.5"
           >
-            Start Free
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.82 0 3.41.96 4.33 2.39l-2.5 4.33A3.001 3.001 0 0 0 9 12H4.07A7.966 7.966 0 0 1 12 5zm-7.93 8H9a3 3 0 0 0 2.83 1.61l-2.5 4.33A7.966 7.966 0 0 1 4.07 13zM12 19a7.93 7.93 0 0 1-2.33-.35l2.5-4.33c.28.04.55.08.83.08a3 3 0 0 0 2.83-2h4.93A7.966 7.966 0 0 1 12 19z" />
+            </svg>
+            Add to Chrome
           </a>
         </div>
 
@@ -159,10 +164,15 @@ export default function Navbar() {
               Log In
             </a>
             <a
-              href="/register"
-              className="px-5 py-3 rounded-[10px] text-sm font-bold text-center text-white bg-gradient-to-br from-[#6c5ce7] to-[#9d92ff]"
+              href="https://chromewebstore.google.com/detail/DistractFree/ajpmebphgmoblmkfplilfdnfkecbhhko"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-3 rounded-[10px] text-sm font-bold text-center text-white bg-gradient-to-br from-[#6c5ce7] to-[#9d92ff] flex items-center justify-center gap-2"
             >
-              Start Free
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.82 0 3.41.96 4.33 2.39l-2.5 4.33A3.001 3.001 0 0 0 9 12H4.07A7.966 7.966 0 0 1 12 5zm-7.93 8H9a3 3 0 0 0 2.83 1.61l-2.5 4.33A7.966 7.966 0 0 1 4.07 13zM12 19a7.93 7.93 0 0 1-2.33-.35l2.5-4.33c.28.04.55.08.83.08a3 3 0 0 0 2.83-2h4.93A7.966 7.966 0 0 1 12 19z" />
+              </svg>
+              Add to Chrome
             </a>
           </div>
         </motion.div>
