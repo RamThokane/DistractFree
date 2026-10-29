@@ -123,8 +123,10 @@ const GlassNavbar = ({ items = [], activePath = '', onNavigate }) => {
                   </button>
                 ))}
                 <a
-                  href="#"
-                  onClick={(e) => { e.preventDefault(); alert('🚀 Coming soon to the Chrome Web Store!'); setMobileOpen(false); }}
+                  href="https://chromewebstore.google.com/detail/DistractFree/ajpmebphgmoblmkfplilfdnfkecbhhko"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileOpen(false)}
                   className={`
                     w-full flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium transition-colors duration-150
                     text-fg-2 hover:bg-ink/[0.05]

@@ -75,12 +75,10 @@ const MiniStat = ({ label, value, sub, className = '' }) => (
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  // Download the zip (not on phones) and show how to install it
+  // Extension is live on Chrome Web Store — open the listing page
   const addToChrome = (e) => {
     e.preventDefault();
-    const mobile = isMobileDevice();
-    if (!mobile) downloadExtension();
-    navigate('/install', { state: { downloaded: !mobile } });
+    window.open('https://chromewebstore.google.com/detail/DistractFree/ajpmebphgmoblmkfplilfdnfkecbhhko', '_blank', 'noopener,noreferrer');
   };
   const chart = useChartTheme();
   const palette = useLandingPalette();
