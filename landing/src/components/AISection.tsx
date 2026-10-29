@@ -130,7 +130,7 @@ export default function AISection() {
                 initial={{ strokeDashoffset: 500 }}
                 whileInView={{ strokeDashoffset: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 1.8, ease: 'easeInOut' }}
+                transition={{ duration: 1.8, ease: 'easeInOut' as const }}
               />
 
               {/* Interactive Circle at peak */}

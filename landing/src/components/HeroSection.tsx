@@ -21,7 +21,7 @@ export default function HeroSection() {
       y: 0,
       transition: {
         duration: 0.7,
-        ease: [0.21, 1.02, 0.73, 1.0], // custom spring-like ease
+        ease: [0.21, 1.02, 0.73, 1.0] as const, // custom spring-like ease
       },
     },
   };
@@ -136,7 +136,7 @@ export default function HeroSection() {
         <motion.div
           initial={{ opacity: 0, y: 40, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.9, ease: [0.21, 1.02, 0.73, 1.0], delay: 0.2 }}
+          transition={{ duration: 0.9, ease: [0.21, 1.02, 0.73, 1.0] as const, delay: 0.2 }}
           className="relative animate-float"
         >
           {/* Glass Card Mockup */}

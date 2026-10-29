@@ -7,7 +7,7 @@ export default function ProductSection() {
   const scrollAnimation = {
     initial: { opacity: 0, y: 40 },
     whileInView: { opacity: 1, y: 0 },
-    transition: { duration: 0.6, ease: [0.21, 1.02, 0.73, 1.0] },
+    transition: { duration: 0.6, ease: [0.21, 1.02, 0.73, 1.0] as const },
     viewport: { once: true, margin: '-80px' },
   };
 
@@ -75,7 +75,7 @@ export default function ProductSection() {
                   initial={{ strokeDashoffset: 600 }}
                   whileInView={{ strokeDashoffset: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 1.5, ease: 'easeOut' }}
+                  transition={{ duration: 1.5, ease: 'easeOut' as const }}
                 />
 
                 {/* Points */}
@@ -134,7 +134,7 @@ export default function ProductSection() {
                     initial={{ strokeDashoffset: 276 }}
                     whileInView={{ strokeDashoffset: 70 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1.5, ease: 'easeOut' }}
+                    transition={{ duration: 1.5, ease: 'easeOut' as const }}
                     strokeLinecap="round"
                   />
                 </svg>
@@ -234,7 +234,7 @@ export default function ProductSection() {
                     initial={{ strokeDashoffset: 500 }}
                     whileInView={{ strokeDashoffset: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 1.5, ease: 'easeOut' }}
+                    transition={{ duration: 1.5, ease: 'easeOut' as const }}
                   />
                   <path
                     d="M 0 100 Q 125 110 250 40 T 500 20 L 500 120 L 0 120 Z"
