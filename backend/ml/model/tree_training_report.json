@@ -1,86 +1,86 @@
 {
   "status": "trained",
-  "model_version": "dt-20261027024140",
-  "trained_at": "2026-10-27T02:41:40.414449+00:00",
-  "n_real": 213,
+  "model_version": "dt-20261030235643",
+  "trained_at": "2026-10-30T23:56:43.708534+00:00",
+  "n_real": 239,
   "n_simulated": 0,
-  "n_train": 170,
+  "n_train": 191,
   "task": "Pre-session prediction of sessionSuccess (binary)",
   "target": "status == 'completed' AND duration >= 0.9 * plannedDuration AND distractionAttempts <= 1",
   "evaluated_on": "real sessions only",
   "split": "time-based: oldest 80% of real sessions train, newest 20% test",
-  "n_train_real": 170,
-  "n_test": 43,
+  "n_train_real": 191,
+  "n_test": 48,
   "train_range": {
     "from": "2026-04-18T19:41:33.199000+00:00",
-    "to": "2026-10-22T15:04:46.062000+00:00",
-    "n": 170
+    "to": "2026-10-25T09:23:49.526000+00:00",
+    "n": 191
   },
   "test_range": {
-    "from": "2026-10-22T17:48:49.949000+00:00",
-    "to": "2026-10-27T02:13:19.527000+00:00",
-    "n": 43
+    "from": "2026-10-25T09:27:03.410000+00:00",
+    "to": "2026-10-30T18:11:32.598000+00:00",
+    "n": 48
   },
   "success_rate": {
-    "train_real": 0.5588,
-    "test": 0.7442
+    "train_real": 0.5759,
+    "test": 0.8542
   },
   "class_names": [
     "not_successful",
     "successful"
   ],
   "metrics": {
-    "accuracy": 0.5581,
-    "balanced_accuracy": 0.4645,
-    "precision": 0.7241,
-    "recall": 0.6562,
-    "f1": 0.6885,
-    "roc_auc": 0.5455,
+    "accuracy": 0.8125,
+    "balanced_accuracy": 0.4756,
+    "precision": 0.8478,
+    "recall": 0.9512,
+    "f1": 0.8966,
+    "roc_auc": 0.4756,
     "confusion_matrix": [
       [
-        3,
-        8
+        0,
+        7
       ],
       [
-        11,
-        21
+        2,
+        39
       ]
     ]
   },
   "baselines": {
     "majority_class": {
-      "accuracy": 0.7442,
+      "accuracy": 0.8542,
       "balanced_accuracy": 0.5,
-      "precision": 0.7442,
+      "precision": 0.8542,
       "recall": 1.0,
-      "f1": 0.8533,
+      "f1": 0.9213,
       "roc_auc": 0.5,
       "confusion_matrix": [
         [
           0,
-          11
+          7
         ],
         [
           0,
-          32
+          41
         ]
       ]
     },
     "last5_success_rate": {
-      "accuracy": 0.6047,
-      "balanced_accuracy": 0.4062,
-      "precision": 0.7027,
-      "recall": 0.8125,
-      "f1": 0.7536,
-      "roc_auc": 0.392,
+      "accuracy": 0.8125,
+      "balanced_accuracy": 0.4756,
+      "precision": 0.8478,
+      "recall": 0.9512,
+      "f1": 0.8966,
+      "roc_auc": 0.4983,
       "confusion_matrix": [
         [
           0,
-          11
+          7
         ],
         [
-          6,
-          26
+          2,
+          39
         ]
       ]
     }
@@ -91,72 +91,72 @@
   },
   "walk_forward": {
     "n_splits": 5,
-    "n_predictions": 175,
+    "n_predictions": 195,
     "model": {
-      "accuracy": 0.6857,
-      "balanced_accuracy": 0.5751,
-      "precision": 0.7192,
-      "recall": 0.8824,
-      "f1": 0.7925,
-      "roc_auc": 0.6433,
+      "accuracy": 0.6462,
+      "balanced_accuracy": 0.5812,
+      "precision": 0.7612,
+      "recall": 0.7338,
+      "f1": 0.7473,
+      "roc_auc": 0.5489,
       "confusion_matrix": [
         [
-          15,
-          41
+          24,
+          32
         ],
         [
-          14,
-          105
+          37,
+          102
         ]
       ]
     },
     "majority_class": {
-      "accuracy": 0.48,
-      "balanced_accuracy": 0.5184,
-      "precision": 0.7,
-      "recall": 0.4118,
-      "f1": 0.5185,
+      "accuracy": 0.6,
+      "balanced_accuracy": 0.5701,
+      "precision": 0.7607,
+      "recall": 0.6403,
+      "f1": 0.6953,
       "roc_auc": null,
       "confusion_matrix": [
         [
-          35,
-          21
+          28,
+          28
         ],
         [
-          70,
-          49
+          50,
+          89
         ]
       ]
     },
     "last5_success_rate": {
-      "accuracy": 0.6343,
-      "balanced_accuracy": 0.5373,
-      "precision": 0.7007,
-      "recall": 0.8067,
-      "f1": 0.75,
-      "roc_auc": 0.5708,
+      "accuracy": 0.6769,
+      "balanced_accuracy": 0.5495,
+      "precision": 0.7375,
+      "recall": 0.8489,
+      "f1": 0.7893,
+      "roc_auc": 0.5897,
       "confusion_matrix": [
         [
-          15,
-          41
+          14,
+          42
         ],
         [
-          23,
-          96
+          21,
+          118
         ]
       ]
     }
   },
   "best_params": {
     "criterion": "entropy",
-    "max_depth": 6,
-    "min_samples_leaf": 8
+    "max_depth": 3,
+    "min_samples_leaf": 12
   },
   "cv": {
     "splitter": "TimeSeriesSplit",
     "n_splits": 5,
     "scoring": "balanced_accuracy",
-    "best_score": 0.6172
+    "best_score": 0.5659
   },
   "feature_names": [
     "hourOfDay",
@@ -176,34 +176,30 @@
   "feature_importances": [
     {
       "feature": "avgTabSwitchesLast5",
-      "importance": 0.3073
+      "importance": 0.4969
     },
     {
       "feature": "minutesSinceLastSession",
-      "importance": 0.2567
-    },
-    {
-      "feature": "dayOfWeek",
-      "importance": 0.1298
+      "importance": 0.1884
     },
     {
       "feature": "avgDistractionsLast5",
-      "importance": 0.1142
+      "importance": 0.1614
     },
     {
       "feature": "hourBandSuccessRate",
-      "importance": 0.1102
+      "importance": 0.099
     },
     {
-      "feature": "currentStreak",
-      "importance": 0.0621
-    },
-    {
-      "feature": "sessionsAlreadyToday",
-      "importance": 0.0196
+      "feature": "successRateLast20",
+      "importance": 0.0543
     },
     {
       "feature": "hourOfDay",
+      "importance": 0.0
+    },
+    {
+      "feature": "dayOfWeek",
       "importance": 0.0
     },
     {
@@ -219,7 +215,11 @@
       "importance": 0.0
     },
     {
-      "feature": "successRateLast20",
+      "feature": "currentStreak",
+      "importance": 0.0
+    },
+    {
+      "feature": "sessionsAlreadyToday",
       "importance": 0.0
     },
     {
@@ -227,7 +227,7 @@
       "importance": 0.0
     }
   ],
-  "n_nodes": 29,
-  "max_depth": 6,
+  "n_nodes": 13,
+  "max_depth": 3,
   "min_real_sessions": 50
 }
