@@ -1,86 +1,86 @@
 {
   "status": "trained",
-  "model_version": "dt-20261030235643",
-  "trained_at": "2026-10-30T23:56:43.708534+00:00",
-  "n_real": 239,
+  "model_version": "dt-20261106140549",
+  "trained_at": "2026-11-06T14:05:49.094073+00:00",
+  "n_real": 258,
   "n_simulated": 0,
-  "n_train": 191,
+  "n_train": 206,
   "task": "Pre-session prediction of sessionSuccess (binary)",
   "target": "status == 'completed' AND duration >= 0.9 * plannedDuration AND distractionAttempts <= 1",
   "evaluated_on": "real sessions only",
   "split": "time-based: oldest 80% of real sessions train, newest 20% test",
-  "n_train_real": 191,
-  "n_test": 48,
+  "n_train_real": 206,
+  "n_test": 52,
   "train_range": {
     "from": "2026-04-18T19:41:33.199000+00:00",
-    "to": "2026-10-25T09:23:49.526000+00:00",
-    "n": 191
+    "to": "2026-10-26T04:21:16.342000+00:00",
+    "n": 206
   },
   "test_range": {
-    "from": "2026-10-25T09:27:03.410000+00:00",
-    "to": "2026-10-30T18:11:32.598000+00:00",
-    "n": 48
+    "from": "2026-10-26T07:11:36.201000+00:00",
+    "to": "2026-11-06T13:04:12.979000+00:00",
+    "n": 52
   },
   "success_rate": {
-    "train_real": 0.5759,
-    "test": 0.8542
+    "train_real": 0.5825,
+    "test": 0.9423
   },
   "class_names": [
     "not_successful",
     "successful"
   ],
   "metrics": {
-    "accuracy": 0.8125,
-    "balanced_accuracy": 0.4756,
-    "precision": 0.8478,
-    "recall": 0.9512,
-    "f1": 0.8966,
-    "roc_auc": 0.4756,
+    "accuracy": 0.7692,
+    "balanced_accuracy": 0.4082,
+    "precision": 0.9302,
+    "recall": 0.8163,
+    "f1": 0.8696,
+    "roc_auc": 0.2857,
     "confusion_matrix": [
       [
         0,
-        7
+        3
       ],
       [
-        2,
-        39
+        9,
+        40
       ]
     ]
   },
   "baselines": {
     "majority_class": {
-      "accuracy": 0.8542,
+      "accuracy": 0.9423,
       "balanced_accuracy": 0.5,
-      "precision": 0.8542,
+      "precision": 0.9423,
       "recall": 1.0,
-      "f1": 0.9213,
+      "f1": 0.9703,
       "roc_auc": 0.5,
       "confusion_matrix": [
         [
           0,
-          7
+          3
         ],
         [
           0,
-          41
+          49
         ]
       ]
     },
     "last5_success_rate": {
-      "accuracy": 0.8125,
-      "balanced_accuracy": 0.4756,
-      "precision": 0.8478,
-      "recall": 0.9512,
-      "f1": 0.8966,
-      "roc_auc": 0.4983,
+      "accuracy": 0.8846,
+      "balanced_accuracy": 0.6259,
+      "precision": 0.9574,
+      "recall": 0.9184,
+      "f1": 0.9375,
+      "roc_auc": 0.5102,
       "confusion_matrix": [
         [
-          0,
-          7
+          1,
+          2
         ],
         [
-          2,
-          39
+          4,
+          45
         ]
       ]
     }
@@ -91,72 +91,72 @@
   },
   "walk_forward": {
     "n_splits": 5,
-    "n_predictions": 195,
+    "n_predictions": 215,
     "model": {
-      "accuracy": 0.6462,
-      "balanced_accuracy": 0.5812,
-      "precision": 0.7612,
-      "recall": 0.7338,
-      "f1": 0.7473,
-      "roc_auc": 0.5489,
+      "accuracy": 0.6605,
+      "balanced_accuracy": 0.5952,
+      "precision": 0.7891,
+      "recall": 0.7342,
+      "f1": 0.7607,
+      "roc_auc": 0.5681,
       "confusion_matrix": [
         [
-          24,
-          32
+          26,
+          31
         ],
         [
-          37,
-          102
+          42,
+          116
         ]
       ]
     },
     "majority_class": {
-      "accuracy": 0.6,
-      "balanced_accuracy": 0.5701,
-      "precision": 0.7607,
-      "recall": 0.6403,
-      "f1": 0.6953,
+      "accuracy": 0.6047,
+      "balanced_accuracy": 0.574,
+      "precision": 0.7829,
+      "recall": 0.6392,
+      "f1": 0.7038,
       "roc_auc": null,
       "confusion_matrix": [
         [
-          28,
+          29,
           28
         ],
         [
-          50,
-          89
+          57,
+          101
         ]
       ]
     },
     "last5_success_rate": {
-      "accuracy": 0.6769,
-      "balanced_accuracy": 0.5495,
-      "precision": 0.7375,
-      "recall": 0.8489,
-      "f1": 0.7893,
-      "roc_auc": 0.5897,
+      "accuracy": 0.6884,
+      "balanced_accuracy": 0.5525,
+      "precision": 0.76,
+      "recall": 0.8418,
+      "f1": 0.7988,
+      "roc_auc": 0.6022,
       "confusion_matrix": [
         [
-          14,
+          15,
           42
         ],
         [
-          21,
-          118
+          25,
+          133
         ]
       ]
     }
   },
   "best_params": {
     "criterion": "entropy",
-    "max_depth": 3,
+    "max_depth": 5,
     "min_samples_leaf": 12
   },
   "cv": {
     "splitter": "TimeSeriesSplit",
     "n_splits": 5,
     "scoring": "balanced_accuracy",
-    "best_score": 0.5659
+    "best_score": 0.5832
   },
   "feature_names": [
     "hourOfDay",
@@ -176,23 +176,27 @@
   "feature_importances": [
     {
       "feature": "avgTabSwitchesLast5",
-      "importance": 0.4969
+      "importance": 0.3535
     },
     {
       "feature": "minutesSinceLastSession",
-      "importance": 0.1884
-    },
-    {
-      "feature": "avgDistractionsLast5",
-      "importance": 0.1614
+      "importance": 0.2863
     },
     {
       "feature": "hourBandSuccessRate",
-      "importance": 0.099
+      "importance": 0.1465
+    },
+    {
+      "feature": "avgDistractionsLast5",
+      "importance": 0.1079
+    },
+    {
+      "feature": "currentStreak",
+      "importance": 0.0677
     },
     {
       "feature": "successRateLast20",
-      "importance": 0.0543
+      "importance": 0.038
     },
     {
       "feature": "hourOfDay",
@@ -215,10 +219,6 @@
       "importance": 0.0
     },
     {
-      "feature": "currentStreak",
-      "importance": 0.0
-    },
-    {
       "feature": "sessionsAlreadyToday",
       "importance": 0.0
     },
@@ -227,7 +227,7 @@
       "importance": 0.0
     }
   ],
-  "n_nodes": 13,
-  "max_depth": 3,
+  "n_nodes": 21,
+  "max_depth": 5,
   "min_real_sessions": 50
 }
